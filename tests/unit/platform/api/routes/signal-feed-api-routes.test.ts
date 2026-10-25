@@ -22,6 +22,17 @@ vi.mock('../../../../../src/platform/middleware/feature-gate', () => ({
 
 vi.mock('../../../../../src/platform/middleware/signal-tier-resolver', () => ({
   resolveSubscriberId: vi.fn(),
+  resolveSubscriberTier: vi.fn(),
+}));
+
+// The quota gate reads the durable counter, which these route tests do not
+// exercise: stub it to a passed-through decision unless a test overrides it.
+vi.mock('../../../../../src/platform/middleware/signal-quota-gate', () => ({
+  enforceQuotaGate: vi.fn((_req: any, _res: any, next: any) => next()),
+}));
+
+vi.mock('../../../../../src/platform/middleware/usage-tracking-express', () => ({
+  usageTrackingMiddleware: vi.fn((_req: any, _res: any, next: any) => next()),
 }));
 
 vi.mock('../../../../../src/platform/raas/subscriber-tenant-isolator', () => ({
@@ -45,7 +56,7 @@ vi.mock('../../../../../src/desk/signal/signal-rest-cache', () => ({
 
 // Import AFTER mocks
 import { signalFeedRouter } from '../../../../../src/platform/api/routes/signal-feed-api-routes';
-import { resolveSubscriberId } from '../../../../../src/platform/middleware/signal-tier-resolver';
+import { resolveSubscriberId, resolveSubscriberTier } from '../../../../../src/platform/middleware/signal-tier-resolver';
 import { signalTtlEnforcer } from '../../../../../src/desk/signal/signal-ttl-enforcer';
 import { getCachedSignals, setCachedSignals } from '../../../../../src/desk/signal/signal-rest-cache';
 import { logger } from '../../../../../src/shared/utils/logger';
@@ -69,6 +80,10 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
     vi.mocked(signalTtlEnforcer.getLive).mockReturnValue(mockLiveSignals);
     vi.mocked(getCachedSignals).mockResolvedValue(null);
     vi.mocked(setCachedSignals).mockResolvedValue(undefined);
+    // Default the caller to a paid tier; individual tests override this.
+    vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub-1', tier: 'BASIC' });
+    vi.mocked(resolveSubscriberTier).mockResolvedValue('BASIC');
+    vi.mocked(resolveSubscriberTier).mockResolvedValue('BASIC');
   });
 
   // ============================================================
@@ -104,6 +119,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
     it('returns cached signals with cached=true', async () => {
       const cachedSignals = [{ id: 'cached-1', ts: 1700000000000 }];
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(cachedSignals);
       const app = buildApp();
 
@@ -126,6 +142,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
     it('returns cached signals with SIGNALS_PRO tier', async () => {
       const cachedSignals = [{ id: 'cached-pro', ts: 1700000000000 }];
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_pro', tier: 'SIGNALS_PRO' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_PRO');
       vi.mocked(getCachedSignals).mockResolvedValue(cachedSignals);
       const app = buildApp();
 
@@ -141,6 +158,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
     it('returns cached signals with SIGNALS_ENTERPRISE tier', async () => {
       const cachedSignals = [{ id: 'cached-ent', ts: 1700000000000 }];
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_ent', tier: 'SIGNALS_ENTERPRISE' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_ENTERPRISE');
       vi.mocked(getCachedSignals).mockResolvedValue(cachedSignals);
       const app = buildApp();
 
@@ -159,6 +177,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed — cache miss (live)', () => {
     it('falls back to live signals when cache misses', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -176,6 +195,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('filters by since parameter', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -192,6 +212,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('respects limit parameter', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -206,6 +227,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('applies both since and limit together', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -219,6 +241,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('uses default since=0 and limit=20', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -231,6 +254,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('passes tier+since+limit to setCachedSignals', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -248,6 +272,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns empty array when all signals are older than since', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       const app = buildApp();
 
@@ -262,6 +287,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('handles empty live signals list', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       vi.mocked(signalTtlEnforcer.getLive).mockReturnValue([]);
       const app = buildApp();
@@ -282,6 +308,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed — cache write failure', () => {
     it('warns but returns live data when cache write throws', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       vi.mocked(setCachedSignals).mockRejectedValue(new Error('Redis down'));
       const app = buildApp();
@@ -306,6 +333,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed — query validation', () => {
     it('returns 400 for negative since', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -318,6 +346,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 400 for zero limit', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -329,6 +358,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 400 for limit above 100', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -340,6 +370,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 400 for non-numeric since', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -351,6 +382,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 400 for non-numeric limit', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -367,6 +399,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed — unexpected error', () => {
     it('returns 500 when getCachedSignals throws', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockRejectedValue(new Error('Cache crash'));
       const app = buildApp();
 
@@ -381,6 +414,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 500 when signalTtlEnforcer.getLive throws', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(getCachedSignals).mockResolvedValue(null);
       vi.mocked(signalTtlEnforcer.getLive).mockImplementation(() => { throw new Error('Enforcer crash'); });
       const app = buildApp();
@@ -417,6 +451,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed/:id — found', () => {
     it('returns 200 with signal data for existing signal', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -430,6 +465,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 200 for sig-002', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -442,6 +478,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 200 for sig-003', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -459,6 +496,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed/:id — not found', () => {
     it('returns 404 for unknown signal id', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       const app = buildApp();
 
       const res = await request(app)
@@ -471,6 +509,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
 
     it('returns 404 when live signals list is empty', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(signalTtlEnforcer.getLive).mockReturnValue([]);
       const app = buildApp();
 
@@ -488,6 +527,7 @@ describe('Signal Feed API Routes — signal-feed-api-routes.ts', () => {
   describe('GET /feed/:id — unexpected error', () => {
     it('returns 500 when signalTtlEnforcer.getLive throws', async () => {
       vi.mocked(resolveSubscriberId).mockReturnValue({ subscriberId: 'sub_1', tier: 'SIGNALS_BASIC' });
+      vi.mocked(resolveSubscriberTier).mockResolvedValue('SIGNALS_BASIC');
       vi.mocked(signalTtlEnforcer.getLive).mockImplementation(() => { throw new Error('Enforcer crash'); });
       const app = buildApp();
 

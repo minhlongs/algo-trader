@@ -9,6 +9,7 @@
 import path from 'node:path';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
+import { logger } from '../../../shared/utils/logger';
 import {
   OPEN_CORE_25_STEPS,
   RepositoryBlueprintAuditor,
@@ -28,10 +29,11 @@ const verifyLicenseSchema = z.object({
   requestedMcu: z.number().int().nonnegative().optional(),
 });
 
-openCoreRouter.get('/status', (_req: Request, res: Response) => {
+openCoreRouter.get('/status', async (_req: Request, res: Response) => {
   const repoRoot = path.resolve(__dirname, '../../../../');
   const auditor = new RepositoryBlueprintAuditor();
-  const blueprintAudit = auditor.auditRepository(repoRoot);
+  const blueprintAudit = await auditor.auditRepository(repoRoot);
+  const telemetry = blueprintAudit.readinessReport.telemetry;
 
   const plgSimulation = OpenCoreSaasMonetizationCoordinator.evaluate({
     completedRestructuringSteps: blueprintAudit.verifiedStepModulesCount,
@@ -41,8 +43,8 @@ openCoreRouter.get('/status', (_req: Request, res: Response) => {
     avgMonthlyMcuSpendUsd: 145,
     enterpriseSeatsCount: 28,
     enterpriseSeatPriceUsd: 1_250,
-    leakedSecretsCount: blueprintAudit.readinessReport.blockingIssues.length > 0 ? 1 : 0,
-    licenseGateEnforced: true,
+    leakedSecretsCount: telemetry.leakedSecretsCount,
+    licenseGateEnforced: telemetry.licenseGateEnforced,
   });
 
   res.status(200).json({
@@ -67,7 +69,24 @@ openCoreRouter.post('/verify-license', (req: Request, res: Response) => {
   }
 
   const { token, requiredTier, requestedMcu } = parsed.data;
-  const gate = new LicenseGate(process.env.ALGO_LICENSE_SECRET ?? 'algo-trader-raas-secret-2026');
+
+  // The gate fails closed when LICENSE_HMAC_SECRET is unset, which surfaces here as a
+  // constructor throw. A missing deployment secret is a server-side configuration fault, not a
+  // client credential failure, so report it as 503 rather than letting it escape as an
+  // unhandled handler error.
+  let gate: LicenseGate;
+  try {
+    gate = new LicenseGate();
+  } catch (error) {
+    logger.error('[OpenCore] License gate is not configured', { message: (error as Error).message });
+    res.status(503).json({
+      isValid: false,
+      statusCode: 503,
+      error: 'License verification is not configured on this deployment',
+    });
+    return;
+  }
+
   const licenseCheck = gate.verifyToken(token, requiredTier);
 
   if (!licenseCheck.isValid || !licenseCheck.payload) {

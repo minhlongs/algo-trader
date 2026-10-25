@@ -10,6 +10,7 @@ import type { License } from '../../shared/types/license';
 import { LicenseTier } from '../../shared/types/license';
 import type { TierKey } from '../../desk/signal/signal-types';
 import RaasGate from '../../desk/gate/raas-gate';
+import { signalSubscriberRepo } from '../signal/signal-subscriber-repository-d1';
 
 /** Minimal gate interface — matches RaasGate's public contract for lazy loading */
 interface RaaSGateLike {
@@ -20,6 +21,7 @@ interface RaaSGateLike {
 const TIER_RANK: Record<TierKey, number> = {
   ENTERPRISE: 3,
   PRO: 2,
+  BASIC: 1,
   FREE: 0,
 };
 
@@ -35,6 +37,14 @@ export function __setGate(gate: RaaSGateLike | null): void {
   _gate = gate;
 }
 
+/**
+ * Resolve WHO is calling from their API key.
+ *
+ * The tier is kept for signature compatibility with existing consumers, but
+ * callers that gate on purchased signals access must read the subscription row
+ * via resolveSubscriberTier() — this value mirrors the platform license, which
+ * describes a different product and does not prove a signals purchase.
+ */
 export function resolveSubscriberId(req: Request): { subscriberId: string; tier: TierKey } | null {
   const auth = (req.headers.authorization || '').trim();
   const apiKey = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -51,6 +61,17 @@ export function resolveSubscriberId(req: Request): { subscriberId: string; tier:
         : 'FREE';
 
   return { subscriberId: license.userId ?? license.id, tier };
+}
+
+/**
+ * The caller's purchased signals tier, read from their subscription row.
+ * Returns FREE when they have no active subscription row, which is the
+ * unsubscribed state and gates them out of every paid signal tiers.
+ */
+export async function resolveSubscriberTier(subscriberId: string): Promise<TierKey> {
+  const sub = await signalSubscriberRepo.getBySubscriberId(subscriberId);
+  if (!sub || !sub.active) return 'FREE';
+  return sub.tier;
 }
 
 export function requireSignalTier(minTier: TierKey) {

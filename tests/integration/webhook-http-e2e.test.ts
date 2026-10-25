@@ -235,10 +235,9 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Missing invoice_id falls back to PRO
+  // Missing invoice_id fails closed - it does NOT fall back to PRO
   // ---------------------------------------------------------------------------
-
-  it('should default to PRO tier when invoice_id is missing', async () => {
+  it('fails closed when invoice_id is missing instead of defaulting to PRO', async () => {
     const app = createTestApp();
     const nowpaymentsService = NowPaymentsService.getInstance();
     const tierSpy = vi.spyOn(nowpaymentsService, 'getTierByInvoiceId');
@@ -252,13 +251,15 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
       .set('x-nowpayments-sig', signature)
       .send(ipn);
 
-    expect(res.status).toBe(200);
+    // A settled payment with no resolvable tier must not return success: 502 tells
+    // NOWPayments the activation did not take, so the provider retries the IPN.
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: 'Payment tier could not be resolved' });
     expect(tierSpy).not.toHaveBeenCalled();
 
     const subService = SubscriptionService.getInstance();
     const sub = await subService.getSubscriptionByProviderId('pay-noinv-e2e');
-    expect(sub).toBeDefined();
-    expect(sub!.tier).toBe(LicenseTier.PRO);
+    expect(sub).toBeUndefined();
   });
 
   // ---------------------------------------------------------------------------

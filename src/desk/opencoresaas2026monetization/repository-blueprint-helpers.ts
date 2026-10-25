@@ -8,9 +8,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { OverallAuditReport } from './readiness-auditor';
 
+/**
+ * Result of probing one step's behavior. Kept here (not in the probes module) so the audit shape
+ * stays importable without pulling in the probe implementations.
+ */
+export interface StepBehaviorAuditEntry {
+  readonly stepId: string;
+  readonly stepNumber: number;
+  readonly verified: boolean;
+  readonly kind: 'behavioral' | 'absent';
+  readonly evidence: string;
+}
+
 export interface LiveRepositoryBlueprintAudit {
   readonly repoRoot: string;
   readonly verifiedStepModulesCount: number;
+  readonly stepBehaviorAudit: StepBehaviorAuditEntry[];
+  readonly behaviorallyVerifiedCount: number;
+  readonly existenceOnlyStepCount: number;
   readonly missingStepModules: string[];
   readonly governanceFilesIntact: boolean;
   readonly missingGovernanceFiles: string[];

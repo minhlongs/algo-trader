@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Real-Time MCU & Quota Billing Meter
  * Tracks API requests and strategy compute units, raising HTTP 402 on limit exhaustion.

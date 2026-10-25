@@ -33,6 +33,21 @@ export const PRICING_TIERS: Record<string, PricingTier> = {
 		supportLevel: 'community',
 		requestsPerMin: 10,
 	},
+	STARTER: {
+		name: 'Starter',
+		price: 49,
+		strategies: 3,
+		markets: ['polymarket'],
+		apiCallsPerMonth: 5000,
+		features: [
+			'advanced-backtest',
+			'paper-trading',
+			'basic-strategies',
+			'email-support',
+		],
+		supportLevel: 'email',
+		requestsPerMin: 30,
+	},
 	PRO: {
 		name: 'Pro',
 		price: 99,

@@ -26,6 +26,7 @@ import {
   volumeAbnormality,
   computeRegimeFeatures,
 } from './regime-features';
+import { defaultRules } from './regime-default-rules';
 
 export {
   realizedVolatility,
@@ -59,52 +60,7 @@ export function pickRegime(
 }
 
 /** Default rules tuned for crypto OHLCV. Thresholds are deliberately simple. */
-export function defaultRules(): RegimeRule[] {
-  return [
-    {
-      regime: 'SHOCK',
-      description: 'Extreme volume spike with large absolute returns',
-      matches: (f) =>
-        (f.volumeAbnormality ?? 0) > 3 &&
-        (f.returnDispersion ?? 0) > 0.05,
-    },
-    {
-      regime: 'TREND_UP',
-      description: 'Strong positive slope with moderate-to-high trend strength',
-      matches: (f) =>
-        (f.closeSlope ?? 0) > 0 &&
-        (f.trendStrength ?? 0) >= 25,
-    },
-    {
-      regime: 'TREND_DOWN',
-      description: 'Strong negative slope with moderate-to-high trend strength',
-      matches: (f) =>
-        (f.closeSlope ?? 0) < 0 &&
-        (f.trendStrength ?? 0) >= 25,
-    },
-    {
-      regime: 'HIGH_VOLATILITY',
-      description: 'Realized vol above median guess (≥ 1.0 annualized)',
-      matches: (f) =>
-        (f.realizedVol ?? 0) >= 1.0,
-    },
-    {
-      regime: 'LOW_VOLATILITY',
-      description: 'Realized vol below 0.4 annualized and no trend',
-      matches: (f) =>
-        (f.realizedVol ?? 1) < 0.4 &&
-        (f.trendStrength ?? 1) < 20 &&
-        (f.returnDispersion ?? 1) < 0.01,
-    },
-    {
-      regime: 'RANGE',
-      description: 'No trend and vol not extreme',
-      matches: (f) =>
-        (f.trendStrength ?? 1) < 20 &&
-        (f.returnDispersion ?? 0) < 0.03,
-    },
-  ];
-}
+export { defaultRules } from './regime-default-rules';
 
 /**
  * Build a RegimeSnapshot for a timestamp using only candles at or before `ts`.

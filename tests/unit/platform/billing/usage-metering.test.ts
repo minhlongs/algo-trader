@@ -1,15 +1,28 @@
 /**
- * usage-metering — Unit Tests for UsageMeteringService facade
+ * usage-metering — unit tests for the Redis-backed metering functions.
  *
- * Covers getCurrentPeriod, getUsageStatus (within/exceeded limit branches),
- * calculateOverage (pending vs billed), and getInstance singleton behavior.
- *
- * Sub-modules (trackTrade, syncUsage, etc.) delegate to already-tested
- * usage-metering-{tracking,analytics,sync}.ts modules — here we only verify
- * the facade wiring and local logic.
+ * These were written against the meter facade, which no longer exists: the single
+ * canonical meter now lives in signals-api and writes to the durable usage_metrics
+ * row, so a second UsageMeteringService class would only invite the two to drift.
+ * The functions here still own the Redis-side arithmetic (tier limits, overage
+ * pricing, the write-side counter) and are called directly over a fake client.
  */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LicenseTier } from '../../../../src/shared/types/license';
+import {
+  calculateUsageStatus,
+  calculateOverageCharge,
+} from '../../../../src/platform/billing/usage-metering-status';
+import {
+  getAllUsageData,
+  getMetrics,
+  getRevenueSummary,
+} from '../../../../src/platform/billing/usage-metering-analytics';
+import {
+  resetForNewPeriod,
+  trackTrade,
+} from '../../../../src/platform/billing/usage-metering-tracking';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -17,203 +30,246 @@ const { mockLogger } = vi.hoisted(() => ({
 
 vi.mock('../../../../src/shared/utils/logger', () => ({ logger: mockLogger }));
 
-vi.mock('../../../../src/platform/redis', () => ({
-  getRedisClient: vi.fn(() => ({
-    get: vi.fn(async () => null),
-    set: vi.fn(async () => 'OK'),
-    incr: vi.fn(async () => 1),
+/** Minimal Redis surface: reads come from the store, writes are recorded. */
+function fakeRedis() {
+  return {
+    store: new Map<string, string>(),
+    get: vi.fn(async function (this: { store: Map<string, string> }, k: string) {
+      return this.store.get(k) ?? null;
+    }),
+    set: vi.fn(async function (this: { store: Map<string, string> }, k: string, v: string) {
+      this.store.set(k, v);
+      return 'OK';
+    }),
+    incr: vi.fn(async function (this: { store: Map<string, string> }, k: string) {
+      const next = Number(this.store.get(k) ?? 0) + 1;
+      this.store.set(k, String(next));
+      return next;
+    }),
+    incrbyfloat: vi.fn(async function (this: { store: Map<string, string> }, k: string, by: number) {
+      const next = Number(this.store.get(k) ?? 0) + by;
+      this.store.set(k, String(next));
+      return String(next);
+    }),
     expire: vi.fn(async () => 1),
-  })),
-}));
+    hset: vi.fn(async () => 1),
+    // getAllUsageData scans usage:<license>:<period>; the trailing ':segment' keys are
+    // volume/success counters on the same license, so they are filtered out here.
+    keys: vi.fn(async function (this: { store: Map<string, string> }, pattern: string) {
+      const [, lic = '*', period = '*'] = pattern.split(':');
+      return [...this.store.keys()].filter((k) => {
+        const parts = k.split(':');
+        return (
+          parts.length === 3 &&
+          (lic === '*' || parts[1] === lic) &&
+          (period === '*' || parts[2] === period)
+        );
+      });
+    }),
+  };
+}
 
-vi.mock('../../../../src/platform/billing/nowpayments-service', () => ({
-  NowPaymentsService: class {},
-}));
+type FakeRedis = ReturnType<typeof fakeRedis>;
 
-vi.mock('../../../../src/platform/billing/usage-metering-tracking', () => ({
-  trackTrade: vi.fn(async (params: {
-    getCurrentPeriod: () => string;
-    getUsageStatus: (key: string, tier: LicenseTier, cached?: number) => unknown;
-    emit: (event: string, payload: unknown) => void;
-  }, licenseKey: string, tier: LicenseTier) => {
-    // Exercise the facade's inline closures so they count as covered
-    params.getCurrentPeriod();
-    params.getUsageStatus(licenseKey, tier);
-    params.emit('usage_alert', { licenseKey });
-    return {
-      licenseKey,
-      period: '2026-08',
-      tier,
-      monthlyLimit: 10000,
-      currentUsage: 1,
-      remaining: 9999,
-      percentUsed: 0.01,
-      isExceeded: false,
-      overageUnits: 0,
-      overageCost: 0,
-    };
-  }),
-  resetForNewPeriod: vi.fn(async () => undefined),
-}));
+const PERIOD = '2026-08';
+const currentPeriod = () => PERIOD;
 
-vi.mock('../../../../src/platform/billing/usage-metering-analytics', () => ({
-  getAllUsageData: vi.fn(async () => []),
-  getMetrics: vi.fn(async () => ({
-    totalTrades: 5,
-    successfulTrades: 4,
-    failedTrades: 1,
-    totalVolume: 1000,
-    averageTradeSize: 200,
-  })),
-  getRevenueSummary: vi.fn(async () => ({
-    subscriptionRevenue: 500,
-    overageRevenue: 10,
-    totalRevenue: 510,
-    customerCount: 5,
-    averageRevenuePerCustomer: 102,
-  })),
-}));
+describe('usage metering tier limits', () => {
+  it('calculates remaining and percent used within limit', () => {
+    const status = calculateUsageStatus('LK-1', LicenseTier.PRO, PERIOD, 5000);
+    expect(status.licenseKey).toBe('LK-1');
+    expect(status.tier).toBe(LicenseTier.PRO);
+    expect(status.monthlyLimit).toBe(10000);
+    expect(status.currentUsage).toBe(5000);
+    expect(status.remaining).toBe(5000);
+    expect(status.percentUsed).toBe(50);
+    expect(status.isExceeded).toBe(false);
+    expect(status.overageUnits).toBe(0);
+    expect(status.overageCost).toBe(0);
+  });
 
-vi.mock('../../../../src/platform/billing/usage-metering-sync', () => ({
-  syncUsage: vi.fn(async (params: {
-    nowPaymentsConfigured: boolean;
-    getUsageStatus: (key: string, tier: LicenseTier) => unknown;
-    getMetrics: (key: string) => unknown;
-    emit: (event: string, payload: unknown) => void;
-  }, licenseKey: string, tier: LicenseTier) => {
-    // Exercise the facade's inline closures so they count as covered
-    params.getUsageStatus(licenseKey, tier);
-    params.getMetrics(licenseKey);
-    params.emit('sync_complete', { licenseKey });
-    return true;
-  }),
-}));
+  it('clamps remaining to 0 and marks exceeded when over limit', () => {
+    const status = calculateUsageStatus('LK-2', LicenseTier.STARTER, PERIOD, 6000);
+    expect(status.tier).toBe(LicenseTier.STARTER);
+    expect(status.monthlyLimit).toBe(5000);
+    expect(status.currentUsage).toBe(6000);
+    expect(status.remaining).toBe(0);
+    expect(status.isExceeded).toBe(true);
+    expect(status.overageUnits).toBe(1000);
+  });
 
-import { UsageMeteringService } from '../../../../src/platform/billing/usage-metering';
+  it('calculates overage cost for PRO tier', () => {
+    const status = calculateUsageStatus('LK-3', LicenseTier.PRO, PERIOD, 10500);
+    expect(status.isExceeded).toBe(true);
+    expect(status.overageUnits).toBe(500);
+    expect(status.overageCost).toBeCloseTo(5.0, 2); // 500 * $0.01
+  });
 
-describe('UsageMeteringService', () => {
-  let service: UsageMeteringService;
+  it('calculates overage cost for ENTERPRISE tier', () => {
+    const status = calculateUsageStatus('LK-4', LicenseTier.ENTERPRISE, PERIOD, 100500);
+    expect(status.overageUnits).toBe(500);
+    expect(status.overageCost).toBeCloseTo(2.5, 2); // 500 * $0.005
+  });
+
+  it('returns zero overage cost for FREE tier even when exceeded', () => {
+    const status = calculateUsageStatus('LK-5', LicenseTier.FREE, PERIOD, 1500);
+    expect(status.isExceeded).toBe(true);
+    expect(status.overageCost).toBe(0); // FREE is a hard limit, never billed
+  });
+
+  it('reads usage from the injected cache when no cached value is passed', () => {
+    const status = calculateUsageStatus(
+      'LK-6',
+      LicenseTier.PRO,
+      PERIOD,
+      undefined,
+      () => 2500,
+    );
+    expect(status.currentUsage).toBe(2500);
+    expect(status.percentUsed).toBe(25);
+  });
+});
+
+describe('overage charges', () => {
+  it('bills nothing when within the tier limit', () => {
+    const status = calculateUsageStatus('LK-1', LicenseTier.PRO, PERIOD, 500);
+    const charge = calculateOverageCharge('LK-1', LicenseTier.PRO, PERIOD, status);
+    expect(charge.licenseKey).toBe('LK-1');
+    expect(charge.units).toBe(0);
+    expect(charge.totalCost).toBe(0);
+    expect(charge.status).toBe('billed');
+  });
+
+  it('marks the charge pending once the tier limit is exceeded', () => {
+    const status = calculateUsageStatus('LK-2', LicenseTier.PRO, PERIOD, 10500);
+    const charge = calculateOverageCharge('LK-2', LicenseTier.PRO, PERIOD, status);
+    expect(charge.units).toBe(500);
+    expect(charge.pricePerUnit).toBe(0.01);
+    expect(charge.totalCost).toBeCloseTo(5.0, 2);
+    expect(charge.status).toBe('pending');
+  });
+});
+
+describe('usage metering queries over Redis', () => {
+  let redis: FakeRedis;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    // Reset singleton for clean test isolation
-    (UsageMeteringService as unknown as { instance: UsageMeteringService | undefined }).instance = undefined;
-    service = UsageMeteringService.getInstance();
+    redis = fakeRedis();
   });
 
-  describe('getInstance', () => {
-    it('returns singleton instance', () => {
-      const a = UsageMeteringService.getInstance();
-      const b = UsageMeteringService.getInstance();
-      expect(a).toBe(b);
-    });
-
-    it('configures NowPayments service when provided', () => {
-      const paymentSvc = {} as never;
-      const svc = UsageMeteringService.getInstance(paymentSvc);
-      expect(svc).toBeDefined();
-    });
+  it('reports zero metrics for a license with no traffic yet', async () => {
+    const metrics = await getMetrics(redis as never, currentPeriod, 'LK-1');
+    expect(metrics.totalTrades).toBe(0);
+    expect(metrics.successfulTrades).toBe(0);
+    expect(metrics.failedTrades).toBe(0);
+    expect(metrics.totalVolume).toBe(0);
+    expect(metrics.averageTradeSize).toBe(0);
   });
 
-  describe('getCurrentPeriod', () => {
-    it('returns YYYY-MM format', () => {
-      const period = service.getCurrentPeriod();
-      expect(period).toMatch(/^\d{4}-\d{2}$/);
-    });
+  it('counts trades, successes and volume from the period counters', async () => {
+    redis.store.set(`usage:LK-1:${PERIOD}`, '5');
+    redis.store.set(`usage:LK-1:${PERIOD}:success`, '4');
+    redis.store.set(`usage:LK-1:${PERIOD}:failed`, '1');
+    redis.store.set(`usage:LK-1:${PERIOD}:volume`, '1000');
+
+    const metrics = await getMetrics(redis as never, currentPeriod, 'LK-1');
+    expect(metrics.totalTrades).toBe(5);
+    expect(metrics.successfulTrades).toBe(4);
+    expect(metrics.failedTrades).toBe(1);
+    expect(metrics.totalVolume).toBe(1000);
+    expect(metrics.averageTradeSize).toBe(200);
   });
 
-  describe('getUsageStatus', () => {
-    it('calculates remaining and percent used within limit', () => {
-      const status = service.getUsageStatus('LK-1', LicenseTier.PRO, 5000);
-      expect(status.licenseKey).toBe('LK-1');
-      expect(status.tier).toBe(LicenseTier.PRO);
-      expect(status.monthlyLimit).toBe(10000);
-      expect(status.currentUsage).toBe(5000);
-      expect(status.remaining).toBe(5000);
-      expect(status.percentUsed).toBe(50);
-      expect(status.isExceeded).toBe(false);
-      expect(status.overageUnits).toBe(0);
-      expect(status.overageCost).toBe(0);
-    });
-
-    it('clamps remaining to 0 and marks exceeded when over limit', () => {
-      const status = service.getUsageStatus('LK-2', LicenseTier.STARTER, 6000);
-      expect(status.tier).toBe(LicenseTier.STARTER);
-      expect(status.monthlyLimit).toBe(5000);
-      expect(status.currentUsage).toBe(6000);
-      expect(status.remaining).toBe(0);
-      expect(status.isExceeded).toBe(true);
-      expect(status.overageUnits).toBe(1000);
-    });
-
-    it('calculates overage cost for PRO tier', () => {
-      const status = service.getUsageStatus('LK-3', LicenseTier.PRO, 10500);
-      expect(status.isExceeded).toBe(true);
-      expect(status.overageUnits).toBe(500);
-      expect(status.overageCost).toBeCloseTo(5.0, 2); // 500 * $0.01
-    });
-
-    it('calculates overage cost for ENTERPRISE tier', () => {
-      const status = service.getUsageStatus('LK-4', LicenseTier.ENTERPRISE, 100500);
-      expect(status.overageUnits).toBe(500);
-      expect(status.overageCost).toBeCloseTo(2.5, 2); // 500 * $0.005
-    });
-
-    it('returns zero overage cost for FREE tier even when exceeded', () => {
-      const status = service.getUsageStatus('LK-5', LicenseTier.FREE, 1500);
-      expect(status.isExceeded).toBe(true);
-      expect(status.overageCost).toBe(0); // FREE has no overage
-    });
+  it('returns an empty usage list when nothing was recorded', async () => {
+    const usageData = await getAllUsageData(redis as never, currentPeriod, PERIOD);
+    expect(usageData).toEqual([]);
   });
 
-  describe('calculateOverage', () => {
-    it('returns pending status when over limit', async () => {
-      const charge = await service.calculateOverage('LK-1', LicenseTier.PRO);
-      expect(charge.licenseKey).toBe('LK-1');
-      expect(charge.units).toBe(0);
-      expect(charge.totalCost).toBe(0);
-      expect(charge.status).toBe('billed');
-    });
+  it('returns one row per license that traded in the period', async () => {
+    redis.store.set(`usage:LK-1:${PERIOD}`, '5');
+    redis.store.set(`usage:LK-2:${PERIOD}`, '7');
+    redis.store.set(`usage:LK-1:${PERIOD}:volume`, '1000');
 
-    it('returns billed status when within limit', async () => {
-      const charge = await service.calculateOverage('LK-2', LicenseTier.PRO);
-      expect(charge.units).toBe(0);
-      expect(charge.status).toBe('billed');
-    });
+    const usageData = await getAllUsageData(redis as never, currentPeriod, PERIOD);
+    expect(usageData.map((u) => u.licenseKey).sort()).toEqual(['LK-1', 'LK-2']);
+    expect(usageData.find((u) => u.licenseKey === 'LK-2')?.currentUsage).toBe(7);
   });
 
-  describe('delegated methods', () => {
-    it('trackTrade delegates to tracking module', async () => {
-      const result = await service.trackTrade('LK-1', LicenseTier.PRO);
-      expect(result.licenseKey).toBe('LK-1');
-      expect(result.tier).toBe(LicenseTier.PRO);
-    });
+  it('sums overage revenue across the recorded period', async () => {
+    // Nothing recorded yet: the volume counters are zero, so revenue is zero and the
+    // customer count follows the rows the scan returns.
+    const empty = await getRevenueSummary(redis as never, currentPeriod, PERIOD);
+    expect(empty.totalRevenue).toBe(0);
+    expect(empty.overageRevenue).toBe(0);
+    expect(empty.customerCount).toBe(0);
 
-    it('syncUsage delegates to sync module', async () => {
-      const result = await service.syncUsage('LK-1', LicenseTier.PRO);
-      expect(result).toBe(true);
-    });
+    redis.store.set(`usage:LK-1:${PERIOD}`, '5');
+    const summary = await getRevenueSummary(redis as never, currentPeriod, PERIOD);
+    expect(summary.totalRevenue).toBe(summary.subscriptionRevenue + summary.overageRevenue);
+    expect(summary.customerCount).toBe(1);
+    expect(summary.averageRevenuePerCustomer).toBe(summary.totalRevenue);
+  });
+});
 
-    it('getMetrics delegates to analytics module', async () => {
-      const result = await service.getMetrics('LK-1');
-      expect(result.totalTrades).toBe(5);
-      expect(result.successfulTrades).toBe(4);
-    });
+describe('usage metering write side', () => {
+  let redis: FakeRedis;
 
-    it('getAllUsageData delegates to analytics module', async () => {
-      const result = await service.getAllUsageData('2026-08');
-      expect(result).toEqual([]);
-    });
+  beforeEach(() => {
+    redis = fakeRedis();
+  });
 
-    it('getRevenueSummary delegates to analytics module', async () => {
-      const result = await service.getRevenueSummary('2026-08');
-      expect(result.totalRevenue).toBe(510);
-      expect(result.subscriptionRevenue).toBe(500);
-      expect(result.overageRevenue).toBe(10);
-    });
+  it('increments the period counter when a trade is tracked', async () => {
+    const status = await trackTrade(
+      {
+        redis: redis as never,
+        alertedThresholds: new Map<string, Set<number>>(),
+        getCurrentPeriod: currentPeriod,
+        getUsageStatus: (key: string, tier: LicenseTier, cached?: number) =>
+          calculateUsageStatus(key, tier, PERIOD, cached),
+        emit: () => true,
+      },
+      'LK-1',
+      LicenseTier.PRO,
+    );
 
-    it('resetForNewPeriod delegates to tracking module', async () => {
-      await expect(service.resetForNewPeriod('LK-1')).resolves.toBeUndefined();
-    });
+    expect(redis.incr).toHaveBeenCalledWith(`usage:LK-1:${PERIOD}`);
+    expect(status.currentUsage).toBe(1);
+    expect(status.licenseKey).toBe('LK-1');
+    expect(status.tier).toBe(LicenseTier.PRO);
+    expect(status.isExceeded).toBe(false);
+  });
+
+  it('tracks trade volume separately when one is supplied', async () => {
+    await trackTrade(
+      {
+        redis: redis as never,
+        alertedThresholds: new Map<string, Set<number>>(),
+        getCurrentPeriod: currentPeriod,
+        getUsageStatus: (key: string, tier: LicenseTier, cached?: number) =>
+          calculateUsageStatus(key, tier, PERIOD, cached),
+        emit: () => true,
+      },
+      'LK-1',
+      LicenseTier.PRO,
+      250.5,
+    );
+
+    expect(redis.incrbyfloat).toHaveBeenCalledWith(`usage:LK-1:${PERIOD}:volume`, 250.5);
+    expect(redis.store.get(`usage:LK-1:${PERIOD}:volume`)).toBe('250.5');
+  });
+
+  it('archives the current counter and clears alerts on a period reset', async () => {
+    const alertedThresholds = new Map<string, Set<number>>([['LK-1', new Set([80])]]);
+    redis.store.set(`usage:LK-1:${PERIOD}`, '42');
+
+    await resetForNewPeriod(
+      redis as never,
+      alertedThresholds,
+      currentPeriod,
+      'LK-1',
+    );
+
+    expect(redis.store.get(`usage:LK-1:${PERIOD}:archive`)).toBe('42');
+    expect(alertedThresholds.has('LK-1')).toBe(false);
   });
 });

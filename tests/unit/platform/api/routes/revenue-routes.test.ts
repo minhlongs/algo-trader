@@ -4,7 +4,7 @@
  * Covers all five GET endpoints on the ENTERPRISE-tier revenue router:
  * /summary, /mrr, /usage, /overage, /churn — each success path, query-parameter
  * variants, and the service-failure path (500 with the thrown Error's message).
- * The router's imports (UsageMeteringService, revenueShareRepository,
+ * The router's imports (usageMetering, revenueShareRepository,
  * requireTier, logger) are all replaced with deterministic mocks via vi.hoisted.
  */
 
@@ -24,19 +24,19 @@ const mocks = vi.hoisted(() => ({
   }) as unknown as typeof import('../../../../../src/platform/middleware/feature-gate').requireTier,
   usageRows: [
     {
-      licenseKey: 'lic-a', period: '2026-08', tier: 'PRO' as const, monthlyLimit: 100,
-      currentUsage: 80, remaining: 20, percentUsed: 0.8, isExceeded: false,
-      overageUnits: 0, overageCost: 0, lastSyncedAt: 1000,
+      subscriberId: 'lic-a', period: '2026-08', tier: 'PRO', callsUsed: 80,
+      monthlyLimit: 100, percentUsed: 0.8, isExceeded: false,
+      overageUnits: 0, overageCost: 0,
     },
     {
-      licenseKey: 'lic-b', period: '2026-08', tier: 'ENTERPRISE' as const, monthlyLimit: 200,
-      currentUsage: 250, remaining: 0, percentUsed: 1.25, isExceeded: true,
-      overageUnits: 50, overageCost: 15.5, lastSyncedAt: 2000,
+      subscriberId: 'lic-b', period: '2026-08', tier: 'ENTERPRISE', callsUsed: 250,
+      monthlyLimit: 200, percentUsed: 1.25, isExceeded: true,
+      overageUnits: 50, overageCost: 15.5,
     },
     {
-      licenseKey: 'lic-c', period: '2026-08', tier: 'PRO' as const, monthlyLimit: 100,
-      currentUsage: 90, remaining: 10, percentUsed: 0.9, isExceeded: false,
-      overageUnits: 0, overageCost: 0, lastSyncedAt: 0,
+      subscriberId: 'lic-c', period: '2026-08', tier: 'PRO', callsUsed: 90,
+      monthlyLimit: 100, percentUsed: 0.9, isExceeded: false,
+      overageUnits: 0, overageCost: 0,
     },
   ],
   revenueSummary: {
@@ -48,11 +48,10 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../../../../src/platform/billing/usage-metering', () => ({
-  UsageMeteringService: class {
-    static getInstance() {
-      return { getRevenueSummary: mocks.getRevenueSummary, getAllUsageData: mocks.getAllUsageData };
-    }
+vi.mock('../../../../../src/platform/signals-api/usage-metering-service', () => ({
+  usageMetering: {
+    getRevenueSummary: mocks.getRevenueSummary,
+    getAllUsageData: mocks.getAllUsageData,
   },
 }));
 
@@ -179,9 +178,10 @@ describe('revenueRouter', () => {
         percentUsed: 0.8,
         overageUnits: 0,
         overageCost: 0,
-        lastActiveAt: 1000,
+        lastActiveAt: 0,
       });
-      // lastSyncedAt fallback: missing (undefined) becomes 0
+      // The public shape keeps licenseKey lastActiveAt; the meter still counts
+      // API calls, not last-seen timestamps, so it is always 0 here.
       expect(res.body.customers[2].lastActiveAt).toBe(0);
     });
 

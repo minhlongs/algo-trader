@@ -10,6 +10,7 @@ import { logger } from '../../shared/utils/logger';
 import { ENGINE_IDS, type EngineId } from '../portfolio/types';
 import type { UnifiedTradeIntent } from '../orchestrator/orchestrator-types';
 import { SignalNormalizer } from '../orchestrator/signal-normalizer';
+import { normalizeEngineSignal } from './supervised-engine-normalizers';
 import type {
   EngineStatus,
   EngineSupervisorOptions,
@@ -51,26 +52,7 @@ export class SupervisedEngine implements ISupervisedEngine {
   public enqueueRaw(rawSignal: unknown, type = 'default'): void {
     if (!rawSignal) return;
     try {
-      let intents: UnifiedTradeIntent[] = [];
-      if (this.engineId === 'arbitrage') {
-        intents = this.normalizer.normalizeArbitrage(rawSignal as Parameters<SignalNormalizer['normalizeArbitrage']>[0]);
-      } else if (this.engineId === 'marl') {
-        intents = type === 'order'
-          ? [this.normalizer.normalizeMarlOrder(rawSignal as Parameters<SignalNormalizer['normalizeMarlOrder']>[0])]
-          : this.normalizer.normalizeMarlQuote(rawSignal as Parameters<SignalNormalizer['normalizeMarlQuote']>[0]);
-      } else if (this.engineId === 'amm') {
-        if (type === 'rebalance') {
-          intents = [this.normalizer.normalizeAmmRebalance(rawSignal as Parameters<SignalNormalizer['normalizeAmmRebalance']>[0])];
-        } else if (type === 'arbitrage') {
-          intents = this.normalizer.normalizeAmmArbitrage(rawSignal as Parameters<SignalNormalizer['normalizeAmmArbitrage']>[0]);
-        } else {
-          intents = this.normalizer.normalizeAmmQuote(rawSignal as Parameters<SignalNormalizer['normalizeAmmQuote']>[0], 'BTC/USDT');
-        }
-      } else if (this.engineId === 'alpha-lab') {
-        intents = type === 'trade'
-          ? [this.normalizer.normalizeTradeSignal(rawSignal as Parameters<SignalNormalizer['normalizeTradeSignal']>[0])]
-          : [this.normalizer.normalizeAlphaSignal(rawSignal as Parameters<SignalNormalizer['normalizeAlphaSignal']>[0])];
-      }
+      const intents = normalizeEngineSignal(this.engineId, rawSignal, this.normalizer, type);
       this.queuedIntents.push(...intents);
     } catch (err) {
       logger.warn(`[SupervisedEngine:${this.engineId}] Failed to normalize raw signal`, { error: String(err) });

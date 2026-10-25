@@ -12,6 +12,42 @@ import {
   freeFallback,
   jsonHeaders,
 } from './subscriptions-types';
+import { isSelfServeTier, isFreeTier, createTierCheckout } from './subscriptions-checkout';
+import { PRICING_TIERS } from '../../billing/pricing-tiers';
+
+/**
+ * Ordered tier keys as they are advertised to customers. The order is part of the
+ * response contract: the UI renders this array top-to-bottom as the pricing table.
+ */
+const TIER_ORDER = ['FREE', 'STARTER', 'PRO', 'ENTERPRISE', 'MASTER'] as const;
+
+/**
+ * Marketing copy for each tier. `PRICING_TIERS[tier].features` holds capability slugs
+ * ('ml-models', 'premium-data') for entitlement checks — a different vocabulary from
+ * the customer-facing sentences this endpoint has always returned. Swapping one for
+ * the other would silently change what customers read, so the presentation copy stays
+ * here while prices come from the price book.
+ */
+const TIER_MARKETING_COPY: Record<string, string[]> = {
+  FREE: ['Basic scanning'],
+  STARTER: ['AI Co-pilot access', 'Strategy marketplace'],
+  PRO: ['Full Co-pilot', 'Telegram /ask', 'All 5 intents'],
+  ENTERPRISE: ['Custom strategies', 'Dedicated infra', '12 shards'],
+  MASTER: ['White-label', 'Private marketplace', 'Direct support'],
+};
+
+/**
+ * Build the advertised label for a tier from its own price, so the number in the label
+ * and the number in `amount_cents` cannot disagree. A zero price reads as free; every
+ * other tier reads as "$<dollars>/mo". Returns just the tier name if the price is missing.
+ */
+function buildTierLabel(tier: string, price: { amount_cents: number } | null): string {
+  const pricingTier = PRICING_TIERS[tier];
+  const name = pricingTier?.name ?? tier;
+  if (!price) return name;
+  if (price.amount_cents === 0) return 'Miễn phí / Free';
+  return `${name} — $${price.amount_cents / 100}/mo`;
+}
 
 export async function handleGetMySubscription(request: Request, env: Env): Promise<Response> {
   const sub = env.SUBSCRIBERS;
@@ -62,12 +98,18 @@ export async function handleUpgrade(request: Request, env: Env): Promise<Respons
   try {
     const body = (await request.json()) as { tier: string; force?: boolean };
     const newTier = body.tier?.toUpperCase();
-    if (!newTier || !['STARTER', 'PRO', 'ENTERPRISE', 'MASTER'].includes(newTier)) {
-      return new Response(JSON.stringify({ error: 'Invalid tier. Allowed: STARTER, PRO, ENTERPRISE, MASTER' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    if (!newTier) {
+      return new Response(JSON.stringify({ error: 'Invalid tier. Allowed: PRO, ENTERPRISE' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const price = getTierPrice(newTier);
-    if (!price) return new Response(JSON.stringify({ error: `No price configured for ${newTier}` }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    // A tier is granted only after NOWPayments confirms payment, so an upgrade request
+    // produces a checkout URL — never an active subscription row.
+    if (!isSelfServeTier(newTier)) {
+      const reason = isFreeTier(newTier)
+        ? 'FREE is the default tier and needs no upgrade.'
+        : `${newTier} is quote-only, not self-serve. Contact sales to provision it.`;
+      return new Response(JSON.stringify({ error: reason, tier: newTier }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
 
     const existing = await sub.prepare('SELECT * FROM subscriptions WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1')
       .bind(user.id, 'active').first<SubscriptionRow>();
@@ -76,26 +118,24 @@ export async function handleUpgrade(request: Request, env: Env): Promise<Respons
       return new Response(JSON.stringify({ error: `Already on ${newTier} tier` }), { status: 409, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const now = new Date().toISOString();
-    const id = crypto.randomUUID?.() ?? `sub_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const periodStart = now;
-    const periodEnd = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    if (!env.NOWPAYMENTS_API_KEY) {
+      logger.error('[subscriptions] cannot create checkout — NOWPAYMENTS_API_KEY unset', { userId: user.id, tier: newTier });
+      return new Response(JSON.stringify({ error: 'Checkout unavailable: payment provider not configured' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
 
-    await sub.prepare(
-      `INSERT INTO subscriptions (id, user_id, tier, status, amount_cents, currency, nowpayments_invoice_id, current_period_start, current_period_end, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`
-    ).bind(id, user.id, newTier, 'active', price.amount_cents, 'usd', periodStart, periodEnd, now).run();
+    const checkout = await createTierCheckout(env, user.email, newTier);
+    if (!checkout?.checkoutUrl) {
+      return new Response(JSON.stringify({ error: 'Could not create checkout invoice' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+    }
 
-    await env.CACHE.put(`tier:${user.id}`, newTier, { expirationTtl: 300 });
-
-    logger.info('[subscriptions] upgraded', { userId: user.id, tier: newTier, amountCents: price.amount_cents });
+    logger.info('[subscriptions] checkout created', { userId: user.id, tier: newTier, amountCents: checkout.amountCents });
 
     return new Response(JSON.stringify({
-      id, tier: newTier, status: 'active',
-      amount_cents: price.amount_cents, currency: 'usd',
-      current_period_start: periodStart, current_period_end: periodEnd,
+      tier: newTier, status: 'pending_payment',
+      checkoutUrl: checkout.checkoutUrl,
+      amount_cents: checkout.amountCents, currency: 'usd',
       displayName: getTierDisplayName(newTier),
-    }), { headers: jsonHeaders(env, request) });
+    }), { status: 201, headers: jsonHeaders(env, request) });
   } catch (err) {
     logger.error('[subscriptions] upgrade error', { error: String(err) });
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
@@ -130,12 +170,22 @@ export async function handleCancel(request: Request, env: Env): Promise<Response
 }
 
 export async function handleGetTiers(): Promise<Response> {
-  const tiers = [
-    { tier: 'FREE', label: 'Miễn phí / Free', amount_cents: 0, currency: 'usd', features: ['Basic scanning'] },
-    { tier: 'STARTER', label: 'Starter ($49/mo)', amount_cents: 4900, currency: 'usd', features: ['AI Co-pilot access', 'Strategy marketplace'] },
-    { tier: 'PRO', label: 'Pro ($99/mo)', amount_cents: 9900, currency: 'usd', features: ['Full Co-pilot', 'Telegram /ask', 'All 5 intents'] },
-    { tier: 'ENTERPRISE', label: 'Enterprise ($299/mo)', amount_cents: 29900, currency: 'usd', features: ['Custom strategies', 'Dedicated infra', '12 shards'] },
-    { tier: 'MASTER', label: 'Master (Custom)', amount_cents: 99900, currency: 'usd', features: ['White-label', 'Private marketplace', 'Direct support'] },
-  ];
+  // The price comes from the same price book the checkout charges from
+  // (`getTierPrice` -> `PRICING` in cents), so a displayed price can never drift from
+  // the amount a customer is actually invoiced. The label is derived from that same
+  // number rather than typed by hand, so editing a price cannot leave a stale
+  // "Pro — $99/mo" label behind.
+  const tiers = TIER_ORDER.map((tier) => {
+    const price = getTierPrice(tier);
+    const pricingTier = PRICING_TIERS[tier];
+    return {
+      tier,
+      label: buildTierLabel(tier, price),
+      amount_cents: price?.amount_cents ?? 0,
+      currency: 'usd',
+      selfServe: isSelfServeTier(tier),
+      features: TIER_MARKETING_COPY[tier] ?? pricingTier?.features ?? [],
+    };
+  });
   return new Response(JSON.stringify({ tiers }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
 }

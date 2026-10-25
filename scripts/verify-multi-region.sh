@@ -11,11 +11,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# shellcheck source=scripts/lib/host-contract.sh
+source "$SCRIPT_DIR/lib/host-contract.sh"
+
 # Configuration
-REGIONS=("us-east" "eu-central" "ap-southeast")
+# One deployed Worker today. REGIONS is env-driven so a future multi-region build
+# can supply a real list; it must never fabricate per-region hosts.
+# Split on commas without word-splitting/globbing surprises (shellcheck SC2206).
+IFS=',' read -r -a REGIONS <<< "${REGIONS:-single}"
 ENDPOINTS=(
   "/api/health"
-  "/api/health/region"
 )
 
 # Colors
@@ -27,8 +32,7 @@ NC='\033[0m' # No Color
 check_endpoint() {
   local region="$1"
   local endpoint="$2"
-  local host="${region}.algo-trader.workers.dev"
-  local url="https://$host${endpoint}"
+  local url="${API_BASE_URL}${endpoint}"
 
   local status_code
   status_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 5)
@@ -49,8 +53,7 @@ check_endpoint() {
 
 check_shard_count() {
   local region="$1"
-  local host="${region}.algo-trader.workers.dev"
-  local url="https://$host/api/v1/shard/health"
+  local url="${API_RING_URL}"
 
   # This endpoint may not exist yet if Phase 1 (sharding) not complete
   local status_code
@@ -91,16 +94,17 @@ check_region() {
   check_shard_count "$region"
 
   # Check latency (from health response)
-  local host="${region}.algo-trader.workers.dev"
   local health_resp
-  health_resp=$(curl -s "https://$host/api/health/region" 2>/dev/null || echo "")
+  health_resp=$(curl -s "$API_HEALTH_URL" 2>/dev/null || echo "")
   if [[ -n "$health_resp" ]]; then
+    # The health payload reports status 'ok' and carries no latency field;
+    # measure the round-trip instead of reading a key that never exists.
     local latency
-    latency=$(echo "$health_resp" | jq -r '.latencyMs // "N/A"' 2>/dev/null)
+    latency=$(curl -s -o /dev/null -w "%{time_total}" "$API_HEALTH_URL" 2>/dev/null || echo "N/A")
     local status
     status=$(echo "$health_resp" | jq -r '.status // "unknown"' 2>/dev/null)
 
-    if [[ "$status" == "healthy" ]]; then
+    if [[ "$status" == "ok" ]]; then
       echo -e "  ${GREEN}✓${NC} Region status: $status (latency: ${latency}ms)"
     else
       echo -e "  ${RED}✗${NC} Region status: $status (latency: ${latency}ms)"

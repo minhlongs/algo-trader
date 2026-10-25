@@ -15,6 +15,7 @@ import type { LiveGuardHandoffCoordinator, LiveOrderHandoffVerdict } from '../..
 import type { PolymarketOrder } from '../../desk/execution/polymarket-signer';
 import type { TradeSignal } from '../../desk/polymarket/strategy-live-bridge-types';
 import type { GateEvaluatorInput } from '../gates/gate-evaluator-types';
+import { rejectIneligibleSignal } from './alpha-lab-pipeline-signal-gate';
 import { recordPromotionProvenance } from './alpha-lab-pipeline-provenance';
 
 /** Ingests a discovered candidate into the paper state machine. */
@@ -64,19 +65,10 @@ export async function routeCandidateSignals(
   for (const signal of signals) {
     const sm = signal.strategyId ? stateMachines.get(signal.strategyId) : undefined;
     const symbol = signal.symbol ?? defaultSymbol;
-    if (sm && (sm.isRetired() || sm.isQuarantined())) {
-      const reason = sm.isQuarantined()
-        ? 'Strategy is quarantined by drawdown circuit breaker'
-        : 'Strategy is in RETIRED state: Strategy is quarantined by drawdown circuit breaker';
-      outcomes.push({
-        status: 'REJECTED',
-        signal,
-        symbol,
-        marketPrice,
-        validation: { valid: false, signal, rejectionReasons: [reason] },
-        reason,
-        timestamp: Date.now(),
-      });
+
+    const rejection = sm ? rejectIneligibleSignal(signal, sm, symbol, marketPrice) : null;
+    if (rejection) {
+      outcomes.push(rejection);
       continue;
     }
 

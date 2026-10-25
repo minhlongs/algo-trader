@@ -6,6 +6,53 @@
  */
 
 import type { Context } from 'grammy';
+import { NOWPAYMENTS_TIERS, type NowPaymentsTierConfig } from '../../billing/nowpayments-types';
+
+/**
+ * Ordered keys of the signals product line advertised to customers.
+ * Names and prices are resolved from NOWPAYMENTS_TIERS so a pricing change
+ * never requires editing this formatter.
+ */
+const SIGNALS_TIER_KEYS: readonly string[] = ['SIGNALS_BASIC', 'SIGNALS_PRO', 'SIGNALS_ENTERPRISE'];
+
+/** Feature copy paired with each signals tier, keyed by tier key. */
+const SIGNALS_TIER_FEATURES: Record<string, readonly string[]> = {
+  SIGNALS_BASIC: [
+    '• Daily Signals / Tín hiệu hàng ngày: 5',
+    '• Strategy Swarm: Haiku engine',
+    '• Quota: 10,000 API calls/day',
+  ],
+  SIGNALS_PRO: [
+    '• Unlimited Signals / Tín hiệu không giới hạn',
+    '• Strategy Swarm: Sonnet + Haiku engine',
+    '• Quota: 100,000 API calls/day',
+  ],
+  SIGNALS_ENTERPRISE: [
+    '• Full Autonomy Swarm (Opus + Sonnet + Haiku)',
+    '• Dedicated Webhook & Custom Capital Allocator',
+    '• Unlimited API calls & 24/7 Priority Support',
+  ],
+};
+
+/** Resolve a signals tier from canonical pricing; undefined means unmappable. */
+function resolveSignalsTier(key: string): NowPaymentsTierConfig | undefined {
+  return Object.prototype.hasOwnProperty.call(NOWPAYMENTS_TIERS, key)
+    ? NOWPAYMENTS_TIERS[key]
+    : undefined;
+}
+
+/** Build the numbered, priced tier blocks for the signals product line. */
+function formatSignalsTierBlocks(): string[] {
+  return SIGNALS_TIER_KEYS.flatMap((key, index) => {
+    const tier = resolveSignalsTier(key);
+    if (!tier) return [];
+    return [
+      `*${index + 1}. ${tier.name}* — $${tier.price}/mo`,
+      ...(SIGNALS_TIER_FEATURES[key] ?? []),
+      '',
+    ];
+  });
+}
 
 export interface Wave5Telemetry {
   uptimeSeconds?: number;
@@ -83,25 +130,20 @@ export function formatWave5Performance(telemetry?: Wave5Telemetry): string {
   ].join('\n');
 }
 
+/**
+ * Customer-facing tier list for the signals product line.
+ *
+ * Only tiers that resolve to a price in NOWPAYMENTS_TIERS are listed: a customer
+ * is never offered a tier key that no license key can fulfil, and every listed
+ * tier always carries its USD price.
+ */
 export function formatWave5Subscribe(): string {
   return [
     '💎 *Subscription Tiers / Các Gói Dịch Vụ*',
     '',
-    '*1. BASIC*',
-    '• Daily Signals / Tín hiệu hàng ngày: 5',
-    '• Strategy Swarm: Haiku engine',
-    '• Quota: 10,000 API calls/day',
+    '*[EN]* Choose your signals plan / *[VN]* Chọn gói tín hiệu phù hợp với bạn:',
     '',
-    '*2. PREMIUM*',
-    '• Unlimited Signals / Tín hiệu không giới hạn',
-    '• Strategy Swarm: Sonnet + Haiku engine',
-    '• Quota: 100,000 API calls/day',
-    '',
-    '*3. MASTER*',
-    '• Full Autonomy Swarm (Opus + Sonnet + Haiku)',
-    '• Dedicated Webhook & Custom Capital Allocator',
-    '• Unlimited API calls & 24/7 Priority Support',
-    '',
+    ...formatSignalsTierBlocks(),
     '💳 Upgrade now: `/link <license-key>` or visit https://cashclaw.cc',
     'Hỗ trợ thanh toán USDT TRC20 qua NOWPayments.',
   ].join('\n');

@@ -22,9 +22,9 @@
 - [S18 Oversized-Debt Tranche 32 Verdict](project_s18_oversized_debt_tranche32_verdict.md) — 5 oversized files split, ratchet 102->97, 12,483 tests 100% pass, version 3.1.64
 - [S18 Oversized-Debt Tranche 44 Verdict](project_s18_oversized_debt_tranche44_verdict.md) — 5 oversized files split, ratchet 42->37, 93/93 tests pass, version 3.1.76
 - [S18 Oversized-Debt Tranche 47 Verdict](project_s18_oversized_debt_tranche47_verdict.md) — 5 oversized files split, ratchet 27->22, 120/120 tests pass, version 3.1.79
+- [S18 Oversized-Debt Tranche 50 Verdict](project_s18_oversized_debt_tranche50_shipped.md) — 5 oversized files split, ratchet 12->7, 120/120 tests pass, version 3.1.82
 - [S18 Oversized-Debt Tranche 51 Verdict](project_s18_oversized_debt_tranche51_verdict.md) — 5 oversized files split, ratchet 7->2, 133/133 tests pass, version 3.1.83
 - [S18 Oversized-Debt Tranche 52 Verdict](project_s18_oversized_debt_tranche52_verdict.md) — 2 oversized files split, ratchet 2->0 (zero debt), 127/127 tests pass, version 3.1.84
 - [PR #128 Unified Risk & SOR Engine Shipped](project_pr128_unified_risk_sor_shipped.md) — PR #128 merged 14b15fa1, 15,619 tests (100%), coverage 95/93/86/94, CF deployed HTTP 200
 - [S20 GTM Email Validation & Security Verdict](project_s20_gtm_email_campaign_verdict.md) — S20 result PASS: 16/16 email checks, 37/37 notification tests, 0 critical audit, 41/41 hash-chain, 3.1.89
 - [v3.1.94 UI/UX & CLI Usability Verdict](project_v3194_ui_ux_cli_usability_verdict.md) — Result gate PASS r1: WCAG AA contrast, focus-visible rings, wrapCliAction, 15,698 tests, ratchet clean
-

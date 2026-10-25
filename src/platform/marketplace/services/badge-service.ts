@@ -21,6 +21,7 @@ import {
   fetchBadgeDefinitions,
   fetchListingBadgeKeys,
 } from './badge-repository';
+import { evaluateBadgeRules } from './badge-quality-rules';
 
 export type BadgeKey =
   | 'verified_creator'
@@ -52,48 +53,22 @@ export async function computeListingBadges(
   listingId: string,
   strategyId: string,
 ): Promise<BadgeKey[]> {
-  const badges: BadgeKey[] = [];
   const data = await fetchStrategyData(strategyId);
-  const perfs = data.perfs;
 
-  // new_strategy: listed within last 30 days
-  if (data.createdAge <= 30) {
-    badges.push('new_strategy');
-  }
+  // Only a run with a usable Sharpe can be ranked, so the percentile lookup
+  // stays lazy — a listing with no performance data skips it entirely.
+  const latestPerf = data.perfs[0];
+  const sharpePercentile = latestPerf && latestPerf.sharpeRatio > 0
+    ? await getSharpePercentile(strategyId, latestPerf.sharpeRatio)
+    : undefined;
 
-  if (perfs.length > 0) {
-    const latest = perfs[0];
-    const totalTrades = perfs.reduce((s, p) => s + p.totalTrades, 0);
-    const positivePeriods = perfs.filter((p) => p.totalPnlUsd > 0).length;
-
-    // top_performer: top 10% by Sharpe among approved strategies
-    if (latest.sharpeRatio > 0) {
-      const rank = await getSharpePercentile(strategyId, latest.sharpeRatio);
-      if (rank <= 0.1) badges.push('top_performer');
-    }
-
-    // low_risk: max drawdown under 10%
-    if (latest.maxDrawdown > 0 && latest.maxDrawdown < 10) {
-      badges.push('low_risk');
-    }
-
-    // high_volume: 1000+ trades
-    if (totalTrades >= 1000) {
-      badges.push('high_volume');
-    }
-
-    // consistent_returns: positive P&L in 70%+ of periods
-    if (perfs.length >= 3 && positivePeriods / perfs.length >= 0.7) {
-      badges.push('consistent_returns');
-    }
-  }
-
-  // verified_creator: vetted by admin and approved
-  if (data.isApproved && data.hasVettedAt) {
-    badges.push('verified_creator');
-  }
-
-  return badges;
+  return evaluateBadgeRules({
+    createdAge: data.createdAge,
+    perfs: data.perfs,
+    sharpePercentile,
+    isApproved: data.isApproved,
+    hasVettedAt: data.hasVettedAt,
+  });
 }
 
 /**

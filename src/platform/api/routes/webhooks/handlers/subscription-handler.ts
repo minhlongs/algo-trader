@@ -8,6 +8,31 @@ import { LicenseService } from '../../../../billing/license-service';
 import { AuditLogService } from '../../../../audit/audit-log-service';
 import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
 import { LicenseTier } from '../../../../../shared/types/license';
+import { logger } from '../../../../../shared/utils/logger';
+
+/**
+ * Raised when a settled payment cannot be resolved to a license tier from the
+ * invoice mapping. Previously the handler silently defaulted to PRO, so a customer
+ * who paid for MASTER ($999) but whose `invoice_id` did not map received PRO — a
+ * silent under-grant on the money path. Now it fails closed and the provider retries.
+ */
+export class TierNotResolvedError extends Error {
+  readonly invoiceId: string | undefined;
+
+  constructor(invoiceId: string | undefined) {
+    super(
+      `No license tier resolves for invoice_id=${invoiceId ?? '<missing>'}; ` +
+        'refusing to fall back to a tier the customer did not pay for',
+    );
+    this.name = 'TierNotResolvedError';
+    this.invoiceId = invoiceId;
+  }
+}
+
+/** Type predicate so the mounted price-book tier narrows to LicenseTier without a cast. */
+function isLicenseTier(value: string): value is LicenseTier {
+  return Object.values(LicenseTier).includes(value as LicenseTier);
+}
 
 /**
  * Handle IPN status=finished → create/activate subscription + license
@@ -19,11 +44,31 @@ export async function handleIpnFinished(
   licenseService: LicenseService,
   auditService: AuditLogService
 ): Promise<void> {
-  // Determine tier from invoice ID
+  // Determine tier from invoice ID. Fail closed: an unmapped invoice grants nothing.
   const tierConfig = ipn.invoice_id
     ? nowpaymentsService.getTierByInvoiceId(ipn.invoice_id)
     : null;
-  const tier = (tierConfig?.tier as LicenseTier) || LicenseTier.PRO;
+  if (!tierConfig?.tier) {
+    logger.error('[LicensePayment] Invoice does not map to a license tier — no tier granted', {
+      invoiceId: ipn.invoice_id,
+      paymentId: ipn.payment_id,
+      amount: ipn.price_amount,
+    });
+    throw new TierNotResolvedError(ipn.invoice_id);
+  }
+  // A signals invoice configured on the same dashboard must never be granted as a
+  // platform license tier: the two channels have separate price books and the
+  // `SIGNALS_*` names are not LicenseTier members.
+  if (!isLicenseTier(tierConfig.tier)) {
+    logger.error('[LicensePayment] Invoice maps to a signals plan, not a license tier — no license granted', {
+      invoiceId: ipn.invoice_id,
+      resolvedTier: tierConfig.tier,
+      paymentId: ipn.payment_id,
+    });
+    throw new TierNotResolvedError(ipn.invoice_id);
+  }
+  // Narrowed by isLicenseTier; the invoice config stores the tier as a plain string.
+  const tier: LicenseTier = tierConfig.tier;
 
   // Customer email: parse from order_id (algotrade_{ref}_{ts}) or use order_id directly if it looks like an email
   let customerEmail: string;
@@ -60,7 +105,7 @@ export async function handleIpnFinished(
 
   const licenseKey = licenseService.generateLicense({
     userId: customerEmail,
-    tier: tier as unknown as string,
+    tier,
     validUntil: periodEnd,
   });
   const license = licenseService.getLicenseByKey(licenseKey);

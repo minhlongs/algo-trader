@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runOpenCoreSaasCommand } from '../../../src/desk/commands/opencore-saas';
 import { OrderDispatcher } from '../../../src/desk/execution/order-dispatcher';
 import { SubscriberTenantIsolator } from '../../../src/desk/subscriber-tenant-isolator';
@@ -9,6 +9,17 @@ import { ComplianceAuditLogger } from '../../../src/desk/security/audit-logger';
 import { StrategyMarketplaceManager } from '../../../src/desk/strategies/marketplace';
 import { UnifiedIpnWebhookHandler } from '../../../src/billing/ipn-webhook';
 import { openCoreRouter } from '../../../src/platform/api/routes/open-core-routes';
+
+// The audit runs the behavioral probes, which read the one durable meter — and that
+// meter deliberately throws rather than answer an unreadable counter as "no usage".
+// This suite checks that the CLI commands run, not that a local Postgres has the
+// usage_metrics table, so the row read answers like an empty billing period.
+vi.mock('../../../src/db/postgres-client', () => ({
+  query: vi.fn(async () => ({ rows: [] })),
+}));
+vi.mock('../../../src/shared/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
 
 const companyConfigPath = path.resolve(__dirname, '../../../.mekong/company.json');
 // .mekong/ is gitignored operator state; skip on clean CI checkouts.
@@ -86,10 +97,52 @@ describe('Wave 316: Company Blueprint Sync & Multi-Tenant Monetization Suite', (
     expect(result.tier).toBe('PREMIUM');
   });
 
-  it('runs open-core saas CLI commands without error', async () => {
+  it('runs open-core saas CLI commands and router endpoints without error', async () => {
     await expect(runOpenCoreSaasCommand({ steps: true, stepNumber: 1 })).resolves.not.toThrow();
     await expect(runOpenCoreSaasCommand({ audit: true })).resolves.not.toThrow();
     await expect(runOpenCoreSaasCommand({ funnel: true })).resolves.not.toThrow();
+
+    const getLayer = openCoreRouter.stack.find((s) => s.route?.path === '/status');
+    const postLayer = openCoreRouter.stack.find((s) => s.route?.path === '/verify-license');
+    const getHandler = getLayer?.route?.stack[0]?.handle;
+    const postHandler = postLayer?.route?.stack[0]?.handle;
+
+    const mockRes = () => {
+      const res: { statusCode: number; data: unknown; status: (c: number) => typeof res; json: (d: unknown) => typeof res } = {
+        statusCode: 200,
+        data: null,
+        status(c: number) { this.statusCode = c; return this; },
+        json(d: unknown) { this.data = d; return this; },
+      };
+      return res;
+    };
+
+    if (getHandler) {
+      const res = mockRes();
+      await getHandler({} as never, res as never);
+      expect(res.statusCode).toBe(200);
+    }
+
+    if (postHandler) {
+      const res400 = mockRes();
+      postHandler({ body: {} } as never, res400 as never);
+      expect(res400.statusCode).toBe(400);
+
+      process.env.LICENSE_HMAC_SECRET = 'test-secret-salt-2026';
+      const { LicenseGate } = await import('../../../src/desk/opencoresaas2026monetization/index');
+      const gate = new LicenseGate('test-secret-salt-2026');
+      const token = gate.signToken({
+        tenantId: 'tenant-test',
+        tier: 'BASIC',
+        issuedAt: Date.now(),
+        expiresAt: Date.now() + 3600_000,
+        maxStrategies: 5,
+        maxRps: 50,
+      });
+      const resValid = mockRes();
+      postHandler({ body: { token, requiredTier: 'BASIC', requestedMcu: 10 } } as never, resValid as never);
+      expect(resValid.statusCode).toBe(200);
+    }
   });
 
   it.skipIf(!hasCompanyConfig)('verifies company blueprint artifacts and 5 phase documents exist on disk', () => {

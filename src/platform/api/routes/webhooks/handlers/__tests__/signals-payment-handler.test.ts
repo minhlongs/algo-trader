@@ -35,12 +35,29 @@ vi.mock('../../../../../billing/nowpayments-service', () => ({
   NowPaymentsService: mockNowPaymentsService,
   NowPaymentsIpnPayload: {},
 }));
+vi.mock('../../../../../billing/payment-store', () => ({
+  saveToFile: vi.fn(),
+  loadFromFile: vi.fn(() => new Map()),
+  clearStoreFile: vi.fn(),
+  STORE_PATH: '/tmp/unused-payments.json',
+}));
 
 import {
   handleSignalsIpnFinished,
   handleSignalsIpnCancelled,
 } from '../signals-payment-handler';
+import { PaymentService } from '../../../../../billing/payment-service';
 import type { NowPaymentsIpnPayload } from '../../../../../billing/nowpayments-service';
+
+/**
+ * The dedupe guard reads the payment ledger, a process-wide singleton. Clear it so one
+ * test's recorded `pay-1` does not suppress another test's activation.
+ */
+function clearPaymentLedger(): void {
+  const ledger = (PaymentService.getInstance() as unknown as { payments: Map<string, unknown> })
+    .payments;
+  ledger.clear();
+}
 
 function ipn(overrides: Record<string, unknown> = {}): NowPaymentsIpnPayload {
   return {
@@ -54,7 +71,10 @@ function ipn(overrides: Record<string, unknown> = {}): NowPaymentsIpnPayload {
 }
 
 describe('handleSignalsIpnFinished', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearPaymentLedger();
+  });
 
   it('returns early when the order_id has no subscriberId', async () => {
     await handleSignalsIpnFinished(ipn({ order_id: 'no-underscore-here' }));
@@ -71,24 +91,31 @@ describe('handleSignalsIpnFinished', () => {
     expect(mockGetBySubscriberId).not.toHaveBeenCalled();
   });
 
-  it('warns and returns when the payment amount is unrecognized', async () => {
-    await handleSignalsIpnFinished(ipn({ price_amount: 7 }));
+  it('fails closed when the payment amount is absent from the signals price book', async () => {
+    // Fail closed, not warn-and-return: an amount that is not on the price book is not
+    // a discount, it is an unknown, and no tier may be granted for it.
+    await expect(handleSignalsIpnFinished(ipn({ price_amount: 7 }))).rejects.toMatchObject({
+      name: 'SignalsPriceNotFoundError',
+    });
     expect(mockGetBySubscriberId).not.toHaveBeenCalled();
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      '[SignalsPayment] Unrecognized payment amount',
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      '[SignalsPayment] Paid amount absent from signals price book — no tier granted',
       expect.objectContaining({ amount: 7, paymentId: 'pay-1' }),
     );
   });
 
-  it('maps $29 -> BASIC (FREE delivery tier)', async () => {
+  it('maps $29 -> BASIC (a paid delivery tier, not FREE)', async () => {
     mockGetBySubscriberId.mockResolvedValue(null);
     await handleSignalsIpnFinished(ipn({ price_amount: 29, order_id: 'sig_sub-9_1' }));
+    // FREE is the unsubscribed state in this vocabulary, so a paid Basic buy must
+    // not collapse into it — otherwise someone who paid is indistinguishable from
+    // someone who never did.
     expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ subscriberId: 'sub-9', tier: 'FREE' }),
+      expect.objectContaining({ subscriberId: 'sub-9', tier: 'BASIC' }),
     );
     expect(mockLogger.info).toHaveBeenCalledWith(
       '[SignalsPayment] Subscription created',
-      expect.objectContaining({ subscriberId: 'sub-9', tier: 'FREE' }),
+      expect.objectContaining({ subscriberId: 'sub-9', tier: 'BASIC' }),
     );
   });
 
@@ -121,7 +148,10 @@ describe('handleSignalsIpnFinished', () => {
 });
 
 describe('handleSignalsIpnCancelled', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearPaymentLedger();
+  });
 
   it('returns early when there is no subscriberId', async () => {
     await handleSignalsIpnCancelled(ipn({ order_id: 'bad' }));

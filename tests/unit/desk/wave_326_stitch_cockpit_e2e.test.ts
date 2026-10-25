@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { UnifiedIpnWebhookHandler } from '../../../src/billing/ipn-webhook';
 import { runOpenCoreSaasCommand } from '../../../src/desk/commands/opencore-saas';
 import {
@@ -10,8 +10,19 @@ import {
   StitchUiCockpitEngine,
 } from '../../../src/desk/opencoresaas2026monetization';
 
+// The behavioral probes the audit runs read the one durable meter, which reaches
+// Postgres. These suites assert CLI and cockpit behavior, not the presence of a
+// local database, so the row read answers like an empty period rather than
+// failing the test on a connection error.
+vi.mock('../../../src/db/postgres-client', () => ({
+  query: async () => ({ rows: [] }),
+}));
+vi.mock('../../../src/shared/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 describe('Wave 326: Stitch 8-Screen UI Cockpit & E2E Monetization Suite', () => {
-  it('verifies all 8 Stitch UI PRD screens and 3 design token themes', () => {
+  it('verifies all 8 Stitch UI PRD screens and 3 design token themes', async () => {
     expect(STITCH_8_SCREENS).toHaveLength(8);
     expect(STITCH_8_SCREENS.map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(STITCH_DESIGN_THEMES.OBSIDIAN_QUANTUM.backgroundCanvas).toBe('#08090C');
@@ -19,7 +30,8 @@ describe('Wave 326: Stitch 8-Screen UI Cockpit & E2E Monetization Suite', () => 
     expect(STITCH_DESIGN_THEMES.NORDIC_MINIMALIST_QUANT.primaryAccent).toBe('#2563EB');
 
     const engine = new StitchUiCockpitEngine();
-    const snapshot = engine.getCockpitSnapshot('tenant-vn-01', 'ENTERPRISE', 'OBSIDIAN_QUANTUM');
+    // The snapshot reads the durable meter, so it is async.
+    const snapshot = await engine.getCockpitSnapshot('tenant-vn-01', 'ENTERPRISE', 'OBSIDIAN_QUANTUM');
     expect(snapshot.version).toBe('2026.1-STITCH');
     expect(snapshot.screens).toHaveLength(8);
     expect(snapshot.billingProviders.blocked).toContain('Polar');

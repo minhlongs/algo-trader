@@ -1,6 +1,6 @@
 {
   "name": "@mekong/algo-trader",
-  "version": "3.1.96",
+  "version": "3.3.10",
   "description": "Modular algorithmic trading bot with RSI+SMA strategy, backtesting, and multi-exchange support via CCXT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -44,8 +44,10 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "test:load": "k6 run tests/load/raas-gateway-load-test.js",
-    "test:load:ci": "k6 run --quiet tests/load/raas-gateway-load-test.js",
+    "generate:leaderboard": "node --import tsx scripts/generate-leaderboard.mjs",
+    "check:leaderboard": "node --import tsx scripts/check-leaderboard-drift.mjs",
+    "test:load": "k6 run -e TARGET_RPS=12000 -e DURATION=30m tests/load/api-gateway-load-test.js",
+    "test:load:ci": "k6 run --quiet -e TARGET_RPS=12000 -e DURATION=30m tests/load/api-gateway-load-test.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --max-warnings 100",
     "dashboard:dev": "cd dashboard && npx vite",
@@ -58,7 +60,8 @@
     "chaos-test": "pnpm exec ts-node src/testing/chaos/index.ts",
     "deploy:worker": "wrangler deploy --config wrangler.toml",
     "deploy:cf": "bash scripts/deploy-cf-worker-with-sha-verification.sh",
-    "verify:polymarket": "pnpm exec ts-node scripts/verify-polymarket-connection.ts"
+    "verify:polymarket": "pnpm exec ts-node scripts/verify-polymarket-connection.ts",
+    "test:load:smoke": "k6 run -e TARGET_RPS=50 -e DURATION=30s tests/load/api-gateway-load-test.js"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",

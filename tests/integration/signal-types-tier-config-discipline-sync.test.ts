@@ -35,7 +35,7 @@
  *   3. **Signal.side union `'BUY' | 'SELL'`** — closed enum.
  *   4. **SignalSubscription 7 fields** — id, subscriberId, chatId?,
  *      tier, active, createdAt, updatedAt.
- *   5. **SignalSubscription.tier union** — `'FREE' | 'PRO' |
+ *   5. **SignalSubscription.tier union** — `'FREE' | 'BASIC' | 'PRO' |
  *      'ENTERPRISE'` (cross-edge with TIER_SIGNAL_CONFIG keys).
  *   6. **TIER_SIGNAL_CONFIG declared with `as const`** — TypeScript
  *      literal-type narrowing; drift = TierKey widens to string.
@@ -152,10 +152,13 @@ describe('Signal-types TIER_SIGNAL_CONFIG + interface triple discipline — 60th
     }
   });
 
-  it("SignalSubscription.tier union = 'FREE' | 'PRO' | 'ENTERPRISE' (cross-edge with TIER_SIGNAL_CONFIG keys)", () => {
+  it("SignalSubscription.tier union = 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE' (bijection with TIER_SIGNAL_CONFIG keys)", () => {
+    // The union must biject the TIER_SIGNAL_CONFIG keys: BASIC is a paid tier sold
+    // by the subscription payment flow ($29), so dropping it from the union or the
+    // config breaks either the delivery gate or the purchase mapping.
     expect(
-      /tier\s*:\s*['"]FREE['"]\s*\|\s*['"]PRO['"]\s*\|\s*['"]ENTERPRISE['"]/.test(src),
-      "SignalSubscription.tier must be 'FREE' | 'PRO' | 'ENTERPRISE' — union must bijection TIER_SIGNAL_CONFIG keys",
+      /tier\s*:\s*['"]FREE['"]\s*\|\s*['"]BASIC['"]\s*\|\s*['"]PRO['"]\s*\|\s*['"]ENTERPRISE['"]/.test(src),
+      "SignalSubscription.tier must be 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE' — union must biject TIER_SIGNAL_CONFIG keys",
     ).toBe(true);
   });
 

@@ -47,8 +47,13 @@ export interface IMarketplaceRevenueShare {
   periodStart: Date;
   periodEnd: Date;
   grossRevenueCents: number;
-  platformShareCents: number; // 80%
-  creatorShareCents: number; // 20%
+  // Recorded by `revenue.service.ts`, which computes 20% platform / 80% creator
+  // (`PLATFORM_FEE_PERCENT` in `services/revenue.types.ts`) and is the path the
+  // marketplace payment webhook actually writes through. The 70/30 figures belong
+  // to the separate in-memory `StrategyMarketplaceManager` in `src/desk`, which
+  // only feeds the unmounted cockpit — do not copy one set onto the other.
+  platformShareCents: number; // 20%
+  creatorShareCents: number; // 80%
   status: RevenueShareStatus;
   paidAt?: Date;
   stripePayoutId?: string;

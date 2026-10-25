@@ -9,14 +9,18 @@
 ## Pre-Rollout Checklist
 
 ### Technical Readiness
-- [x] All scaling phases complete (1-11)
-- [x] TypeScript compilation passing
-- [x] Integration tests passing
-- [x] Load test scripts validated (k6 scripts ready)
-- [x] CI/CD pipeline updated with multi-region stages
-- [x] Monitoring dashboards provisioned (Grafana)
-- [x] Alerting rules configured (Prometheus + Alertmanager)
-- [x] Rollback procedures documented and tested
+Verified 2026-10-20 during the go-live zero-bug review (evidence: `plans/261020-1345-golive-zero-bug/evidence/`).
+- [x] TypeScript compilation passing — `tsc --noEmit` exit 0
+- [x] Unit/integration tests passing — 17,127 passed / 11 skipped, 0 failed
+- [x] Worker builds clean — `tsc -p tsconfig.worker.json` exit 0 (3 pre-existing errors fixed this review)
+- [x] Quality ratchet — `check-quality-baseline.mjs --quality` 5/5 PASS
+- [x] Gate 5 deploy smoke probes healthy — `algo-trader.pages.dev` 200, `cashclaw.cc` 200
+- [x] Rollback procedures corrected in `CLAUDE.md` — the documented `algo-trader.workers.dev/api/admin/rollback/kill/*` endpoints never existed and the host does not resolve; replaced with `wrangler rollback` + the real `QWEN_KILL`/`SWARM_QWEN_ENABLED` flags
+- [ ] **Load test 12k RPS validated — NOT DONE.** Never executed. Local `wrangler dev` saturates at ~1.6k req/s (p95 550ms) while serving 200 req/s at p95 5.2ms, so 12k is not provable on one machine. Needs a distributed k6 run against the production edge.
+- [ ] **Multi-region — NOT BUILT.** Live topology is one Worker on `api.cashclaw.cc/*`. Tooling that names three regions (`final-integration-check.js`, `verify-multi-region.sh`, `deploy-multi-region.sh`, `load-test-*`) was pointing at `algo-trader.workers.dev`, which does not resolve. Corrected where noted; the rest needs the multi-region build first.
+- [ ] Scaling phases complete (1-11) — cannot be confirmed as written; the phase documents assume per-region hosts that do not exist
+- [ ] CI/CD multi-region stages — no CI workflow runs a 12k RPS test; `deploy.yml` runs only a 20s/VUS=50 variant
+- [ ] Monitoring (Grafana) / alerting (Prometheus + Alertmanager) — not re-verified in this review
 
 ### Operational Readiness
 - [ ] On-call engineer notified and available

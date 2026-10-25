@@ -38,14 +38,14 @@ describe('UsageMeteringService', () => {
     it('allows the first call within the monthly limit', async () => {
       queryMock.mockResolvedValue({ rows: [] });
       const result: UsageCheckResult = await service.check('sub-1', 'PRO');
-      expect(result).toEqual({
-        allowed: true,
-        remaining: 10_000 - 1,
-        limitReached: false,
-        overage: 0,
-        tier: 'PRO',
-        period: '2026-07',
-      });
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(10_000);
+      expect(result.used).toBe(0);
+      expect(result.limit).toBe(10_000);
+      expect(result.limitReached).toBe(false);
+      expect(result.overage).toBe(0);
+      expect(result.tier).toBe('PRO');
+      expect(result.period).toBe('2026-07');
     });
 
     it('blocks when the monthly limit is already reached', async () => {
@@ -65,24 +65,31 @@ describe('UsageMeteringService', () => {
       expect(result.overage).toBe(500);
     });
 
-    it('falls back to the FREE tier limit for an unknown tier', async () => {
+    it('refuses an unknown tier instead of granting it the FREE allowance', async () => {
+      // The old behavior measured an unknown tier against FREE's 1,000 allowance,
+      // which both under-serves a paying customer on a typo'd or crossed-contract
+      // tier and under-bills them at free-tier rates. An undeclared tier must be
+      // answered as a refusal, never as an entitlement nobody bought.
       queryMock.mockResolvedValue({ rows: [] });
-      const result = await service.check('sub-1', 'UNKNOWN');
-      expect(result.remaining).toBe(1_000 - 1);
-      expect(result.tier).toBe('UNKNOWN');
+      await expect(service.check('sub-1', 'UNKNOWN')).rejects.toThrow(/unknown tier/i);
     });
 
-    it('uses the FREE daily-cap fallback limit of 1_000 when tier is missing', async () => {
+    it('refuses a blank tier rather than defaulting it to the FREE cap', async () => {
+      // An empty tier is a missing value, not a request for the free allowance:
+      // defaulting it would hand out an entitlement the caller never named.
       queryMock.mockResolvedValue({ rows: [] });
-      // tier '' is not in MONTHY_LIMITS, so the default 1_000 applies
-      const result = await service.check('sub-1', '');
-      expect(result.remaining).toBe(999);
+      await expect(service.check('sub-1', '')).rejects.toThrow(/unknown tier/i);
     });
   });
 
   describe('recordCall', () => {
     it('upserts a usage_metrics row via query', async () => {
-      queryMock.mockResolvedValue({ rows: [] });
+      // The upsert RETURNs the new count and the limit it was measured against, so
+      // the mock has to answer like the statement: no row means the write failed,
+      // which recordCall now treats as an error rather than as zero usage.
+      queryMock.mockResolvedValue({
+        rows: [{ calls_this_period: 1, period_limit: 100_000, alerted_thresholds: [] }],
+      });
       await service.recordCall('sub-1', 'ENTERPRISE');
       expect(queryMock).toHaveBeenCalledOnce();
       const [sql, params] = queryMock.mock.calls[0]!;
@@ -97,24 +104,18 @@ describe('UsageMeteringService', () => {
       ]);
     });
 
-    it('swallows DB errors (non-fatal) and logs a warning', async () => {
-      const warnSpy = vi.spyOn(
-        (await import('../../../../src/shared/utils/logger')).logger,
-        'warn',
-      );
+    it('propagates a write failure instead of swallowing it', async () => {
+      // Swallowing this error is what hid the missing usage_metrics table: the
+      // INSERT failed, nothing logged loudly, and usage went uncounted.
       queryMock.mockRejectedValue(new Error('DB down'));
-      await expect(service.recordCall('sub-1', 'PRO')).resolves.toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[UsageMeter] recordCall error (non-fatal)',
-        expect.objectContaining({ subscriberId: 'sub-1' }),
-      );
+      await expect(service.recordCall('sub-1', 'PRO')).rejects.toThrow('DB down');
     });
 
-    it('applies the default limit for an unknown tier', async () => {
-      queryMock.mockResolvedValue({ rows: [] });
-      await service.recordCall('sub-1', 'GHOST');
-      const [, params] = queryMock.mock.calls[0]!;
-      expect(params![3]).toBe(1_000);
+    it('refuses to write a row for an unknown tier', async () => {
+      // Writing the row would stamp FREE's allowance onto a tier nobody declared,
+      // and that limit then prices every decision for the rest of the period.
+      await expect(service.recordCall('sub-1', 'GHOST')).rejects.toThrow(/unknown tier/i);
+      expect(queryMock).not.toHaveBeenCalled();
     });
   });
 
@@ -129,9 +130,11 @@ describe('UsageMeteringService', () => {
       expect(await service.getPeriodUsage('sub-1', '2020-01')).toBe(0);
     });
 
-    it('returns 0 on a DB error', async () => {
+    it('propagates a read failure rather than reporting zero usage', async () => {
+      // Returning 0 on error made the quota gate report budget remaining for
+      // an exhausted subscriber; the caller decides to fail closed instead.
       queryMock.mockRejectedValue(new Error('boom'));
-      expect(await service.getPeriodUsage('sub-1', '2026-07')).toBe(0);
+      await expect(service.getPeriodUsage('sub-1', '2026-07')).rejects.toThrow('boom');
     });
   });
 
@@ -204,9 +207,11 @@ describe('UsageMeteringService', () => {
       expect(service.computeOverage('FREE', 999_999)).toBe(0);
     });
 
-    it('falls back to the default limit for an unknown tier', () => {
-      // default limit 1_000, overage 100, unknown tier price defaults to 0
-      expect(service.computeOverage('GHOST', 1_100)).toBe(0);
+    it('refuses to price an unknown tier instead of billing it as free', () => {
+      // The old behavior priced an unknown tier at zero overage, so a tier that
+      // bought nothing was never charged — the same under-billing the allowance
+      // fallback produced. A tier the price book omits is a refusal, not a waive.
+      expect(() => service.computeOverage('GHOST', 1_100)).toThrow(/unknown tier/i);
     });
   });
 

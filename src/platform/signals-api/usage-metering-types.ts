@@ -1,6 +1,45 @@
 /**
- * Types and constants for usage metering service.
+ * Types for usage metering.
+ *
+ * The tier allowance tables and the lookups that read them live in
+ * `usage-metering-allowances.ts`; this module keeps the shapes and re-exports
+ * them so existing importers keep resolving from one place.
  */
+
+export {
+	MONTHLY_LIMITS,
+	DAILY_LIMITS,
+	MCU_LIMITS,
+	MCU_OVERAGE_PRICES,
+	MCU_EXHAUSTED_STATUS,
+	OVERAGE_PRICES,
+	UNLIMITED,
+	isUnlimited,
+	currentPeriod,
+	allowanceFor,
+} from './usage-metering-allowances';
+
+/**
+ * A usage threshold newly crossed by one subscriber in the current period.
+ * `licenseKey` is kept alongside `subscriberId` so the existing alert
+ * dispatchers (which key recipients by license) keep working unchanged.
+ */
+export interface ThresholdAlert {
+	licenseKey: string;
+	subscriberId: string;
+	threshold: number;
+	percentUsed: number;
+	/** Calls already counted this period, from the durable row. */
+	used: number;
+	/** The monthly allowance this percentage was measured against. */
+	limit: number;
+	tier: string;
+	period: string;
+	timestamp: string;
+}
+
+/** Usage thresholds, as percentages of the monthly allowance, that raise an alert. */
+export const ALERT_THRESHOLDS = [80, 90, 100] as const;
 
 export interface UsageSnapshot {
 	id: string;
@@ -21,28 +60,65 @@ export interface UsageCheckResult {
 	overage: number;
 	tier: string;
 	period: string;
+	/** Calls already counted this period, read from the durable row. */
+	used: number;
+	/** The monthly allowance this decision was measured against. */
+	limit: number;
 }
 
-export const MONTHLY_LIMITS: Record<string, number> = {
-	FREE: 1_000,
-	PRO: 10_000,
-	ENTERPRISE: 100_000,
-};
+/**
+ * Whether a compute-unit request is within the tier's allowance.
+ *
+ * `limit` is negative for an unlimited tier, which must never read as "already
+ * exhausted": `isAllowed` is answered before the negative allowance is compared
+ * against anything.
+ */
+export interface McuCheckResult {
+	isAllowed: boolean;
+	statusCode: 200 | 402;
+	/** MCU already consumed this period, from the durable row. */
+	used: number;
+	/** The monthly allowance this decision was measured against. */
+	limit: number;
+	remainingMcu: number;
+	tier: string;
+	period: string;
+	/** Present only on a denial, so the caller can render an upgrade path. */
+	upgradeUrl?: string;
+	/** Present only on a denial. */
+	error?: string;
+}
 
-export const DAILY_LIMITS: Record<string, number> = {
-	FREE: 100,
-	PRO: 10_000,
-	ENTERPRISE: 100_000,
-};
+/**
+ * Trade-volume counters. This is a second unit measured on the same durable
+ * row as the API-call counters: a call is one API request, a trade is one
+ * executed order, and neither may be counted against the other's allowance.
+ */
+export interface UsageMetrics {
+	totalTrades: number;
+	successfulTrades: number;
+	failedTrades: number;
+	totalVolume: number;
+	averageTradeSize: number;
+}
 
-export const OVERAGE_PRICES: Record<string, number> = {
-	FREE: 0,
-	PRO: 0.01,
-	ENTERPRISE: 0.005,
-};
+/** One subscriber's trade and call usage for a period, for the revenue dashboard. */
+export interface UsageStatusView {
+	subscriberId: string;
+	period: string;
+	tier: string;
+	callsUsed: number;
+	monthlyLimit: number;
+	percentUsed: number;
+	isExceeded: boolean;
+	overageUnits: number;
+	overageCost: number;
+}
 
-/** Get the current billing period key (YYYY-MM). */
-export function currentPeriod(): string {
-	const d = new Date();
-	return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+/** The metered-unit allowance a tier is entitled to. */
+export interface QuotaAllocation {
+	tier: string;
+	monthlyQuota: number;
+	dailyQuota: number;
+	overagePricePerUnit: number;
 }

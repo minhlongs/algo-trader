@@ -6,11 +6,11 @@
 import type { ProbeResult } from '../../regions/latency-monitor';
 import type { Env } from './edge-proxy-types';
 import { CORS } from './edge-proxy-constants';
-import { getRegionHealth } from './edge-proxy-regions';
+import { getCachedRegionHealth } from './edge-proxy-regions';
 
 /** Prometheus metrics endpoint for Cloudflare Workers */
 export async function handleMetrics(env: Env): Promise<Response> {
-  const health = await getRegionHealth(env);
+  const health = await getCachedRegionHealth(env);
   const { getLatencyMonitor } = await import('../../regions/latency-monitor');
   const latencyMonitor = getLatencyMonitor();
   latencyMonitor.start();

@@ -12,6 +12,7 @@ import { TIER_SIGNAL_CONFIG } from './signal-types';
 /** Minimum ms between pushes to a single chat_id per tier */
 const THROTTLE_MS: Record<TierKey, number> = {
   FREE: 24 * 60 * 60 * 1000,  // 1 per day
+  BASIC: 4 * 60 * 60 * 1000,   // 1 per 4h
   PRO: 60 * 60 * 1000,        // 1 per hour
   ENTERPRISE: 5_000,           // max 1 per 5s (Telegram API limit guard)
 };

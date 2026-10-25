@@ -1,4 +1,4 @@
-import type { ThresholdAlert } from '../metering/usage-metering-service';
+import type { ThresholdAlert } from '../signals-api/usage-metering-service';
 import type { AlertChannelConfig, AlertHandler, AlertNotification } from './threshold-alerts-types';
 
 export const DEFAULT_ALERT_CHANNEL_CONFIG: AlertChannelConfig = {
@@ -11,8 +11,8 @@ export function createThresholdNotification(alert: ThresholdAlert): AlertNotific
   const notification: AlertNotification = {
     licenseKey: alert.licenseKey,
     threshold: alert.threshold,
-    currentUsage: alert.currentUsage,
-    dailyLimit: alert.dailyLimit,
+    currentUsage: alert.used,
+    monthlyLimit: alert.limit,
     percentUsed: alert.percentUsed,
     timestamp: alert.timestamp,
   };

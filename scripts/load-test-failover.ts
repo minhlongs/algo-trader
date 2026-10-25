@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
+import { getRegionalUrl } from './load-test-config';
 
 const failoverLatency = new Trend('failover_recovery_ms');
 const failoverErrors = new Counter('failover_errors_total');
@@ -25,8 +26,9 @@ let currentRegion = PRIMARY_REGION;
 let failoverTriggered = false;
 
 export default function() {
-  // Simulate health check
-  const url = `https://${currentRegion}.algo-trader.workers.dev${ENDPOINT}`;
+  // Health check against the deployed origin. The health payload reports
+  // status "ok"; asserting on "healthy" never matches.
+  const url = getRegionalUrl(currentRegion, ENDPOINT);
 
   const start = Date.now();
   const res = http.get(url, { timeout: '5000' });
@@ -34,7 +36,7 @@ export default function() {
 
   const success = check(res, {
     'health check OK': () => res.status === 200,
-    'response contains healthy': () => res.body?.includes('healthy'),
+    'response reports status ok': () => (res.body ?? '').includes('"status":"ok"'),
   });
 
   if (!success) {
@@ -50,7 +52,7 @@ export default function() {
       // Measure recovery time
       const recoveryStart = Date.now();
       while (true) {
-        const healthRes = http.get(`https://${SECONDARY_REGION}.algo-trader.workers.dev${ENDPOINT}`);
+        const healthRes = http.get(getRegionalUrl(SECONDARY_REGION, ENDPOINT));
         if (healthRes.status === 200) {
           failoverLatency.add(Date.now() - recoveryStart);
           break;

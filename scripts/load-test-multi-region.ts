@@ -1,13 +1,17 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Trend, Counter } from 'k6/metrics';
+import { getRegionalUrl, MULTI_REGION_ENABLED } from './load-test-config';
 
 const regionLatency = new Trend('region_latency_ms', true);
 const regionErrors = new Counter('region_errors_total');
 const regionRouting = new Counter('region_routing_total');
 
 const REGIONS = ['us-east', 'eu-central', 'ap-southeast'] as const;
-const ENDPOINTS = ['/api/health', '/api/status', '/api/portfolio'];
+
+// Only routes the deployed Worker actually serves. `/api/status` and
+// `/api/portfolio` are not routed by edge-proxy, so probing them measures 404s.
+const ENDPOINTS = ['/api/health', '/api/version', '/api/markets'];
 
 export const options = {
   scenarios: {
@@ -23,14 +27,14 @@ export const options = {
       vus: 50,
       duration: '15m',
       exec: 'euProbe',
-      tags: { region: 'eu' },
+      tags: { region: 'eu-central' },
     },
     asia_probe: {
       executor: 'constant-vus',
       vus: 50,
       duration: '15m',
       exec: 'asiaProbe',
-      tags: { region: 'asia' },
+      tags: { region: 'ap-southeast' },
     },
   },
   thresholds: {
@@ -41,13 +45,17 @@ export const options = {
   },
 };
 
-function getRegionalUrl(region: string, endpoint: string): string {
-  const regionHosts: Record<string, string> = {
-    'us-east': 'us-east.algo-trader.workers.dev',
-    'eu-central': 'eu.algo-trader.workers.dev',
-    'ap-southeast': 'asia.algo-trader.workers.dev',
-  };
-  return `https://${regionHosts[region]}${endpoint}`;
+export default function (): void {
+  if (!MULTI_REGION_ENABLED) {
+    // One Worker serves all region names today; a "per-region" run would just
+    // hammer the same origin three times. Fail loudly instead of reporting a
+    // topology that does not exist.
+    throw new Error(
+      'MULTI_REGION_ENABLED is unset: the deployment is single-region, so this ' +
+        'scenario would measure the same origin three times.',
+    );
+  }
+  usEastProbe();
 }
 
 export function usEastProbe() {

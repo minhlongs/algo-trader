@@ -8,10 +8,10 @@ import type { RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { compressData, decompressData } from './shard-compression';
 import type { IStrategy } from '../desk/strategies/types';
-import { StrategyLoader } from '../desk/strategies/loader';
 import { ShardManager } from './shard-manager';
 import type { Env, ShardMetrics } from './strategy-shard-types';
 import { extractShardId, getRedisClient } from './strategy-shard-redis';
+import { loadAssignedStrategies } from './strategy-shard-loader';
 
 export { extractShardId, getRedisClient };
 
@@ -107,19 +107,7 @@ export async function initializeShard(
 ): Promise<void> {
   try {
     const assignments = await getStrategyAssignments(shardId, storage);
-    const loader = new StrategyLoader();
-
-    for (const strategyId of assignments) {
-      try {
-        const strategy = await loader.loadStrategy(strategyId);
-        if (strategy) {
-          strategies.set(strategyId, (strategy as unknown as IStrategy));
-          logger.info('[StrategyShard] Loaded strategy', { shardId, strategyId });
-        }
-      } catch (error) {
-        logger.error('[StrategyShard] Failed to load strategy', { shardId, strategyId, error });
-      }
-    }
+    await loadAssignedStrategies(shardId, assignments, strategies);
 
     // Register health with ShardManager (env may not be available at construction time)
     if (env) {

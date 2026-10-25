@@ -16,9 +16,9 @@ import {
   type ArbitrageRiskCheckParams,
   DEFAULT_ARBITRAGE_RISK_CONFIG,
 } from './arbitrage-risk-types';
-import { KellyPositionSizer } from '../../risk/kelly-position-sizer';
-import { RiskGateManager } from '../../risk/risk-gate-manager';
-import { LiveExecutionGuard } from '../../execution/live-execution-guard-core';
+import type { KellyPositionSizer } from '../../risk/kelly-position-sizer';
+import type { RiskGateManager } from '../../risk/risk-gate-manager';
+import type { LiveExecutionGuard } from '../../execution/live-execution-guard-core';
 import type { TieredDrawdownBreaker } from '../../risk/tiered-drawdown-breaker';
 import type { DrawdownMonitor } from '../../risk/drawdown-monitor';
 import type { CircuitBreaker } from '../../risk/circuit-breaker';
@@ -26,6 +26,9 @@ import type { SpreadDetector } from '../spread-detector';
 import { ExposureTracker } from './arbitrage-risk-guard-exposure';
 import { runGatePipeline, adaptPreTradeParamsToBasket } from './arbitrage-risk-guard-pipeline';
 import { computeQuarterKellySizingFormula } from './arbitrage-risk-guard-sizing';
+import { buildRiskGuardCollaborators, type ArbitrageRiskGuardDependencies } from './arbitrage-risk-guard-factory';
+
+export type { ArbitrageRiskGuardDependencies };
 
 export * from './arbitrage-risk-types';
 export * from './arbitrage-risk-guard-drawdown';
@@ -34,16 +37,6 @@ export * from './arbitrage-risk-guard-balance';
 export * from './arbitrage-risk-guard-sizing';
 export * from './arbitrage-risk-guard-exposure';
 export * from './arbitrage-risk-guard-pipeline';
-
-export interface ArbitrageRiskGuardDependencies {
-  riskGateManager?: RiskGateManager;
-  liveExecutionGuard?: LiveExecutionGuard;
-  kellyPositionSizer?: KellyPositionSizer;
-  tieredDrawdownBreaker?: TieredDrawdownBreaker;
-  drawdownMonitor?: DrawdownMonitor;
-  circuitBreaker?: CircuitBreaker;
-  spreadDetector?: SpreadDetector;
-}
 
 export class ArbitrageRiskGuard {
   private config: ArbitrageRiskConfig;
@@ -56,32 +49,17 @@ export class ArbitrageRiskGuard {
   private readonly spreadDetector?: SpreadDetector;
   private readonly exposureTracker = new ExposureTracker();
 
-  constructor(config?: Partial<ArbitrageRiskConfig>, deps?: ArbitrageRiskGuardDependencies) {
+  constructor(config?: Partial<ArbitrageRiskConfig>, deps: ArbitrageRiskGuardDependencies = {}) {
     this.config = { ...DEFAULT_ARBITRAGE_RISK_CONFIG, ...config };
-    this.circuitBreaker = deps?.circuitBreaker;
-    this.tieredDrawdownBreaker = deps?.tieredDrawdownBreaker;
-    this.drawdownMonitor = deps?.drawdownMonitor;
-    this.spreadDetector = deps?.spreadDetector;
+    this.circuitBreaker = deps.circuitBreaker;
+    this.tieredDrawdownBreaker = deps.tieredDrawdownBreaker;
+    this.drawdownMonitor = deps.drawdownMonitor;
+    this.spreadDetector = deps.spreadDetector;
 
-    this.liveExecutionGuard =
-      deps?.liveExecutionGuard ??
-      new LiveExecutionGuard({
-        capitalUsdc: this.config.capitalUsdc,
-        maxDailyDrawdown: this.config.maxDailyDrawdownFraction,
-        maxPositionFraction: this.config.maxKellyPositionFraction,
-        enabled: true,
-      });
-
-    this.riskGateManager =
-      deps?.riskGateManager ?? new RiskGateManager(this.liveExecutionGuard, this.circuitBreaker);
-
-    this.kellyPositionSizer =
-      deps?.kellyPositionSizer ??
-      new KellyPositionSizer({
-        kellyFraction: this.config.kellyFraction,
-        maxPositionFraction: this.config.maxKellyPositionFraction,
-        minPositionUsd: 10,
-      });
+    const collaborators = buildRiskGuardCollaborators(this.config, deps, this.circuitBreaker);
+    this.liveExecutionGuard = collaborators.liveExecutionGuard;
+    this.riskGateManager = collaborators.riskGateManager;
+    this.kellyPositionSizer = collaborators.kellyPositionSizer;
   }
 
   async checkBasket(

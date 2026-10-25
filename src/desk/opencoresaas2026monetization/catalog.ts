@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * 25-Step Open-Core Public GitHub + SaaS Monetization Catalog
  * Canonical catalog mapping open-core OSS foundations to hosted RaaS monetization.

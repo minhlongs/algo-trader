@@ -21,6 +21,7 @@ import {
   handleGetTenantSubscription,
   handleCreateSubscription,
   handleCancelSubscription,
+  handleCancelCurrentSubscription,
   handleGetCurrentSubscription,
   handleGetUsageSnapshot,
 } from './signal-subscription-handlers';
@@ -52,7 +53,12 @@ signalSubscriptionRouter.post(
 );
 
 signalSubscriptionRouter.delete('/subscriptions/:id/unsubscribe', handleCancelSubscription);
+
+// Self-service subscription pair: GET/DELETE by authenticated caller, no id.
+// Registered before the /subscriptions/:id route so the literal path wins.
 signalSubscriptionRouter.get('/subscription', handleGetCurrentSubscription);
+signalSubscriptionRouter.delete('/subscription', handleCancelCurrentSubscription);
+
 signalSubscriptionRouter.delete('/subscriptions/:id', handleCancelSubscription);
 
 // ---------------------------------------------------------------------------

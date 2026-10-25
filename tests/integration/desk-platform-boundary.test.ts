@@ -75,6 +75,8 @@ function extractImports(filePath: string): string[] {
  *   - DLP outbound recording/pattern matching is triggered by ironclaw proxy
  *   - Jobs (dunning, audit, email) bridge operational concerns
  *   - immutable-trade-audit logs trading decisions with hash-chain integrity
+ *   - the one consolidated usage meter: compute-unit metering moved onto it, and the
+ *     behavioral probes must call that real meter rather than a copy that drifts from it
  *
  * Resolution plan (Phase 3 Steps 5-6):
  *   - Extract license types to shared/types/license.ts
@@ -90,6 +92,7 @@ const ALLOWED_DESK_IMPORTS: RegExp[] = [
   /platform\/notifications\/email-service/, // welcome email drip
   /platform\/billing\/dunning-service/,  // dunning KV sync
  /platform\/workers\/openclaw-gateway\//, // desk agent dispatcher uses platform worker gateway
+  /platform\/signals-api\/usage-metering-service/, // the one consolidated usage meter
 ];
 
 const DESK_TENANT_DB_ALLOWLIST = new Set<string>([

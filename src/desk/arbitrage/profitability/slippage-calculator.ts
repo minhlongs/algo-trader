@@ -8,129 +8,48 @@ import type {
   SlippageModelConfig,
   VwapSlippageResult,
 } from './profitability-types';
+import {
+  emptySlippageResult,
+  normalizeBookLevels,
+  slippageBps,
+  walkBookContraSide,
+  walkBookProSide,
+} from './slippage-book-walk';
 
 export function calculateVwapSlippage(
   orderBook: RawOrderBookDepth,
   side: 'buy' | 'sell',
   targetAmount: number
 ): VwapSlippageResult {
-  if (!orderBook || targetAmount <= 0) {
-    return {
-      vwap: 0,
-      slippageUsd: 0,
-      slippageBps: 0,
-      filledAmount: 0,
-      insufficientLiquidity: true,
-    };
-  }
+  if (!orderBook || targetAmount <= 0) return emptySlippageResult();
 
   if (side === 'buy') {
-    const rawAsks = orderBook.asks ?? [];
-    if (rawAsks.length === 0) {
-      return {
-        vwap: 0,
-        slippageUsd: 0,
-        slippageBps: 0,
-        filledAmount: 0,
-        insufficientLiquidity: true,
-      };
-    }
+    // Asks are walked worst-price-last: ascending price is the adverse direction.
+    const asks = normalizeBookLevels(orderBook.asks, 'pro');
+    if (asks.length === 0) return emptySlippageResult();
 
-    const sortedAsks = rawAsks
-      .map((lvl) => (Array.isArray(lvl) ? { price: lvl[0], amount: lvl[1] } : lvl))
-      .filter((lvl) => lvl.price > 0 && lvl.amount > 0)
-      .sort((a, b) => a.price - b.price);
-
-    if (sortedAsks.length === 0) {
-      return {
-        vwap: 0,
-        slippageUsd: 0,
-        slippageBps: 0,
-        filledAmount: 0,
-        insufficientLiquidity: true,
-      };
-    }
-
-    const bestAsk = sortedAsks[0].price;
-    let remaining = targetAmount;
-    let totalCost = 0;
-    let totalFilled = 0;
-
-    for (const level of sortedAsks) {
-      const fill = Math.min(remaining, level.amount);
-      totalCost += fill * level.price;
-      totalFilled += fill;
-      remaining -= fill;
-      if (remaining <= 0) break;
-    }
-
-    const insufficientLiquidity = remaining > 0;
-    const vwap = totalFilled > 0 ? totalCost / totalFilled : 0;
-    const slippagePerUnit = Math.max(0, vwap - bestAsk);
-    const slippageUsd = slippagePerUnit * totalFilled;
-    const slippageBps = bestAsk > 0 ? (slippagePerUnit / bestAsk) * 10_000 : 0;
-
+    const walk = walkBookProSide(asks, targetAmount);
     return {
-      vwap,
-      slippageUsd,
-      slippageBps,
-      filledAmount: totalFilled,
-      insufficientLiquidity,
+      vwap: walk.vwap,
+      slippageUsd: walk.slippagePerUnit * walk.filledAmount,
+      slippageBps: slippageBps(walk.slippagePerUnit, asks[0]!.price),
+      filledAmount: walk.filledAmount,
+      insufficientLiquidity: walk.insufficient,
     };
   }
 
   // side === 'sell'
-  const rawBids = orderBook.bids ?? [];
-  if (rawBids.length === 0) {
-    return {
-      vwap: 0,
-      slippageUsd: 0,
-      slippageBps: 0,
-      filledAmount: 0,
-      insufficientLiquidity: true,
-    };
-  }
+  // Bids are walked worst-price-last: descending price is the adverse direction.
+  const bids = normalizeBookLevels(orderBook.bids, 'contra');
+  if (bids.length === 0) return emptySlippageResult();
 
-  const sortedBids = rawBids
-    .map((lvl) => (Array.isArray(lvl) ? { price: lvl[0], amount: lvl[1] } : lvl))
-    .filter((lvl) => lvl.price > 0 && lvl.amount > 0)
-    .sort((a, b) => b.price - a.price);
-
-  if (sortedBids.length === 0) {
-    return {
-      vwap: 0,
-      slippageUsd: 0,
-      slippageBps: 0,
-      filledAmount: 0,
-      insufficientLiquidity: true,
-    };
-  }
-
-  const bestBid = sortedBids[0].price;
-  let remaining = targetAmount;
-  let totalRevenue = 0;
-  let totalFilled = 0;
-
-  for (const level of sortedBids) {
-    const fill = Math.min(remaining, level.amount);
-    totalRevenue += fill * level.price;
-    totalFilled += fill;
-    remaining -= fill;
-    if (remaining <= 0) break;
-  }
-
-  const insufficientLiquidity = remaining > 0;
-  const vwap = totalFilled > 0 ? totalRevenue / totalFilled : 0;
-  const slippagePerUnit = Math.max(0, bestBid - vwap);
-  const slippageUsd = slippagePerUnit * totalFilled;
-  const slippageBps = bestBid > 0 ? (slippagePerUnit / bestBid) * 10_000 : 0;
-
+  const walk = walkBookContraSide(bids, targetAmount);
   return {
-    vwap,
-    slippageUsd,
-    slippageBps,
-    filledAmount: totalFilled,
-    insufficientLiquidity,
+    vwap: walk.vwap,
+    slippageUsd: walk.slippagePerUnit * walk.filledAmount,
+    slippageBps: slippageBps(walk.slippagePerUnit, bids[0]!.price),
+    filledAmount: walk.filledAmount,
+    insufficientLiquidity: walk.insufficient,
   };
 }
 

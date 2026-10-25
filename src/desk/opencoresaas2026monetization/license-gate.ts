@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * HMAC-SHA256 Cryptographic License Gate
  * Enforces tier entitlements with HTTP 402 Payment Required for unauthorized access.
@@ -33,10 +32,37 @@ const TIER_HIERARCHY: Record<TierLevel, number> = {
   MASTER: 4,
 };
 
+/**
+ * Tiers a signed payload may name. The payload is parsed from a signed-but-unaudited string, so
+ * its `tier` is untrusted input until checked against this list: an unlisted tier would otherwise
+ * make `TIER_HIERARCHY[payload.tier]` undefined, and `undefined < N` is false, which passes the
+ * entitlement check instead of failing it.
+ */
+function isKnownTier(tier: unknown): tier is TierLevel {
+  return typeof tier === 'string' && Object.prototype.hasOwnProperty.call(TIER_HIERARCHY, tier);
+}
+
+/**
+ * Read the signing key from the environment.
+ *
+ * A defaulted secret would make every issued token reproducible by anyone with the source, which
+ * is the one failure an HMAC gate cannot survive — so an unset key is a startup error, not a
+ * fallback. Tests that need a deterministic key pass one to the constructor instead.
+ */
+function resolveSecretKey(): string {
+  const fromEnv = process.env.LICENSE_HMAC_SECRET;
+  if (!fromEnv || fromEnv.length === 0) {
+    throw new Error(
+      'LICENSE_HMAC_SECRET is not set. The license gate requires an explicit signing key; ' +
+        'it will not fall back to a compiled-in default.',
+    );
+  }
+  return fromEnv;
+}
+
 export class LicenseGate {
   private readonly secretKey: string;
-
-  constructor(secretKey: string = process.env.LICENSE_HMAC_SECRET || 'algo-trader-master-secret-2026') {
+  constructor(secretKey: string = resolveSecretKey()) {
     this.secretKey = secretKey;
   }
 
@@ -71,6 +97,14 @@ export class LicenseGate {
 
     try {
       const payload = JSON.parse(Buffer.from(serialized, 'base64url').toString('utf8')) as LicenseTokenPayload;
+
+      if (!isKnownTier(payload.tier)) {
+        return {
+          isValid: false,
+          statusCode: 401,
+          error: `License payload names an unknown tier: ${String(payload.tier)}`,
+        };
+      }
       const now = Date.now();
 
       if (payload.expiresAt < now) {

@@ -7,7 +7,7 @@ import type { Request } from 'express';
 import { resolveSubscriberId } from '../middleware/signal-tier-resolver';
 import type { TierKey } from '../../desk/signal/signal-types';
 
-export const TIER_RANK: Record<TierKey, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+export const TIER_RANK: Record<TierKey, number> = { FREE: 0, BASIC: 1, PRO: 2, ENTERPRISE: 3 };
 export const RESEARCH_MIN_TIER: TierKey = 'PRO';
 
 export type CallToolParams = Record<string, unknown> | undefined;

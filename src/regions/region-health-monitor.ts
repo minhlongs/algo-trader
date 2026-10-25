@@ -6,8 +6,9 @@
 import { getLatencyMonitor } from './latency-monitor';
 import { logger } from '../shared/utils/logger';
 import { RegionStatus, FailoverConfig, DEFAULT_REGION_CONFIG } from './region-health-types';
+import { announceRegionChange, decideFailover } from './region-failover-selection';
 
-export { RegionStatus, FailoverConfig };
+export type { RegionStatus, FailoverConfig };
 
 export class RegionHealthMonitor {
   private config: FailoverConfig;
@@ -77,33 +78,23 @@ export class RegionHealthMonitor {
         current.consecutiveFailures = 0;
       }
 
-      if (current.region === this.activeRegion && current.consecutiveFailures >= this.config.failoverThreshold) {
-        await this.triggerFailover(current.region);
+      if (current.region === this.activeRegion) {
+        await this.triggerFailoverIfActiveUnhealthy();
       }
     }
 
     await this.attemptRecovery();
   }
 
-  private async triggerFailover(failedRegion: string): Promise<void> {
-    logger.warn(`Failover triggered: ${failedRegion} is unhealthy`, 'RegionHealthMonitor');
-    const healthyRegions = Array.from(this.regionStatus.values())
-      .filter(s => s.healthy && s.region !== failedRegion);
+  private async triggerFailoverIfActiveUnhealthy(): Promise<void> {
+    const decision = decideFailover(this.activeRegion, this.regionStatus, this.config);
+    if (!decision?.nextRegion) return;
 
-    if (healthyRegions.length === 0) {
-      logger.error('No healthy regions available for failover', 'RegionHealthMonitor');
-      return;
-    }
-
-    const sorted = healthyRegions.sort((a, b) => a.latencyMs - b.latencyMs);
-    const newRegion = sorted[0].region;
     const oldRegion = this.activeRegion;
-    this.activeRegion = newRegion;
-
-    logger.warn(`Failover complete: ${oldRegion} → ${newRegion}`, 'RegionHealthMonitor');
-    if (this.onFailover) {
-      this.onFailover(oldRegion, newRegion);
-    }
+    logger.warn(`Failover triggered: ${oldRegion} is unhealthy`, 'RegionHealthMonitor');
+    this.activeRegion = decision.nextRegion;
+    announceRegionChange(oldRegion, decision.nextRegion, 'failover');
+    this.onFailover?.(oldRegion, decision.nextRegion);
   }
 
   private async attemptRecovery(): Promise<void> {
@@ -141,7 +132,7 @@ export class RegionHealthMonitor {
     }
     const old = this.activeRegion;
     this.activeRegion = toRegion;
-    logger.warn(`Manual switch: ${old} → ${toRegion}`, 'RegionHealthMonitor');
+    announceRegionChange(old, toRegion, 'manual');
     if (this.onFailover) {
       this.onFailover(old, toRegion);
     }

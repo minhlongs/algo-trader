@@ -1,5 +1,45 @@
 # Project Changelog - Algo Trader
 
+## [3.3.10] - 2026-10-22 — Behavioral Open-Core Readiness & License Gate Fail-Closed
+
+### Changed
+- **Open-Core readiness verdict is now behavior-verified, not file-existence.** `RepositoryBlueprintAuditor.auditRepository` runs one behavioral probe per catalog step instead of relying on `fs.existsSync`. Each 25-step entry now carries `verified`, `kind` (`behavioral` or `absent`), and `evidence`; the report exposes `stepBehaviorAudit`, `behaviorallyVerifiedCount`, and `existenceOnlyStepCount`. `isReadyForPublicGithub` is `false` whenever a behavioral probe fails or any step is existence-only, so a READY verdict can no longer be produced by committing files alone.
+- **License gate and quota meter now report enforcement, not presence.** `licenseGateEnforced` and `quotaMeteringEnforced` come from the probes that exercise the HMAC sign/verify path (tamper rejected 401, under-tier and expiry 402) and the billing meter (allowed under limit 200, denied 402 once the monthly MCU ceiling is consumed).
+- **PLG funnel is labeled a projection.** `opencore-saas --funnel` prints its conversion and revenue inputs from the named `SAAS_TARGET_METRICS` assumptions constant, and reads `completedRestructuringSteps`, `leakedSecretsCount`, and `licenseGateEnforced` from the live audit. Callers cannot override those three, so a blocked repository cannot produce a healthy funnel. When the audit reports blocking issues the funnel says so rather than printing an optimal verdict.
+- **`GET /api/v1/open-core/status` and `POST /verify-license` read their inputs instead of literals.** The route response shape is unchanged.
+
+### Security
+- **The license gate no longer falls back to a compiled-in secret.** `LicenseGate` reads `LICENSE_HMAC_SECRET` and throws at startup when it is unset — an HMAC gate cannot survive a default key that any reader of the source can use to mint a valid token. `POST /verify-license` answers 503 when the key is not configured and logs the configuration error server-side, so the response never echoes key details.
+- **An unlisted `tier` is rejected.** `TIER_HIERARCHY[unknownTier]` is `undefined`, and `undefined < N` is `false`, so the old entitlement comparison passed unknown tiers instead of failing them. `isKnownTier` now validates the parsed tier against the four known values.
+
+### Verified
+- `npx tsc --noEmit` → 0 errors; `npx eslint` on the touched files → clean; 0 `: any`.
+- `tests/unit/desk/wave_316_opencore_saas_suite.test.ts` → 9/9; the Open-Core probe suites and the open-core route license-gate suite → 81/81 total.
+
+## [3.3.09] - 2026-10-20 — Deep Modularization Wave: `src/` Ceiling 160 → 159 LOC (`--deep`)
+
+### Changed
+- **Deep LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed 25 production files with genuine multi-responsibility structure into 27 focused modules, eliminating the last 160-LOC file (`src/platform/workers/coupon-helpers.ts`) and dropping the `src/` ceiling from **160 to 159 LOC**.
+  - Highest-impact extractions:
+    - `coupon-helpers.ts` (160 → 38): split into `coupon-model` (types + JSON/CORS helpers), `coupon-kv-store` (KV persistence + single-writer redeem lock), `coupon-lifecycle-rules` (pure redemption eligibility), `coupon-invoice-client` (NOWPayments invoice creation). The barrel is retained as a facade because `coupon-validate.test.ts` does `vi.mock('../coupon-helpers', ...)`.
+    - `trade-repository.ts` (159 → 92) and its `src/platform/db/` twin (159 → 92): both now share one `trade-sql-statements.ts` catalogue, removing a near-duplicate SQL copy.
+    - `multi-regime-candle-generator.ts` (159 → 70): per-regime OHLCV shaping extracted to `multi-regime-candle-shaping.ts`, preserving the regime-feature invariants the `computeRegimeSeries` tests assert.
+    - `slippage-calculator.ts` (159 → 78): duplicated buy/sell book-walking collapsed into `slippage-book-walk.ts` (4 copies of the `insufficientLiquidity` result reduced to one factory).
+    - `ccxt-connector-mappers.ts` (158 → 110): the network/balance/rate-limit error signal table moved to `ccxt-error-classifier.ts`.
+    - `social-auto-poster.ts` (158 → 62): per-channel posters (Twitter OAuth 1.0a, Telegram bot API) moved to `social-channel-posters.ts`.
+- **Behaviour preservation**:
+  - `notification-service.ts` kept its private `backoffMs` seam, which `notification-service-queue.test.ts` stubs to force zero backoff; the extracted `notification-retry-policy.ts` receives the backoff as an injected function so that override still applies.
+  - `arbitrage-risk-guard.ts` moved its dependency interface into `arbitrage-risk-guard-factory.ts` (re-exported from the guard) to break a type-only import cycle while keeping the public import path stable for its two test files.
+- **Reverted**: a session-singleton extraction from `src/desk/commands/paper-trading.ts` was reverted — it would have landed at 160 LOC (above the 158 baseline) because the original used a module-level variable directly rather than accessors, so there was no net gain.
+- **Accepted at natural ceiling**: 8 files remain at 158–159 LOC because their bulk is one cohesive algorithm or an already-split module facade — notably `hasbrouck-vecm-engine` and `hjm-engine` (each method is a distinct statistical formula, math already in sibling modules) and `ws-adapter-redis` (whose `shutdown` touches private state that tests reach via bracket access).
+
+### Verified
+- `npm run typecheck` → 0 errors.
+- `npx vitest run` → 17,122 tests passed / 11 skipped (1,343 files) — identical to the pre-wave baseline, no regressions.
+- `node scripts/check-quality-baseline.mjs --quality` → 5/5 PASS: 0 `:any` types, console calls within baseline, 0 new/grown files over the line limit, 0 banned imports, 0 new eslint-disables.
+- `npm run lint` → 0 errors, 149 warnings (all pre-existing; none introduced — 27 new modules are warning-free).
+
 ## [3.3.08] - 2026-10-18 — Quantitative Desk Waves 339–341, UI/UX Pro Max v5 Stitch Screen #16 (`limit-order-queue-cockpit`) & Deep 160-LOC Refactor (`--deep`)
 
 ### Added

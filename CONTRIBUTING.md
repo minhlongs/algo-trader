@@ -7,8 +7,21 @@ Thank you for contributing to `@mekong/algo-trader`! This repository follows a *
 
 | Layer | Directories | License | Purpose |
 |:---|:---|:---:|:---|
-| **OSS Core (CE)** | `src/desk/`, `src/engine/`, `src/commands/`, `src/trading/`, `src/paper-trading/` | **MIT** | 52+ strategies, CCXT/Polymarket BYOK adapters, paper trading, CLI (`cashclaw`) |
-| **Cloud RaaS (EE)** | `src/raas/`, `src/billing/`, `src/durable-objects/`, `src/seed/security/` | **Proprietary / Dual-License** | Multi-tenant sharding, HMAC-SHA256 LicenseGate, HTTP 402 BillingMeter, NOWPayments/PayOS IPN |
+| **OSS Core (CE)** | `src/desk/` (except the gate files below), `src/engine/`, `src/commands/`, `src/paper-trading/` | **MIT** | 52+ strategies, CCXT/Polymarket BYOK adapters, paper trading, CLI (`cashclaw`) |
+| **Cloud RaaS (EE)** | `src/raas/`, `src/billing/`, `src/durable-objects/`, `src/seed/security/` | **Proprietary / Dual-License** | Multi-tenant sharding, NOWPayments/PayOS IPN billing |
+| **Entitlement & Quota Gate** | `src/desk/opencoresaas2026monetization/` — the gate files named in [`COMMERCIAL-LICENSE.md`](./COMMERCIAL-LICENSE.md) | **Proprietary / Dual-License** | HMAC-SHA256 `license-gate.ts`, HTTP 402 `billing-meter.ts`, and the `catalog.ts` tier table they read |
+
+> **Note / Lưu ý:** `src/desk/` is *mostly* MIT — the entitlement and quota gate inside
+> `src/desk/opencoresaas2026monetization/` is the exception, not the whole directory. The MIT grant
+> already distributed for those gate files is **retained and not revoked**; the relabel is
+> forward-only. See [`COMMERCIAL-LICENSE.md`](./COMMERCIAL-LICENSE.md) for the exact file list and
+> the distribution record.
+>
+> **Ghi chú:** `src/desk/` *phần lớn* là MIT — cổng quyền lợi và hạn mức bên trong
+> `src/desk/opencoresaas2026monetization/` là ngoại lệ, không phải toàn bộ thư mục. Quyền MIT đã
+> phân phối cho các tệp cổng đó **vẫn được giữ nguyên và không bị rút lại**; việc đổi nhãn chỉ có
+> hiệu lực về phía trước. Xem [`COMMERCIAL-LICENSE.md`](./COMMERCIAL-LICENSE.md) để có danh sách
+> tệp chính xác và bản ghi phân phối.
 
 ## 2. Mandatory Engineering Rules / Quy Tắc Kỹ Thuật Bắt Buộc
 

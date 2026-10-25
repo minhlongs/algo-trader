@@ -21,8 +21,10 @@ import * as migration052 from './migrations/052-add-starter-tier-and-billing-int
 import * as migration053 from './migrations/053-add-telegram-sessions';
 import * as migration055 from './migrations/055-add-blog-page-views';
 import * as migration056 from './migrations/056-add-kyc-verifications';
+import * as migration057 from './migrations/057-add-usage-metrics-table';
+import * as migration058 from './migrations/058-add-usage-metrics-alerted-thresholds';
+import * as migration059 from './migrations/059-add-usage-metrics-mcu-units';
 import * as migration026 from './migrations/026-create-ai-audit-tables';
-
 // Migration interface
 interface Migration {
   id: string;
@@ -48,6 +50,9 @@ const MIGRATIONS: Migration[] = [
   migration053,
   migration055,
   migration056,
+  migration057,
+  migration058,
+  migration059,
   migration026,
 ];
 

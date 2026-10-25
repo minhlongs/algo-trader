@@ -6,6 +6,8 @@
 import { PaymentService } from '../../../../billing/payment-service';
 import { NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
 import { generateInvoice } from '../../../../billing/invoice-generator';
+import { resolveInvoiceChannel, resolveInvoiceTierLabel } from '../../../../billing/invoice-tier-label';
+import { logger } from '../../../../../shared/utils/logger';
 
 /**
  * Record successful payment (IPN status=finished)
@@ -29,11 +31,21 @@ export async function handleIpnPaymentSuccess(
   // Auto-generate and email invoice
   const email = ipn.order_description?.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/)?.[0] || ipn.order_id || '';
   if (email.includes('@')) {
-    const tier = ipn.price_amount >= 499 ? 'Elite' : ipn.price_amount >= 149 ? 'Pro' : 'Starter';
+    // Plan label comes from a price book, not from amount brackets. An amount that
+    // matches no book produces no invoice rather than a label the customer never bought.
+    const channel = resolveInvoiceChannel(ipn.order_id);
+    const tier = resolveInvoiceTierLabel(channel, ipn.price_amount);
+    if (tier === null) {
+      logger.warn('[PaymentHandler] Paid amount matches no price book — invoice label left unset', {
+        paymentId: ipn.payment_id,
+        channel,
+        amount: ipn.price_amount,
+      });
+    }
     await generateInvoice({
       paymentId: ipn.payment_id,
       email,
-      tier,
+      tier: tier ?? 'Unspecified plan',
       amount: ipn.price_amount,
       currency: ipn.price_currency,
     });

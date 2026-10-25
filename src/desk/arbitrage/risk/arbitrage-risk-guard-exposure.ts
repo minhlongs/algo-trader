@@ -12,6 +12,12 @@ import {
   type ArbitrageRiskCheckResult,
   ArbitrageRejectionReason,
 } from './arbitrage-risk-types';
+import {
+  isCountableNotional,
+  legNotionalUsd,
+  symbolMaxNotionals,
+  venueNotionals,
+} from './arbitrage-exposure-legs';
 
 export class ExposureTracker {
   readonly venueExposures = new Map<string, number>();
@@ -24,7 +30,7 @@ export class ExposureTracker {
   ): ArbitrageRiskCheckResult | null {
     // Check venue exposure per leg
     for (const leg of basket.legs) {
-      const legNotional = leg.notionalUsd ?? leg.amount * leg.price;
+      const legNotional = legNotionalUsd(leg);
       const currentVenueExp = this.venueExposures.get(leg.venue) ?? 0;
       if (currentVenueExp + legNotional > config.maxOpenPositionPerVenueUsd) {
         checks.venueCapOk = false;
@@ -51,15 +57,7 @@ export class ExposureTracker {
     }
 
     // Group legs by symbol to avoid intra-basket double counting
-    const symbolLegMap = new Map<string, number>();
-    for (const leg of basket.legs) {
-      const legNotional = leg.notionalUsd ?? leg.amount * leg.price;
-      const current = symbolLegMap.get(leg.symbol) ?? 0;
-      symbolLegMap.set(leg.symbol, Math.max(current, legNotional));
-    }
-
-    // Check symbol exposure per symbol
-    for (const [symbol, notional] of Array.from(symbolLegMap.entries())) {
+    for (const [symbol, notional] of symbolMaxNotionals(basket)) {
       const currentSymbolExp = this.symbolExposures.get(symbol) ?? 0;
       if (currentSymbolExp + notional > config.maxOpenPositionPerSymbolUsd) {
         checks.symbolCapOk = false;
@@ -95,19 +93,14 @@ export class ExposureTracker {
     notional?: number,
   ): void {
     if (typeof basketOrSymbol === 'object' && 'legs' in basketOrSymbol) {
-      const symbolNotionals = new Map<string, number>();
-      for (const leg of basketOrSymbol.legs) {
-        const legNotional = leg.notionalUsd ?? leg.amount * leg.price;
-        if (!Number.isFinite(legNotional) || legNotional <= 0) continue;
-        this.venueExposures.set(leg.venue, (this.venueExposures.get(leg.venue) ?? 0) + legNotional);
-        const curr = symbolNotionals.get(leg.symbol) ?? 0;
-        symbolNotionals.set(leg.symbol, Math.max(curr, legNotional));
+      for (const [venue, val] of venueNotionals(basketOrSymbol)) {
+        this.venueExposures.set(venue, (this.venueExposures.get(venue) ?? 0) + val);
       }
-      for (const [symbol, val] of Array.from(symbolNotionals.entries())) {
+      for (const [symbol, val] of symbolMaxNotionals(basketOrSymbol)) {
         this.symbolExposures.set(symbol, (this.symbolExposures.get(symbol) ?? 0) + val);
       }
     } else if (typeof basketOrSymbol === 'string' && buyVenue && sellVenue && typeof notional === 'number') {
-      if (!Number.isFinite(notional) || notional <= 0) return;
+      if (!isCountableNotional(notional)) return;
       this.symbolExposures.set(basketOrSymbol, (this.symbolExposures.get(basketOrSymbol) ?? 0) + notional);
       this.venueExposures.set(buyVenue, (this.venueExposures.get(buyVenue) ?? 0) + notional);
       this.venueExposures.set(sellVenue, (this.venueExposures.get(sellVenue) ?? 0) + notional);
@@ -121,21 +114,16 @@ export class ExposureTracker {
     notional?: number,
   ): void {
     if (typeof basketOrSymbol === 'object' && 'legs' in basketOrSymbol) {
-      const symbolNotionals = new Map<string, number>();
-      for (const leg of basketOrSymbol.legs) {
-        const legNotional = leg.notionalUsd ?? leg.amount * leg.price;
-        if (!Number.isFinite(legNotional) || legNotional <= 0) continue;
-        const venueExp = Math.max(0, (this.venueExposures.get(leg.venue) ?? 0) - legNotional);
-        this.venueExposures.set(leg.venue, venueExp);
-        const curr = symbolNotionals.get(leg.symbol) ?? 0;
-        symbolNotionals.set(leg.symbol, Math.max(curr, legNotional));
+      for (const [venue, val] of venueNotionals(basketOrSymbol)) {
+        const venueExp = Math.max(0, (this.venueExposures.get(venue) ?? 0) - val);
+        this.venueExposures.set(venue, venueExp);
       }
-      for (const [symbol, val] of Array.from(symbolNotionals.entries())) {
+      for (const [symbol, val] of symbolMaxNotionals(basketOrSymbol)) {
         const symbolExp = Math.max(0, (this.symbolExposures.get(symbol) ?? 0) - val);
         this.symbolExposures.set(symbol, symbolExp);
       }
     } else if (typeof basketOrSymbol === 'string' && buyVenue && sellVenue && typeof notional === 'number') {
-      if (!Number.isFinite(notional) || notional <= 0) return;
+      if (!isCountableNotional(notional)) return;
       const symExp = Math.max(0, (this.symbolExposures.get(basketOrSymbol) ?? 0) - notional);
       const buyExp = Math.max(0, (this.venueExposures.get(buyVenue) ?? 0) - notional);
       const sellExp = Math.max(0, (this.venueExposures.get(sellVenue) ?? 0) - notional);

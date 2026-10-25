@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { handleIpnFinished, handleIpnRefunded } from '../../src/platform/api/routes/webhooks/handlers/subscription-handler';
+import { handleIpnFinished, handleIpnRefunded, TierNotResolvedError } from '../../src/platform/api/routes/webhooks/handlers/subscription-handler';
 import { SubscriptionService } from '../../src/platform/billing/subscription-service';
 import { LicenseService } from '../../src/platform/billing/license-service';
 import { AuditLogService } from '../../src/platform/audit/audit-log-service';
@@ -174,20 +174,30 @@ describe('NOWPayments IPN Revenue Activation E2E', () => {
     expect(sub!.licenseId).toBeDefined();
   });
 
-  // Fallback - no invoice_id defaults to PRO
-  it('should default to PRO tier when invoice_id is missing', async () => {
+  // Fail closed - no invoice_id grants nothing, it does NOT fall back to PRO
+  it('fails closed when invoice_id is missing instead of defaulting to PRO', async () => {
     const svc = makeServices();
     // getTierByInvoiceId is only called when invoice_id is truthy; spy by default returns undefined
     const getTierSpy = vi.spyOn(svc.nowpaymentsService, 'getTierByInvoiceId');
 
     const ipn = makeFinishedIpn({ invoice_id: '', payment_id: 'pay-noinv-001' });
-    await handleIpnFinished(ipn, svc.nowpaymentsService, svc.subscriptionService, svc.licenseService, svc.auditService);
+    // A missing invoice_id cannot be resolved to a tier, so no license may be issued.
+    // The previous behaviour silently defaulted to PRO, granting a tier the customer
+    // never paid for; now the handler throws so the provider retries.
+    await expect(
+      handleIpnFinished(
+        ipn,
+        svc.nowpaymentsService,
+        svc.subscriptionService,
+        svc.licenseService,
+        svc.auditService,
+      ),
+    ).rejects.toBeInstanceOf(TierNotResolvedError);
 
     // getTierByInvoiceId should NOT be called when invoice_id is empty
     expect(getTierSpy).not.toHaveBeenCalled();
 
     const sub = await svc.subscriptionService.getSubscriptionByProviderId('pay-noinv-001');
-    expect(sub).toBeDefined();
-    expect(sub!.tier).toBe(LicenseTier.PRO); // falls back to PRO
+    expect(sub).toBeUndefined();
   });
 });

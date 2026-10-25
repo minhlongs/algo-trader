@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * 25-Step Open-Core & SaaS Readiness Auditor
  * Evaluates the readiness of the 25 open-core steps and blocks secret leaks.
@@ -14,6 +13,11 @@ export interface AuditTelemetry {
   readonly licenseGateEnforced: boolean;
   readonly quotaMeteringEnforced: boolean;
   readonly protectedFlowsIntact: boolean;
+  /**
+   * Problems found while probing behavior. They must fail the verdict, so they are passed in
+   * rather than appended afterwards — appending would arrive after the flag was computed.
+   */
+  readonly behavioralBlockingNotes?: readonly string[];
 }
 
 export interface StepAuditResult {
@@ -34,7 +38,7 @@ export interface OverallAuditReport {
 
 export class OpenCoreReadinessAuditor {
   audit(telemetry: AuditTelemetry): OverallAuditReport {
-    const blockingIssues: string[] = [];
+    const blockingIssues: string[] = [...(telemetry.behavioralBlockingNotes ?? [])];
 
     if (telemetry.leakedSecretsCount > 0) {
       blockingIssues.push(`CRITICAL: Found ${telemetry.leakedSecretsCount} unpurged secrets in codebase or git tree.`);
@@ -58,7 +62,10 @@ export class OpenCoreReadinessAuditor {
       };
     });
 
+    // Any blocking issue must fail the verdict. Computing readiness from the individual flags
+    // alone lets a caller append an unresolved problem and still report ready.
     const isReadyForPublicGithub =
+      blockingIssues.length === 0 &&
       telemetry.leakedSecretsCount === 0 &&
       telemetry.licenseGateEnforced &&
       telemetry.quotaMeteringEnforced &&
