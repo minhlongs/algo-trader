@@ -1,8 +1,8 @@
 /**
  * Solo Quant Desk landing — community-first `/` page (phase-02 dual-layer).
- * Stitch dark fintech bilingual VN+EN pattern.
+ * Stitch dark fintech bilingual VN+EN pattern with Dual-Funnel CTAs.
  * Polar-safe copy: no "AI", "wellness", "health", "medical", or "fitness".
- * Composition: public navbar → hero → paper stats → principles strip → footer.
+ * Composition: public navbar → hero → paper stats → principles strip → dual-funnel CTA → footer.
  */
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
@@ -11,121 +11,15 @@ import { Footer } from '../components/footer';
 import { HeroSoloQuant } from '../components/hero-solo-quant';
 import { PaperStatsCard } from '../components/paper-stats-card';
 import { COLORS } from '../lib/stitch-design-tokens';
-
-type Lang = 'en' | 'vi';
-
-const COPY: Record<Lang, {
-  langToggle: string;
-  title: string;
-  subtitle: string;
-  heroEyebrow: string;
-  heroTitleLine1: string;
-  heroTitleLine2: string;
-  heroTagline: string;
-  heroDesc: string;
-  readMethodology: string;
-  readManifesto: string;
-  viewSource: string;
-  principlesEyebrow: string;
-  principleOneHuman: { label: string; body: string };
-  principleZeroOverhead: { label: string; body: string };
-  principleOpen: { label: string; body: string };
-  principleVerifiable: { label: string; body: string };
-  readManifestoBtn: string;
-  viewSourceBtn: string;
-  manifestoEyebrow: string;
-  manifestoTitle: string;
-  manifestoBody: string;
-  manifestoCta: string;
-}> = {
-  en: {
-    langToggle: 'Tiếng Việt',
-    title: 'Solo Quant Desk',
-    subtitle: 'One human. Zero overhead. Verifiable edge.',
-    heroEyebrow: 'Prediction-Market Desk — Polymarket',
-    heroTitleLine1: 'Solo Quant Desk',
-    heroTitleLine2: 'Live on Polymarket',
-    heroTagline: 'One human. Zero overhead. Open methodology.',
-    heroDesc: 'A single operator runs an entire quantitative desk with an autonomous agent stack, a local model, and a public trade log. The claim is verifiable — every trade is recorded, every batch published.',
-    readMethodology: 'Read Methodology',
-    readManifesto: 'Read Manifesto',
-    viewSource: 'View Source',
-    principlesEyebrow: 'What the desk refuses to become',
-    principleOneHuman: {
-      label: 'One human',
-      body: 'No employees, no contractors. The operator runs every module — research, sizing, execution, monitoring.',
-    },
-    principleZeroOverhead: {
-      label: 'Zero overhead',
-      body: 'M1 Max workstation, a local model on port 11435, SQLite, Cloudflare free tier. Monthly operating cost: $0.',
-    },
-    principleOpen: {
-      label: 'Open methodology',
-      body: 'Blind-prompt alpha extraction. Quarter-Kelly sizing. Event markets only. Source repo is public.',
-    },
-    principleVerifiable: {
-      label: 'Verifiable',
-      body: 'Every paper trade recorded. Batches published on cadence. Losing weeks posted alongside winning ones.',
-    },
-    readManifestoBtn: 'Read the Manifesto',
-    viewSourceBtn: 'View Source',
-    manifestoEyebrow: 'Follow the build, in public.',
-    manifestoTitle: 'Follow the build, in public.',
-    manifestoBody: 'The repository and rolling stats update with every resolved batch. No newsletter funnel. No paywall.',
-    manifestoCta: 'The repository and rolling stats update with every resolved batch. No newsletter funnel. No paywall.',
-  },
-  vi: {
-    langToggle: 'English',
-    title: 'Solo Quant Desk',
-    subtitle: 'Một người vận hành. Không chi phí phát sinh. Lợi thế có thể kiểm chứng.',
-    heroEyebrow: 'Phòng giao dịch Prediction Market — Polymarket',
-    heroTitleLine1: 'Solo Quant Desk',
-    heroTitleLine2: 'Trực tiếp trên Polymarket',
-    heroTagline: 'Một người vận hành. Không chi phí phát sinh. Phương pháp minh bạch.',
-    heroDesc: 'Một người vận hành duy nhất điều hành toàn bộ phòng giao dịch định lượng với STACK tác nhân tự chủ, mô hình cục bộ, và nhật ký giao dịch công khai. Tuyên bố có thể được kiểm chứng — Mỗi giao dịch được ghi lại, mỗi batch được công bố.',
-    readMethodology: 'Đọc Phương pháp luận',
-    readManifesto: 'Đọc Manifesto',
-    viewSource: 'Xem Nguồn',
-    principlesEyebrow: 'Những nguyên tắc không thể phá vỡ',
-    principleOneHuman: {
-      label: 'Một người vận hành',
-      body: 'Không nhân viên, không đối tác. Người vận hành điều hành mọi module — nghiên cứu, tính sizing, thực thi, giám sát.',
-    },
-    principleZeroOverhead: {
-      label: 'Không chi phí phát sinh',
-      body: 'Workstation M1 Max, local model trên port 11435, SQLite, Cloudflare free tier. Chi phí vận hành hàng tháng: $0.',
-    },
-    principleOpen: {
-      label: 'Phương pháp minh bạch',
-      body: 'Alpha extraction blind-prompt. Sizing Quarter-Kelly. Chỉ thị trường event. Source repo public.',
-    },
-    principleVerifiable: {
-      label: 'Có thể kiểm chứng',
-      body: 'Mọi paper trade được ghi lại. Batches được công bố đúng định kỳ. Các tuần lỗ được công bố công khai bên cạnh các tuần thắng.',
-    },
-    readManifestoBtn: 'Đọc Manifesto',
-    viewSourceBtn: 'Xem Nguồn',
-    manifestoEyebrow: 'Theo dõi quá trình phát triển công khai.',
-    manifestoTitle: 'Theo dõi quá trình phát triển công khai.',
-    manifestoBody: 'Repository và thống kê động được cập nhật với mỗi batch đã giải quyết. Không newsletter funnel. Không paywall.',
-    manifestoCta: 'Repository và thống kê động được cập nhật với mỗi batch đã giải quyết. Không newsletter funnel. Không paywall.',
-  },
-};
-
-const PRINCIPLES = [
-  COPY.en.principleOneHuman,
-  COPY.en.principleZeroOverhead,
-  COPY.en.principleOpen,
-  COPY.en.principleVerifiable,
-] as const;
+import { LANDING_COPY, type LandingLang } from './landing-copy';
 
 export function LandingSoloQuant() {
-  const [lang, setLang] = useState<Lang>('en');
-  const t = COPY[lang];
+  const [lang, setLang] = useState<LandingLang>('en');
+  const t = LANDING_COPY[lang];
 
   const langToggleNode = (
     <button
-      onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+      onClick={() => setLang((l: LandingLang) => (l === 'en' ? 'vi' : 'en'))}
       className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2"
       style={{
         backgroundColor: `${COLORS.surface}CC`,
@@ -159,7 +53,7 @@ export function LandingSoloQuant() {
     >
       <PublicNavbar rightSlot={langToggleNode} />
 
-      <HeroSoloQuant />
+      <HeroSoloQuant lang={lang} />
 
       <PaperStatsCard />
 
@@ -172,57 +66,83 @@ export function LandingSoloQuant() {
           {t.principlesEyebrow}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {PRINCIPLES.map((p) => {
-            const principleData = lang === 'vi'
-              ? (p === PRINCIPLES[0] ? COPY.vi.principleOneHuman
-                : p === PRINCIPLES[1] ? COPY.vi.principleZeroOverhead
-                : p === PRINCIPLES[2] ? COPY.vi.principleOpen
-                : COPY.vi.principleVerifiable)
-              : p;
-            return (
-              <div
-                key={principleData.label}
-                className="glass-card p-6"
+          {t.principles.map((principleData) => (
+            <div key={principleData.label} className="glass-card p-6">
+              <p className="font-bold text-sm mb-2" style={{ color: COLORS.onSurface }}>
+                {principleData.label}
+              </p>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: COLORS.onSurfaceVariant }}
               >
-                <p className="font-bold text-sm mb-2" style={{ color: COLORS.onSurface }}>
-                  {principleData.label}
-                </p>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: COLORS.onSurfaceVariant }}
-                >
-                  {principleData.body}
-                </p>
-              </div>
-            );
-          })}
+                {principleData.body}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Closing CTA row */}
+      {/* Dual-Funnel Closing CTA row */}
       <section className="py-16 px-4 sm:px-6 max-w-3xl mx-auto text-center">
+        <p
+          className="text-xs uppercase tracking-[0.2em] font-mono mb-3"
+          style={{ color: COLORS.primary }}
+        >
+          {t.dualFunnelEyebrow}
+        </p>
         <h3
           className="text-2xl sm:text-3xl font-bold mb-4 tracking-tight"
           style={{ color: COLORS.onSurface }}
         >
-          {t.manifestoTitle}
+          {t.dualFunnelTitle}
         </h3>
         <p
-          className="text-base mb-6 leading-relaxed"
+          className="text-base mb-8 leading-relaxed"
           style={{ color: COLORS.onSurfaceVariant }}
         >
-          {t.manifestoBody}
+          {t.dualFunnelBody}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
-            to="/manifesto"
-            className="font-bold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
+            to="/methodology"
+            className="font-bold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center hover:opacity-90"
+            style={{
+              backgroundColor: COLORS.primary,
+              color: COLORS.surface,
+            }}
+          >
+            {t.ctaMethodologyBtn}
+          </Link>
+          <Link
+            to="/pricing"
+            className="font-bold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center hover:opacity-90"
             style={{
               backgroundColor: COLORS.primaryContainer,
               color: COLORS.onSurface,
+              border: `1px solid ${COLORS.primary}`,
             }}
           >
-            {t.readManifestoBtn}
+            {t.ctaPricingBtn}
+          </Link>
+          <Link
+            to="/signup?tier=free"
+            className="font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center hover:text-white"
+            style={{
+              border: `1px solid ${COLORS.outline}`,
+              color: COLORS.onSurfaceVariant,
+            }}
+          >
+            {t.ctaSignupBtn}
+          </Link>
+          <Link
+            to="/manifesto"
+            className="font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center hover:text-white"
+            style={{
+              border: `1px solid ${COLORS.outline}`,
+              color: COLORS.onSurfaceVariant,
+            }}
+          >
+            {t.ctaManifestoBtn}
           </Link>
           <a
             href="https://github.com/longtho638-jpg/algo-trader"

@@ -1,144 +1,68 @@
-# Twitter Thread: Crypto Arbitrage Bot Launch
+# Twitter Thread: Solo Quant Desk & Polymarket Market-Making Launch
 
-**Tweet 1/12 (HOOK):**
-I built a crypto arbitrage bot that scans 100+ exchanges 24/7 and auto-trades profitable opportunities.
+**Tweet 1/8 (HOOK):**
+Why 90% of prediction market traders lose money:
+They don't have a prediction problem. They have a position sizing problem.
 
-Last month it caught 847 arbitrages averaging 1.8% profit each.
+I built a Solo Quant Desk running automated market making on Polymarket with Quarter-Kelly sizing and 0% maker fees.
 
-Here's how it works (and how you can use it free) 🧵
-
----
-
-**Tweet 2/12:**
-What is crypto arbitrage?
-
-Simple: Bitcoin might be $67,420 on Binance but $67,580 on Coinbase.
-
-Buy low, sell high, pocket the difference.
-
-The catch? These opportunities disappear in milliseconds.
-
-That's where automation wins.
+Here's the full architecture and how you can run it free 🧵
 
 ---
 
-**Tweet 3/12:**
-Our scanner monitors:
-- 100+ CEXes (Binance, Coinbase, Kraken...)
-- 15 DEXes (Uniswap, Curve, Balancer...)
-- 500+ trading pairs
+**Tweet 2/8:**
+The Polymarket opportunity:
+Unlike traditional crypto exchanges with high taker/maker fees, Polymarket provides 0% maker fees on prediction markets.
 
-All in real-time.
-
-Price updates every 50ms via WebSocket.
+By placing bid and ask orders around fair-value mid-price, you capture the spread when market participants buy and sell event outcomes.
 
 ---
 
-**Tweet 4/12:**
-We detect 3 types of arbitrage:
+**Tweet 3/8:**
+Why manual market making fails:
+- Spreads move in sub-second intervals
+- Unhedged inventory during sudden breaking news causes catastrophic drawdowns
+- Emotion-driven position sizing destroys compounded capital
 
-1️⃣ **Simple Arbitrage:** Buy on Exchange A, sell on Exchange B
-2️⃣ **Triangular:** Exploit mispricing across 3 pairs (USDT→BTC→ETH→USDT)
-3️⃣ **DEX-CEX:** Bridge centralized and decentralized exchanges
-
----
-
-**Tweet 5/12:**
-Triangular arbitrage example:
-
-Start with $10,000 USDT
-→ Buy BTC at $67,400
-→ Sell BTC for ETH at 0.058
-→ Sell ETH for $67,650
-
-Profit: $2,500 (2.5%) in under 3 seconds.
-
-No directional risk. Pure arbitrage.
+Automation + mathematical risk controls is the only sustainable edge.
 
 ---
 
-**Tweet 6/12:**
-The execution engine:
-
-- Slippage protection (max 0.5% by default)
-- Gas fee calculation (Ethereum, Polygon, Arbitrum)
-- Smart order routing
-- Automatic retry on failure
-
-All configured before deployment.
+**Tweet 4/8:**
+The Risk Architecture:
+1. Quarter-Kelly sizing: f* = (bp - q) / (4b) prevents over-leveraging
+2. Fail-Closed Circuit Breaker: trips immediately after consecutive losses or state anomalies
+3. Non-Custodial: Funds stay in your Polymarket proxy wallet at all times
 
 ---
 
-**Tweet 7/12:**
-Backtesting results (Q1 2026):
-
-- Total opportunities: 2,847
-- Executed: 1,923
-- Success rate: 94.2%
-- Avg profit: 1.3%
-- Sharpe ratio: 3.8
-- Max drawdown: -4.2%
-
-Data from live Binance/Kraken feed.
+**Tweet 5/8:**
+Truth in Data:
+We test and audit everything publicly.
+On our leaderboard, any backtest strategy with under 30 trades displays an explicit INSUFFICIENT_SAMPLE (<30) badge.
+17,353+ tests passing across the repository.
 
 ---
 
-**Tweet 8/12:**
-Risk management:
-
-❌ No directional exposure (always market neutral)
-❌ No leverage
-✅ Atomic executions where possible
-✅ Real-time PnL tracking
-
-Worst case: opportunity disappears before execution.
+**Tweet 6/8:**
+Dual-Funnel Model:
+- **Solo Quant Desk**: Open research, live paper stats, and methodology at https://cashclaw.cc/methodology
+- **CashClaw RaaS**: Turnkey cloud deployment connecting to your Polymarket API keys at https://cashclaw.cc/pricing
 
 ---
 
-**Tweet 9/12:**
-Tech stack:
-
-- Node.js + TypeScript
-- CCXT for exchange connectivity
-- Redis for opportunity queue
-- PostgreSQL for trade logging
-- Grafana for monitoring
-
-All open for self-hosting.
+**Tweet 7/8:**
+Pricing Plans:
+• **FREE ($0/mo)**: 1 strategy, 10 trades/day, $25 daily loss cap
+• **PRO ($49/mo)**: 5 strategies, 200 trades/day, $500 loss cap, full API
+• **ENTERPRISE ($199/mo)**: Unlimited strategies, $10,000 loss cap, priority support
 
 ---
 
-**Tweet 10/12:**
-Pricing:
+**Tweet 8/8 (CTA):**
+Audit our methodology or start trading free today:
+→ https://cashclaw.cc
 
-FREE: 10 API calls/min, basic scanning
-PRO: $49/mo — auto-trading, triangular arb
-ENTERPRISE: $299/mo — unlimited, DEX-CEX, custom strategies
+Built solo. Open for everyone.
 
-Start free, upgrade when profitable.
-
----
-
-**Tweet 11/12:**
-Launch offer (first 100 users):
-
-- 50% off PRO for life
-- Free backtesting data pack
-- Private Discord access
-- Direct line to dev team
-
-DM for early access code.
-
----
-
-**Tweet 12/12 (CTA):**
-Ready to automate your alpha?
-
-Try FREE: [github.com/your-repo]
-Live Demo: [algo-trader.demo.com]
-Docs: [docs.algo-trader.com]
-
-Questions? Drop them below 👇
-
-#crypto #arbitrage #defi #trading #bitcoin
-
+#Polymarket #AlgoTrading #Quant #KellyCriterion #DeFi

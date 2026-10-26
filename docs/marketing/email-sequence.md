@@ -1,207 +1,140 @@
-# Email Sequence
+# Email Nurture Sequence (5-Stage Free -> Pro Conversion)
 
-## Email 1: Welcome (Day 0)
-
-**Subject:** Welcome to Algo-Trader — Your First Arbitrage Awaits 🎯
+> Automated lifecycle campaign for CashClaw RaaS & Solo Quant Desk subscribers.
+> Target: Users who signed up for the Free Tier ($0/mo).
+> Objective: Educate on risk management, demonstrate proof-of-work, and convert to Pro ($49/mo).
 
 ---
+
+## Email 1: Welcome & Non-Custodial Security (Day 0 — Immediate)
+
+**Subject:** Welcome to CashClaw — Your Non-Custodial Trading Desk is Ready 🎯
 
 Hey [First Name],
 
-Welcome to **Algo-Trader** — the institutional-grade crypto arbitrage platform now available to retail traders.
+Welcome to **CashClaw & Solo Quant Desk** — the autonomous quantitative platform designed specifically for Polymarket prediction markets.
 
-**What happens next?**
+Your Free account is active. Here is how to get started safely:
 
-1. **Explore the dashboard** — Connect your exchange APIs (Binance, Coinbase, Kraken + 100 more)
-2. **Run a backtest** — See how arbitrage strategies would have performed
-3. **Go live** — Activate auto-trading when ready
+1. **Keep Full Custody:** Connect your Polymarket API key in the dashboard. Make sure you grant **Trade permissions only** (never enable withdrawals — CashClaw does not want or need custody of your capital).
+2. **Review the Risk Guard:** Your Free tier includes a strict **$25 daily loss cap** and a **$50 maximum position size** enforced by our Fail-Closed circuit breaker.
+3. **Explore the Open Methodology:** Check out how our Quarter-Kelly sizing model calculates order sizes at https://cashclaw.cc/methodology.
 
-**Quick start guide:** [Get Started in 5 Minutes →](#)
+Have questions about setting up your API key? Reply directly to this email — I read every response.
 
-**What is arbitrage?**
-Simple: Buy Bitcoin on Exchange A for $67,400, sell on Exchange B for $67,580. Pocket the $180 difference.
+To disciplined trading,
 
-Our bot does this 24/7, capturing opportunities that exist for only 200-500ms.
-
-**This month's stats:**
-- 847 opportunities detected
-- 94.2% win rate
-- Average profit: 1.3% per trade
-
-Not bad for passive income, right?
+**Solo Founder, CashClaw**  
+https://cashclaw.cc
 
 ---
 
-**Questions?** Just hit reply — I read every email.
+## Email 2: The Math of Quarter-Kelly & Downside Protection (Day 2)
 
-To your success,
-
-[Your Name]
-Founder, Algo-Trader
-
----
-
-**P.S.** Upgrade to PRO ($49/mo) to unlock auto-trading and triangular arbitrage. [Start your 7-day free trial →](#)
-
----
-
-## Email 2: Feature Highlight #1 (Day 2)
-
-**Subject:** How Sarah caught a 2.5% triangular arbitrage yesterday
-
----
+**Subject:** Why Full Kelly blows up prediction market accounts (and why we use Quarter-Kelly)
 
 Hey [First Name],
 
-Meet Sarah, a Algo-Trader PRO user from Singapore.
+The most common trap in prediction market trading is over-betting on high-conviction events.
 
-Yesterday at 2:14 PM, our scanner detected this opportunity on Binance:
+When a news headline breaks, an event probability can swing from 85% to 15% in less than 30 seconds. If you use full Kelly Criterion sizing:
+`f* = (bp - q) / b`
 
-```
-USDT → BTC → ETH → USDT
+A single fat-tail misestimation can wipe out 40%+ of your portfolio.
 
-Start: $10,000 USDT
-→ Buy BTC at $67,400
-→ Sell BTC for ETH at 0.058 rate
-→ Sell ETH for $10,250 USDT
+That is why CashClaw strictly enforces **Quarter-Kelly Sizing**:
+`f* = (bp - q) / (4b)`
 
-Profit: $250 (2.5%) in 3 seconds
-```
+By cutting position sizes to 25% of theoretical optimal, you capture 75% of maximum compounding growth while reducing portfolio variance and drawdown risk by over 80%.
 
-This is **triangular arbitrage** — exploiting price discrepancies across 3 trading pairs on the SAME exchange.
+Our `LiveExecutionGuard` calculates this automatically on every single order before it hits the Polymarket CLOB.
 
-**Why it works:**
-- Trading pairs don't always move in perfect sync
-- BTC/USDT might pump, but ETH/BTC lags behind
-- Our bot catches these 2-3 second windows
-
-**Sarah's setup:**
-- Scanning 47 triangular routes 24/7
-- Auto-execute on profits >0.3%
-- Average: 12-15 arbitrages per day
-
----
-
-**Want to try triangular arbitrage?**
-
-Upgrade to PRO and I'll send you my pre-configured route list (the exact pairs I monitor).
-
-[Start 7-Day Free Trial →](#)
-
----
-
-Cheers,
-
-[Your Name]
-
----
-
-## Email 3: Feature Highlight #2 (Day 5)
-
-**Subject:** DEX-CEX arbitrage: The 2-second goldmine
-
----
-
-Hey [First Name],
-
-Here's a secret most crypto traders don't know:
-
-**DEX prices (Uniswap, Curve) lag CEX prices (Binance, Coinbase) by 1-3 seconds.**
-
-That's an eternity for arbitrage.
-
-**Real example from this morning:**
-
-```
-14:23:47 UTC — ETH pumps from $3,920 → $3,998 on Binance (+2%)
-14:23:49 UTC — Uniswap WETH still at $3,925
-14:23:51 UTC — Bot buys 10 ETH on Uniswap, sells on Binance
-14:23:54 UTC — Profit: $730 (after $87 gas)
-```
-
-**Why DEX-CEX arbitrage is special:**
-
-✅ Less competition (most bots only scan CEXes)
-✅ Larger windows (2-3 seconds vs 200ms)
-✅ Higher profits (1-5% typical)
-
-⚠️ But requires gas fee calculation and MEV protection
-
-**Good news:** Our Enterprise plan handles all of this automatically.
-
----
-
-**Interested in DEX-CEX arbitrage?**
-
-Let's hop on a 15-min call. I'll show you the exact setup.
-
-[Book a Demo →](#)
-
----
+Want to see our backtest data across different volatility regimes?  
+→ Read the research: https://cashclaw.cc/methodology
 
 Best,
 
-[Your Name]
+**Solo Founder, CashClaw**
 
 ---
 
-**P.S.** Enterprise users get custom strategy development. If you have a specific arb idea, I'll build it for you.
+## Email 3: Truth in Data — Why We Flag Small Sample Sizes (Day 4)
 
----
-
-## Email 4: Upgrade Prompt (Day 7)
-
-**Subject:** Your free trial ends tomorrow — here's what you're missing
-
----
+**Subject:** Why our leaderboard shows "INSUFFICIENT SAMPLE (<30)" warnings
 
 Hey [First Name],
 
-Your 7-day PRO trial ends **tomorrow**.
+If you look at most trading software websites, every strategy claims a 90% win rate and a 4.0 Sharpe ratio.
 
-Here's what happened while you were exploring:
+In reality, most of those numbers come from 8 cherry-picked trades during a favorable market window.
 
-**Opportunities detected (last 24h):**
-- Simple arbitrage: 47 opportunities, avg 0.8% profit
-- Triangular arb: 23 opportunities, avg 0.4% profit
-- DEX-CEX: 8 opportunities, avg 2.1% profit
+On the CashClaw Strategy Leaderboard, we do things differently:
+- Every strategy with fewer than 30 trades displays an explicit **`INSUFFICIENT_SAMPLE (<30)`** badge.
+- We publish losing weeks right alongside winning weeks.
+- All paper trading batches are logged with cryptographic verification.
 
-**Total potential profit:** ~$1,200 (with $10K capital)
+We believe that **verifiability is the only true competitive edge**. If a model cannot survive out-of-sample stress testing, it does not belong in live execution.
 
----
+Explore the active strategies on your dashboard:  
+→ https://cashclaw.cc
 
-**What you get with PRO ($49/mo):**
+Best,
 
-✅ Auto-trading (no more manual execution)
-✅ Triangular arbitrage detection
-✅ Real-time opportunity alerts (Discord, Telegram, email)
-✅ Advanced backtesting (tick-level data)
-✅ Priority support
-
-**What you miss without PRO:**
-❌ Manual execution only (opportunities disappear in 500ms)
-❌ No triangular arbitrage
-❌ No alerts
-❌ Basic backtesting only
+**Solo Founder, CashClaw**
 
 ---
 
-**Special offer:** Upgrade in the next 24 hours and get **50% off for life** ($24.50/mo instead of $49).
+## Email 4: Hitting Free Limits — The Pro Tier Advantage (Day 7)
 
-[Claim 50% Off →](#)
+**Subject:** Scaling beyond 10 trades/day with CashClaw Pro ($49/mo)
 
-Use code: **ARBITRAGE50**
+Hey [First Name],
+
+Over the past week, you have experienced how CashClaw monitors Polymarket order books, calculates fair-value spreads, and enforces fail-closed risk controls.
+
+On the Free tier, your desk is capped at:
+- 1 active strategy
+- 10 trades per day
+- $25 daily loss limit
+
+If you are ready to scale into multi-market market making and cross-event arbitrage, **CashClaw Pro ($49/mo)** unlocks:
+- **5 Active Strategies** running simultaneously
+- **200 Trades Per Day** to capture fast-moving order book spreads
+- **$500 Daily Loss Cap** with $1,000 max position size
+- **Full API & Webhook Access** for custom automation
+
+Pro is billed monthly with zero contracts. You can cancel with one click at any time.
+
+→ Upgrade to Pro: https://cashclaw.cc/pricing
+
+To your trading edge,
+
+**Solo Founder, CashClaw**
 
 ---
 
-**Still deciding?**
+## Email 5: Special First-Month Offer (Day 10)
 
-Reply to this email with any questions. Happy to hop on a quick call.
+**Subject:** Exclusive 20% savings on CashClaw Pro (Code: LAUNCH20)
 
-To your success,
+Hey [First Name],
 
-[Your Name]
+We want to make upgrading to Pro as seamless as possible.
 
----
+For the next 48 hours, use code **`LAUNCH20`** at checkout to receive **20% off your first month of CashClaw Pro** (or Enterprise).
 
-**P.S.** 127 traders upgraded to PRO last month. Average ROI: 340% in first 30 days.
+**With Pro ($49/mo), you get:**
+✅ 5 simultaneous strategies across Polymarket  
+✅ 200 trades/day execution capacity  
+✅ Full API access & custom webhook triggers  
+✅ Automated Fail-Closed risk guard & circuit breaker  
+
+Your capital stays in your own non-custodial wallet at all times.
+
+Claim your discount before it expires:  
+→ https://cashclaw.cc/pricing?coupon=LAUNCH20
+
+Best regards,
+
+**Solo Founder, CashClaw**  
+https://cashclaw.cc

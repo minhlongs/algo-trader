@@ -1,26 +1,31 @@
 # Launch Reddit Post — r/algotrading
 
-**Title:** I built a solo quant desk with an AI Co-pilot -- 2,855 tests, 52 strategies, $0 employees
+**Title:** I built a solo quant desk on Polymarket with Quarter-Kelly sizing & Fail-Closed circuit breakers (17,353+ tests, $0 overhead)
 
 **Body:**
 
-r/algotrading,
+Hey r/algotrading,
 
-Just open-sourced my personal trading stack after 18 months of live use.
+I spent the past months building a full-stack quantitative desk and RaaS platform targeting Polymarket prediction markets. The entire architecture is live and verifiable in public.
 
-52 strategies across Polymarket V2, CEX, DEX, plus a DNA GRU forecaster and a dark-edge signal layer. 2,855 tests, all green. Node.js + TypeScript, dual-model AI: Nemotron-3 Nano for speed, DeepSeek R1 for depth. Runs local on M1 Max with TPU — zero cloud API costs, zero latency surprises.
+### The Problem with Prediction Markets
+Prediction markets have massive liquidity ($500M+/month), 0% maker fees, and distinct event-driven dynamics. However, most retail participants trade on gut feel and lack two critical things:
+1. **Mathematical Position Sizing:** Blindly betting fixed dollar amounts blows up accounts during tail-risk news events.
+2. **Fail-Closed Risk State:** If a database connection hiccups or market volatility spikes, naive bots continue firing orders until capital is liquidated.
 
-The piece that changed my workflow most is the AI Co-pilot at api.cashclaw.cc
+### What We Built:
+- **Core Engine:** TypeScript strict-mode quantitative engine running order book scanning, spread estimation, and automated limit order placement on Polymarket CLOB v2.
+- **Risk Architecture:** Quarter-Kelly Criterion sizing `f* = (bp - q) / (4b)` with dynamic daily drawdown caps, max concurrent position limits, and an automated Fail-Closed circuit breaker.
+- **Truth in Data:** On our strategy leaderboard, any backtest sample with under 30 trades carries an explicit `INSUFFICIENT_SAMPLE (<30)` warning badge. No fake 100% win rate marketing.
+- **Infrastructure:** 17,353+ tests passing across the repository, SQLite local store + PostgreSQL MCU usage metering, deployed on Cloudflare edge.
 
-**Tiers:**
-- FREE — basic scanning
-- STARTER $19/mo — AI Co-pilot + strategy marketplace
-- PRO $99/mo — full co-pilot, 5 intent handlers, Telegram /ask
-- ENTERPRISE $299/mo
-- MASTER $999/mo — white-label
+### Dual-Funnel Structure:
+- **Solo Quant Desk (`cashclaw.cc/` & `/methodology`):** Open methodology, public trade log batches, and research manifesto for independent quants.
+- **CashClaw RaaS (`cashclaw.cc/pricing`):** Non-custodial deployment connecting to your existing Polymarket API keys. You retain 100% control of your funds.
+  - **Free Tier ($0/mo):** 1 strategy, 10 trades/day, $25 daily loss cap.
+  - **Pro Tier ($49/mo):** 5 strategies, 200 trades/day, $500 loss cap, API access.
+  - **Enterprise Tier ($199/mo):** Unlimited strategies, $10,000 loss cap, priority support.
 
-If you already have a strategy library, the PRO tier is where it gets interesting. The /ask command on Telegram means I can query edge cases mid-session without leaving the terminal.
+Happy to answer any technical questions about CLOB integration, order book depth modeling, Kelly calibration, or fail-closed state machines in the comments!
 
-Happy to answer questions on the stack or the co-pilot logic in the comments.
-
-api.cashclaw.cc
+Live site & methodology: https://cashclaw.cc

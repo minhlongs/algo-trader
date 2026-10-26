@@ -1,209 +1,114 @@
 # Go-Live Launch Content — Ready to Post
 
-> Copy-paste ready. All times in UTC.
+> Copy-paste ready across all official channels.
+> Production URLs: `https://cashclaw.cc` (Dashboard & Landing) and `https://api.cashclaw.cc` (Edge API).
 
 ---
 
-## T+0h: Twitter Launch Thread (8 tweets)
+## T+0h: Twitter/X Launch Thread (8 tweets)
 
 ### Tweet 1 — Hook
 ```
 Prediction markets are the new alpha frontier.
 
-Most traders lose because they bet blind — no sizing, no calibration, just vibes.
+Most traders lose money because they size positions on gut feel and blow up on fat-tail events.
 
-We fixed that. 🧵
+We built Solo Quant Desk & CashClaw to fix that with mathematical discipline. 🧵
 ```
 
-### Tweet 2 — Problem
+### Tweet 2 — The Problem
 ```
-The problem with prediction markets:
+The reality of trading prediction markets:
+• Sizing positions on emotion destroys compounded capital
+• Sudden breaking news causes massive unhedged drawdowns
+• Most bots fail open when an API or network drops
 
-• No position sizing discipline
-• Signal quality is random  
-• You're trading against pros who run models
-
-You need edges. Plural. And math to size them right.
+You need automated market making with strict fail-closed safety.
 ```
 
 ### Tweet 3 — What is CashClaw
 ```
-CashClaw is a RaaS platform: Robot-as-a-Service.
+CashClaw is an autonomous quantitative desk & RaaS platform on Polymarket.
 
-52+ AI strategies scan prediction markets 24/7. Each signal comes with Kelly-optimal position sizing — the same math that made Ed Thorp a legend.
+We capture bid/ask spreads with 0% maker fees, using Quarter-Kelly position sizing:
+f* = (bp - q) / (4b)
 
-Subscribe. Get signals. Trade. No config needed.
+You keep full custody of your funds; we automate the execution.
 ```
 
 ### Tweet 4 — How It Works
 ```
 How it works in 3 steps:
-
-1. Subscribe — Starter ($49), Pro ($99), or Enterprise ($299)/mo
-2. Get signals — via dashboard or Telegram bot
-3. Trade — with mathematically-optimized position sizes
-
-All payments in USDT via NOWPayments.
+1. Choose a tier: Free ($0), Pro ($49), or Enterprise ($199)/mo
+2. Connect your trade-only Polymarket CLOB API key (funds never leave your wallet)
+3. Bot automatically quotes spreads, monitors drawdown, and executes safely
 ```
 
-### Tweet 5 — The Math
+### Tweet 5 — The Math & Safety Guard
 ```
-Kelly Criterion: f* = (bp - q) / b
-
-Translation: we calculate exactly how much of your bankroll to risk on each trade. Not too much (bust risk). Not too little (leaving money on the table).
-
-Dual-model AI: one for market analysis, one for risk calibration.
+Every order is vetted by our Fail-Closed LiveExecutionGuard:
+• Daily drawdown caps prevent account blowups
+• Consecutive-loss circuit breaker halts execution automatically
+• Backtests with <30 trades explicitly show INSUFFICIENT_SAMPLE badges
 ```
 
-### Tweet 6 — Trust
+### Tweet 6 — Battle-Tested Engineering
 ```
-We don't ask you to trust us blind:
-
-• 2,430+ tests pass before every deploy
-• 0 TypeScript errors in production
-• 52+ strategies across Polymarket, CEX, DEX
-• Dual-model architecture with audit trail
-
-Production-grade. Day one.
+Built for transparency and verifiable execution:
+• 17,353+ automated tests passing in CI
+• Zero TypeScript errors (strict mode, 0 :any types)
+• Cloudflare Workers edge runtime with <50ms execution latency
 ```
 
 ### Tweet 7 — Pricing
 ```
-Simple tiers. No hidden fees.
+Simple tiers. No hidden lock-in:
 
-Starter — $49/mo → Core signals + dashboard
-Pro — $99/mo → Priority signals + advanced analytics  
-Enterprise — $299/mo → Full strategy suite + direct support
+Free — $0/mo forever → 1 strategy, 10 trades/day, $25 daily loss cap
+Pro — $49/mo → 5 strategies, 200 trades/day, $500 loss cap, API access
+Enterprise — $199/mo → Unlimited strategies & trades, $10,000 loss cap
 
-All paid in USDT. Cancel anytime.
+Cancel anytime.
 ```
 
 ### Tweet 8 — CTA
 ```
-Ready to trade with the math on your side?
+Ready to trade prediction markets with mathematical discipline?
 
-→ https://cashclaw.cc
+→ Open Methodology: https://cashclaw.cc/methodology
+→ Deploy Free ($0): https://cashclaw.cc/pricing
 
-52 strategies. Kelly sizing. Subscribe and go.
+Built solo, audited in public.
 
-#CashClaw #PredictionMarkets #Polymarket #AlgoTrading
+#Polymarket #PredictionMarkets #QuantTrading #AlgoTrading #KellyCriterion
 ```
 
 ---
 
-## T+4h: Polymarket Discord
+## T+4h: Polymarket Discord & Telegram Announcement
 
 ```
-Hey everyone — we just launched CashClaw, an AI-calibrated signal platform for prediction markets.
+🚀 Solo Quant Desk & CashClaw RaaS are officially LIVE on Polymarket!
 
-What it does:
-• 52+ strategies scanning Polymarket + CEX/DEX 24/7
-• Kelly-optimal position sizing on every signal
-• Dashboard + Telegram delivery
+What we provide:
+• High-liquidity Polymarket CLOB v2 spread capture with 0% maker fees
+• Quarter-Kelly sizing & automated Fail-Closed circuit breaker
+• Truthful backtest leaderboards (clear INSUFFICIENT_SAMPLE badges for <30 trades)
+• 100% Non-custodial — your USDC stays in your wallet at all times
 
-Quick facts:
-• 2,430+ tests, production-grade from day one
-• Dual-model AI: market scanner + risk calibrator
-• $49-$299/mo, USDT via NOWPayments
-
-We're not another alpha group or meme signal channel. This is a proper RaaS platform. Happy to answer questions.
-
-→ https://cashclaw.cc
+Start Free ($0/mo) or upgrade to Pro ($49/mo) / Enterprise ($199/mo):
+→ https://cashclaw.cc/pricing
 ```
 
 ---
 
-## T+12h: Reddit r/algotrading
-
-**Title:** I built an AI-calibrated signal engine for prediction markets with Kelly-optimal position sizing
+## T+24h: Follow-up Status Post
 
 ```
-After months of development, I'm launching CashClaw — a RaaS platform for prediction market trading.
+24 hours live on Polymarket.
 
-Technical details:
-• 52+ strategies: 32 Polymarket, 12 CEX, 8 DEX  
-• Dual-model AI architecture: Nemotron-3 Nano (scanner) + DeepSeek R1 (reasoner)
-• Kelly Criterion position sizing with drawdown protection
-• WebSocket real-time delivery + Telegram bot integration
-• 2,430+ vitest tests, 0 TypeScript errors
-• Built on TypeScript/Node.js, deployed to Cloudflare Workers
-
-Architecture TL;DR:
-- Desk (proprietary trading engine) → generates signals
-- Platform (RaaS subscriber layer) → delivers to tenants  
-- Shared kernel → types, DB, utilities
-
-I'm sharing this because I want honest technical critique. The code is solid (2,430 tests, clean TS), but I'm a solo dev and there are blind spots.
-
-Ask me anything about the architecture, the strategies, or the Kelly implementation.
-
-→ https://cashclaw.cc
+System status:
+• 17,353+ tests passing across the codebase
+• Live execution guard active and protecting capital
+• Read the open research & methodology at https://cashclaw.cc/methodology
 ```
-
----
-
-## T+24h: Twitter Follow-up
-
-```
-24 hours since launch. Here's what's happening:
-
-• [INSERT REAL METRIC — first subscribers, signal count, etc.]
-• API is live at api.cashclaw.cc  
-• Dashboard is open at cashclaw.cc
-
-What people are asking:
-Q: "Why not a free tier?" → AI inference costs real money. But Starter is $49.
-Q: "How is this different from signal groups?" → Kelly sizing + dual-model AI + production infra.
-
-Questions? Drop them below. 👇
-
-cashclaw.cc
-```
-
----
-
-## T+48h: Discord Check-in
-
-```
-48 hours post-launch update:
-
-• [METRICS UPDATE]
-• What we're fixing/improving based on early feedback
-• Q&A session this weekend — drop questions in thread
-
-Thanks for the support and the tough questions. Keep them coming.
-
-cashclaw.cc
-```
-
----
-
-## Asset Checklist
-
-| Asset | Status | Notes |
-|-------|--------|-------|
-| OG image (1200×630) | ✅ Done | `landing/src/og-image.png` |
-| Twitter banner (1500×500) | ⬜ Needed | Use same design as OG image |
-| Launch thread graphic | ⬜ Needed | Signal dashboard screenshot |
-| Polymarket-style UI mockup | ⬜ Needed | Screenshot from dashboard |
-| Discord server setup | ⬜ Needed | For community Q&A |
-| Twitter profile update | ⬜ Needed | CashClaw branding + link |
-
----
-
-## Before Posting Checklist
-
-- [x] Set `api.cashclaw.cc` DNS to gray cloud (DNS-only) — NOT DONE, needs manual CF Dashboard
-- [x] Verify `https://api.cashclaw.cc/api/health` returns 200 ✅
-- [x] Verify `https://cashclaw.cc` loads with OG tags (social preview) ✅
-- [x] Set COMMIT_SHA + DEPLOYED_AT wrangler secrets on `algo-trader` worker ✅ (via wrangler secrets)
-- [x] Create at least 1 coupon code for launch discount (e.g. LAUNCH20) ✅ (seeded in KV)
-- [ ] Test full signup flow: landing → NOWPayments → activation (IPN verified ✅, actual USDT payment pending)
-- [ ] Deploy dashboard to CF Pages production
-- [ ] Deploy worker with cron health monitor
-
-### Manual actions required
-1. Cloudflare Dashboard → `api.cashclaw.cc` → set DNS to gray cloud (DNS-only)
-2. Deploy: `cd dashboard && pnpm run deploy:production`
-3. Deploy worker: `bash scripts/deploy-cf-worker-with-sha-verification.sh`
-4. Post content below to Twitter/X, Discord, Reddit on schedule
