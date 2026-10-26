@@ -84,18 +84,10 @@ export class LiveExecutionGuard {
     consecutiveLosses?: number;
     circuitTripped?: boolean;
   }): void {
-    if (typeof snapshot.dailyPnl === 'number' && Number.isFinite(snapshot.dailyPnl)) {
-      this.dailyPnl = snapshot.dailyPnl;
-    }
-    if (typeof snapshot.totalWins === 'number' && snapshot.totalWins >= 0) {
-      this.totalWins = snapshot.totalWins;
-    }
-    if (typeof snapshot.totalLosses === 'number' && snapshot.totalLosses >= 0) {
-      this.totalLosses = snapshot.totalLosses;
-    }
-    if (typeof snapshot.consecutiveLosses === 'number' && snapshot.consecutiveLosses >= 0) {
-      this.consecutiveLosses = snapshot.consecutiveLosses;
-    }
+    this.dailyPnl = snapshot.dailyPnl ?? this.dailyPnl;
+    this.totalWins = snapshot.totalWins ?? this.totalWins;
+    this.totalLosses = snapshot.totalLosses ?? this.totalLosses;
+    this.consecutiveLosses = snapshot.consecutiveLosses ?? this.consecutiveLosses;
     const shouldTrip = Boolean(snapshot.circuitTripped) || this.consecutiveLosses >= this.config.maxConsecutiveLosses;
     this.circuitTripped = shouldTrip;
     setCircuitBreakerState(shouldTrip);

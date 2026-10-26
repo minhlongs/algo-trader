@@ -139,4 +139,28 @@ describe('LiveExecutionGuard', () => {
     custom.recordLoss(-10); // 5th loss
     expect(custom.guardOrder(makeOrder()).approved).toBe(false);
   });
+
+  // ── State hydration ─────────────────────────────────────────────────────
+
+  it('hydrates persisted state correctly', () => {
+    guard.hydrateState({
+      dailyPnl: -125.5,
+      totalWins: 5,
+      totalLosses: 3,
+      consecutiveLosses: 2,
+      circuitTripped: false,
+    });
+    const status = guard.getStatus();
+    expect(status.dailyPnl).toBe(-125.5);
+    expect(status.totalWins).toBe(5);
+    expect(status.totalLosses).toBe(3);
+    expect(status.consecutiveLosses).toBe(2);
+    expect(status.circuitTripped).toBe(false);
+
+    // Trips circuit if consecutiveLosses exceeds threshold
+    guard.hydrateState({
+      consecutiveLosses: 3,
+    });
+    expect(guard.getStatus().circuitTripped).toBe(true);
+  });
 });
