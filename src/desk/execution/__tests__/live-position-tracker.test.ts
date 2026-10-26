@@ -144,4 +144,52 @@ describe('LivePositionTracker', () => {
     expect(tracker.getRealizedPnl()).toBe(0);
     expect(tracker.getSummary().positionCount).toBe(0);
   });
+
+  // ── Restore ───────────────────────────────────────────────────────────────
+
+  it('restores saved positions and realized PnL', () => {
+    tracker.restorePositions(
+      [
+        {
+          tokenId: '0xabc',
+          side: 'BUY',
+          size: 20,
+          entryPrice: 0.4,
+          currentPrice: 0.5,
+          unrealizedPnl: 0,
+          openedAt: 1000,
+          lastPriceUpdate: 2000,
+        },
+        {
+          tokenId: '0xzero',
+          side: 'BUY',
+          size: 0,
+          entryPrice: 0.5,
+          currentPrice: 0,
+          unrealizedPnl: 0,
+          openedAt: 1000,
+          lastPriceUpdate: 2000,
+        },
+        {
+          tokenId: '0xdef',
+          side: 'SELL',
+          size: 10,
+          entryPrice: 0.6,
+          currentPrice: 0,
+          unrealizedPnl: 0,
+          openedAt: 1000,
+          lastPriceUpdate: 2000,
+        },
+      ],
+      45.25,
+    );
+    expect(tracker.getPositions()).toHaveLength(2);
+    expect(tracker.getPosition('0xabc')?.unrealizedPnl).toBeCloseTo(2.0);
+    expect(tracker.getPosition('0xdef')?.currentPrice).toBe(0.6);
+    expect(tracker.getRealizedPnl()).toBe(45.25);
+
+    tracker.restorePositions([]);
+    expect(tracker.getPositions()).toHaveLength(0);
+    expect(tracker.getRealizedPnl()).toBe(45.25);
+  });
 });
