@@ -1,187 +1,53 @@
-# Reddit Posts
+# Reddit & Hacker News Posts — Solo Quant Desk & CashClaw RaaS
 
-## r/cryptocurrency Post
+## 1. r/algotrading Post
 
-**Title:** I built an open-source crypto arbitrage bot — 847 opportunities captured last month, here's what I learned
+**Title:** Built an autonomous prediction-market quant desk on Polymarket: Quarter-Kelly sizing, Fail-Closed risk guard, 17,353+ tests
 
 **Body:**
 
-Hey r/CryptoCurrency,
+Hey r/algotrading,
 
-Long-time lurker, first-time poster. I've spent the last 6 months building a crypto arbitrage trading bot, and wanted to share what I learned in case it helps others.
+After extensive engineering and testing, our Solo Quant Desk & CashClaw RaaS stack is live for Polymarket prediction markets. Here is a technical breakdown of how the system is structured.
 
-**What it does:**
-- Scans 100+ exchanges simultaneously (Binance, Coinbase, Kraken, etc.)
-- Detects price discrepancies in real-time
-- Auto-executes profitable trades via API
-- Supports triangular arbitrage (e.g., USDT→BTC→ETH→USDT)
+### Core Strategy & Market Microstructure
+Polymarket offers 0% maker fees on event prediction markets. By quoting bid/ask spreads around the fair-value midpoint and dynamically adjusting for order book depth and volatility, maker bots can harvest spread without taking unhedged directional bets.
 
-**Results from last month:**
-- 847 arbitrage opportunities detected
-- 1,923 trades executed (94.2% success rate)
-- Average profit: 1.3% per trade
-- No directional risk (always market neutral)
+### Key Engineering Decisions
+1. **Quarter-Kelly Position Sizing:** Full Kelly is too aggressive for fat-tail event markets where breaking news can jump prices by 40% in seconds. We enforce Quarter-Kelly `f* = (bp - q) / (4b)` capped by `maxPositionFraction`.
+2. **Fail-Closed Circuit Breaker:** If `LiveExecutionGuard` detects 3 consecutive losing trades, daily drawdown exceeding 5%, or a state-persistence failure, the circuit breaker trips and blocks all outbound orders until manually audited.
+3. **Statistical Honesty (`INSUFFICIENT_SAMPLE`):** Backtests with fewer than 30 trades are flagged on the leaderboard so users never confuse small-sample variance with true alpha.
+4. **PostgreSQL MCU Metering:** Atomic single-statement `INSERT ... ON CONFLICT DO UPDATE` ensures multi-tenant quota enforcement without race conditions.
 
-**Key learnings:**
+### Try It / Inspect the Methodology
+- **Open Methodology & Live Paper Batches:** https://cashclaw.cc/methodology
+- **RaaS Tiers (`cashclaw.cc/pricing`):**
+  - **Free ($0/mo):** 1 active strategy, 10 trades/day, $25 daily loss cap
+  - **Pro ($49/mo):** 5 active strategies, 200 trades/day, $500 daily loss cap, API access
+  - **Enterprise ($199/mo):** Unlimited strategies & trades, $10,000 daily loss cap, priority support
 
-1. **Opportunities exist but disappear fast** — median lifetime is 200-500ms. Manual trading is nearly impossible.
-
-2. **Fees matter more than you think** — a 0.1% fee difference between exchanges can turn a profitable arb into a loser.
-
-3. **DEX-CEX arbitrage is underrated** — Uniswap prices lag Binance by ~2 seconds on average. That's an eternity for arb.
-
-4. **Infrastructure is everything** — I moved from AWS us-east-1 to a VPS in Tokyo (closer to Binance servers) and cut latency by 40ms.
-
-**Tech stack:**
-- Node.js + TypeScript
-- CCXT for exchange connectivity
-- Redis for opportunity queue
-- PostgreSQL for trade logging
-
-**Am I rich yet?**
-Not quite. The space is competitive. But the bot consistently covers my costs and generates ~$2-4K/month passive. More importantly, it's MARKET NEUTRAL — I sleep well at night.
-
-**Open source:**
-Decided to open-source it because the community helped me immensely. If you want to check it out / contribute: [GitHub link]
-
-**AMA** — happy to answer questions about:
-- Specific arbitrage strategies
-- Exchange API quirks
-- Backtesting methodology
-- Risk management
-
-Not financial advice. DYOR.
+Ask me anything about Polymarket CLOB v2 signing, slippage estimation, or risk guards!
 
 ---
 
-## r/defi Post
+## 2. Hacker News (Show HN) Post
 
-**Title:** DEX-CEX Arbitrage: How I capture 2-second price inefficiencies between Uniswap and Binance
-
-**Body:**
-
-r/defi friends,
-
-Wanted to share a strategy that's been consistently profitable: **DEX-CEX arbitrage**.
-
-**The opportunity:**
-
-DEX prices (Uniswap, Curve) lag CEX prices (Binance, Coinbase) by 1-3 seconds on average. This creates arbitrage windows:
-
-1. ETH pumps 2% on Binance
-2. Uniswap price hasn't updated yet
-3. Buy on Uniswap, sell on Binance
-4. Pocket the spread (minus gas)
-
-**Real example from yesterday:**
-
-```
-14:23:47 UTC — BTC jumps from $67,400 → $68,100 on Binance (+1.04%)
-14:23:49 UTC — Uniswap WETH still trading at $67,450
-14:23:51 UTC — Arbitrage detected (buy UNI, sell CEX)
-14:23:54 UTC — Executed: 10 ETH arb, profit = $420 (after $87 gas)
-```
-
-**Why this works:**
-
-- AMM pricing is mechanical (constant product formula)
-- Liquidity providers rebalance slowly
-- CEX order books update instantly
-
-**Risks:**
-
-- Gas spikes can kill profits (always calculate before executing)
-- Slippage on larger trades
-- Failed transactions = lost gas
-
-**My setup:**
-
-- Monitoring 15 DEX pools across Ethereum, Arbitrum, Polygon
-- Gas price oracle for real-time fee estimation
-- Auto-calculate profitability before execution
-- 50ms polling interval
-
-**Open-sourced my bot** if anyone wants to experiment: [GitHub link]
-
-**Questions?** Happy to share more about:
-- Specific pools I monitor
-- Gas optimization tricks
-- MEV protection strategies
-
----
-
-## r/algotrading Post
-
-**Title:** Built a market-neutral crypto arbitrage system: 3.8 Sharpe, 94% win rate, here's the breakdown
+**Title:** Show HN: CashClaw – Solo Quant Desk and Non-Custodial Market Making on Polymarket
 
 **Body:**
 
-r/algotrading,
+Hi HN,
 
-After 18 months of development, my crypto arbitrage system is finally stable. Thought the quant folks here might appreciate the technical deep dive.
+I built Solo Quant Desk / CashClaw (https://cashclaw.cc), an autonomous quantitative desk and non-custodial RaaS platform for Polymarket prediction markets.
 
-**Strategy overview:**
+The project started with a simple thesis: one engineer with a disciplined agent stack, strict type safety, and automated risk guards can run a full quantitative trading desk with zero institutional overhead.
 
-Pure arbitrage (no directional exposure):
-1. Simple 2-leg: Buy Exchange A, sell Exchange B
-2. Triangular: 3-leg arb within same exchange
-3. DEX-CEX: Cross-venue arb
+**Highlights of the stack:**
+- **TypeScript Strict Monorepo:** 17,353+ passing unit/integration tests across the execution engine, risk guard, and React dashboard.
+- **Fail-Closed Risk State:** Every live order passes through `LiveExecutionGuard` (position fraction check, daily drawdown limit, max concurrent positions, and consecutive-loss circuit breaker).
+- **Verifiable Data Integrity:** We publish both winning and losing trade batches. Strategies with `< 30` trades are automatically badged with `INSUFFICIENT_SAMPLE (<30)` on our leaderboard.
+- **Non-Custodial by Design:** Users connect via trade-only Polymarket CLOB API keys. Capital never leaves the user's wallet.
 
-**Performance (Q1 2026):**
+We offer a Free Forever tier ($0/mo, 1 strategy, 10 trades/day) alongside Pro ($49/mo) and Enterprise ($199/mo).
 
-| Metric | Value |
-|--------|-------|
-| Total opportunities | 2,847 |
-| Trades executed | 1,923 |
-| Win rate | 94.2% |
-| Avg profit/trade | 1.3% |
-| Sharpe ratio | 3.8 |
-| Max drawdown | -4.2% |
-| Avg daily PnL | +$187 |
-
-**Infrastructure:**
-
-```
-Exchange APIs (WebSocket) → Price Normalizer → Opportunity Detector
-                                                    ↓
-                                            Profitability Calculator
-                                                    ↓
-                                            Execution Engine → Exchange APIs
-                                                    ↓
-                                            PostgreSQL (audit trail)
-```
-
-**Key technical challenges:**
-
-1. **Latency arbitrage** — Some exchanges have faster APIs than others. CoinBase ~50ms, Kraken ~120ms, Binance ~80ms. Normalized with async queues.
-
-2. **Order book modeling** — Top of book isn't enough. Need depth-10 for realistic fill probability estimation.
-
-3. **Slippage estimation** — Used historical fill data to model slippage as function of order size / 24h volume.
-
-4. **Failover logic** — If leg 1 fills but leg 2 fails, you're now directional. Built in auto-hedge with stop-loss.
-
-**Backtesting methodology:**
-
-- Tick-level data from 6 exchanges
-- Modeled latency + slippage + fees
-- Walk-forward optimization (no look-ahead bias)
-- Monte Carlo simulation for edge cases
-
-**Tech stack:**
-
-- Node.js + TypeScript (considering Rust for latency-critical paths)
-- CCXT for exchange connectivity
-- Redis for opportunity queue
-- PostgreSQL + TimescaleDB for historical data
-- Grafana for real-time monitoring
-
-**Open source:** [GitHub link]
-
-Happy to discuss:
-- Specific execution logic
-- Backtesting framework
-- Risk management parameters
-- Exchange API quirks
-
-Not financial advice.
+Would love your feedback on the methodology (https://cashclaw.cc/methodology) and risk architecture!

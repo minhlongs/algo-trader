@@ -1,340 +1,79 @@
-# Technical Blog: How We Built a Crypto Arbitrage Bot
+# Technical Blog: How We Built a Non-Custodial Market-Making & Cross-Event Arbitrage Engine on Polymarket (EN + VI)
 
-> **Published:** [Date]
-> **Author:** [Your Name]
-> **Reading time:** 12 min
-
----
-
-## Introduction
-
-Last month, our crypto arbitrage bot captured **847 profitable opportunities** across 100+ exchanges, generating consistent returns with zero directional risk.
-
-In this post, I'll break down:
-- How arbitrage works in crypto markets
-- The technical architecture of our system
-- Key challenges we solved (latency, slippage, failures)
-- Performance metrics from live trading
-- How you can run it yourself (open source)
+> **Published:** October 26, 2026  
+> **Author:** Solo Founder, CashClaw (`cashclaw.cc`)  
+> **Reading time:** 10 min  
+> **SEO Keywords:** Polymarket arbitrage engine, CLOB v2 market making, NegRisk arbitrage, Quarter-Kelly sizing, PostgreSQL MCU metering
 
 ---
 
-## What Is Crypto Arbitrage?
+## Part 1: English Edition
 
-Simple concept: **Buy low on Exchange A, sell high on Exchange B.**
+### 1. Introduction
 
-Real example from March 15, 2026:
-```
-14:23:47 UTC — Bitcoin trading at $67,420 on Binance
-14:23:48 UTC — Bitcoin trading at $67,580 on Coinbase
-14:23:49 UTC — Buy 1 BTC on Binance, sell on Coinbase
-14:23:52 UTC — Profit: $160 (minus ~$8 fees = $152 net)
-```
+In prediction markets, price inefficiencies arise constantly between mutually exclusive outcomes (NegRisk events), complementary binary contracts, and wide bid/ask spreads during high-volume news cycles.
 
-The opportunity existed for **3 seconds**. A human can't compete — you need automation.
+Because Polymarket charges **0% maker fees**, an automated quantitative desk that quotes disciplined spreads and detects cross-outcome mispricings can harvest structural edge without taking unhedged directional gambles.
+
+In this technical deep dive, we break down how **CashClaw & Solo Quant Desk** (`https://cashclaw.cc`) is architected.
 
 ---
 
-## Types of Arbitrage We Support
+### 2. Three Layers of Prediction-Market Alpha
 
-### 1. Simple 2-Leg Arbitrage
+#### 2.1 Fair-Value Spread Market Making
+CashClaw continuously computes the volume-weighted midpoint across Polymarket CLOB order books and posts resting bid and ask limit orders around fair value. When both sides fill, the desk earns the spread with 0% maker fee leakage.
 
-The classic: buy on Exchange A, sell on Exchange B.
+#### 2.2 NegRisk & Cross-Outcome Arbitrage
+In multi-outcome markets where probabilities must sum to `1.00`, temporary retail order flow often pushes the sum of `YES` prices below `$0.98` or above `$1.02`. Our NegRisk scanner detects these deviations in real time and calculates exact fee-adjusted profitability before execution.
 
-**Pros:** Simple logic, easy to understand
-**Cons:** Requires capital on both exchanges
-
-### 2. Triangular Arbitrage
-
-Exploit mispricing across 3 trading pairs on the SAME exchange:
-
-```
-Start: $10,000 USDT
-→ Buy BTC at $67,400 (get 0.1483 BTC)
-→ Sell BTC for ETH at 0.058 rate (get 2.557 ETH)
-→ Sell ETH at $3,920 (get $10,023 USDT)
-
-Profit: $23 (0.23%) in ~2 seconds
-```
-
-**Pros:** No cross-exchange risk, faster execution
-**Cons:** Smaller margins, highly competitive
-
-### 3. DEX-CEX Arbitrage
-
-Bridge centralized exchanges (Binance, Coinbase) with DEXes (Uniswap, Curve):
-
-```
-Binance ETH pumps 2% → Uniswap price lags by ~2 seconds
-→ Buy ETH on Uniswap at old price
-→ Sell ETH on Binance at new price
-→ Pocket the spread
-```
-
-**Pros:** Less competition, larger windows
-**Cons:** Gas fees, slower execution, MEV risk
+#### 2.3 Quarter-Kelly Sizing & Fail-Closed Execution
+Every candidate order is sized via Quarter-Kelly `f* = (bp - q) / (4b)` and verified by `LiveExecutionGuard`:
+- **Position Size Cap:** Rejects any order exceeding `maxPositionFraction` of desk capital.
+- **Daily Drawdown Cap:** Halts trading immediately if realized + unrealized losses hit the daily limit (`$25` on Free, `$500` on Pro, `$10,000` on Enterprise).
+- **Consecutive-Loss Circuit Breaker:** Trips automatically after 3 consecutive losing fills.
+- **Fail-Closed State Hydration:** If SQLite or PostgreSQL state persistence encounters an error, the guard fails closed and blocks new orders.
 
 ---
 
-## System Architecture
+### 3. Atomic Usage Metering (PostgreSQL MCU)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Price Data Layer                              │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │
-│  │ Binance │ │ Coinbase│ │ Kraken  │ │ Uniswap │ │  ...    │  │
-│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘  │
-│       │           │           │           │           │        │
-│       └───────────┴───────────┴───────────┴───────────┘        │
-│                              │                                   │
-│                    WebSocket Streams                             │
-└──────────────────────────────┼──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Normalization Layer                           │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  Price Normalizer (converts all to USD, handles decimals)│   │
-│  └─────────────────────────────────────────────────────────┘   │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Detection Layer                               │
-│  ┌──────────────────┐    ┌──────────────────┐                  │
-│  │  Opportunity     │    │  Profitability   │                  │
-│  │  Detector        │ →  │  Calculator      │                  │
-│  │  (50ms latency)  │    │  (fees + slippage)│                 │
-│  └──────────────────┘    └─────────┬────────┘                  │
-└────────────────────────────────────┼────────────────────────────┘
-                                     │
-                                     ▼ (if profitable)
-┌─────────────────────────────────────────────────────────────────┐
-│                    Execution Layer                               │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Execution Engine                                         │  │
-│  │  • Atomic multi-leg orders                                │  │
-│  │  • Slippage protection (max 0.5%)                         │  │
-│  │  • Auto-retry on failure                                  │  │
-│  │  • Gas estimation (Ethereum, Polygon, Arbitrum)           │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
+For our multi-tenant RaaS platform, quota enforcement must be deterministic under concurrent load. CashClaw uses a single-statement atomic PostgreSQL upsert (`INSERT ... ON CONFLICT (tenant_id, period_key) DO UPDATE`) inside `PostgresUsageStore` to track Monthly Compute Units (MCU) with zero race conditions and automatic memory fallback.
 
 ---
 
-## Key Technical Challenges
+### 4. Production Pricing Tiers
 
-### Challenge 1: Latency Wars
+| Tier | Price | Active Strategies | Daily Trades | Daily Loss Cap | Max Position |
+|------|-------|-------------------|--------------|----------------|--------------|
+| **Free** | **$0/mo** (forever) | 1 | 10 | $25 | $50 |
+| **Pro** | **$49/mo** | 5 | 200 | $500 | $1,000 |
+| **Enterprise** | **$199/mo** | Unlimited | Unlimited | $10,000 | $25,000 |
 
-**Problem:** Arbitrage windows close in 200-500ms. Every millisecond counts.
+All plans are 100% non-custodial. Your USDC remains in your Polymarket wallet at all times.
 
-**Solution:**
-- WebSocket streams (not REST polling)
-- Co-located VPS in Tokyo (closer to Binance servers)
-- Async event-driven architecture (Node.js + Redis)
-- Pre-computed routes for triangular arbitrage
-
-**Result:** Detection-to-execution latency: **<50ms average**
-
-### Challenge 2: Slippage Modeling
-
-**Problem:** The price you see isn't the price you get.
-
-**Solution:**
-- Track order book depth (top 10 levels, not just best bid/ask)
-- Historical slippage database per exchange/pair
-- Dynamic position sizing based on liquidity
-
-Formula:
-```javascript
-expectedSlippage = (orderSize / 24hVolume) * slippageFactor[exchange]
-```
-
-**Result:** Slippage prediction accuracy: **±0.15%**
-
-### Challenge 3: Failed Legs
-
-**Problem:** Leg 1 fills, Leg 2 fails → now you're directional (unintended risk).
-
-**Solution:**
-- Pre-trade validation (balance check, API health)
-- Atomic execution where possible
-- Auto-hedge with stop-loss if leg fails
-- Real-time exposure monitoring
-
-**Result:** Failed leg rate: **<2%** of trades
-
-### Challenge 4: Fee Optimization
-
-**Problem:** A 0.1% fee difference turns profit into loss.
-
-**Solution:**
-- Real-time fee tier tracking per exchange
-- Use exchange tokens for fee discounts (BNB, KCS)
-- Route orders through lowest-fee venue when possible
-
-**Result:** Effective fee rate: **~0.06%** (vs 0.1% standard)
+👉 **Read the Open Methodology:** https://cashclaw.cc/methodology  
+👉 **Deploy Your Desk:** https://cashclaw.cc/pricing
 
 ---
 
-## Performance Metrics (Q1 2026)
+## Phần 2: Phiên Bản Tiếng Việt
 
-| Metric | Value |
-|--------|-------|
-| **Total opportunities detected** | 2,847 |
-| **Trades executed** | 1,923 |
-| **Win rate** | 94.2% |
-| **Average profit/trade** | 1.3% |
-| **Sharpe ratio** | 3.8 |
-| **Max drawdown** | -4.2% |
-| **Average daily PnL** | +$187 |
-| **Best day** | +$892 (March 12) |
-| **Worst day** | -$124 (February 3) |
+### 1. Tổng quan Kiến trúc Tạo lập Thị trường & Arbitrage trên Polymarket
 
-**Distribution by strategy:**
-- Simple 2-leg: 45% of trades, 1.1% avg profit
-- Triangular: 38% of trades, 0.4% avg profit
-- DEX-CEX: 17% of trades, 2.8% avg profit
+Trên các thị trường dự đoán sự kiện của Polymarket, sự chênh lệch giá (spread) và định giá sai giữa các nhánh kết quả loại trừ lẫn nhau (NegRisk) xuất hiện liên tục khi có tin tức mới. Nhờ chính sách **0% phí Maker**, hệ thống tự động đặt lệnh giới hạn (Limit Order) quanh vùng giá hợp lý có thể thu lợi nhuận từ chênh lệch giá mà không cần đánh cược xu hướng một chiều.
 
----
+### 2. Ba Trụ cột Kỹ thuật của CashClaw
 
-## Backtesting Framework
+1. **Định cỡ vị thế Quarter-Kelly & Ngắt mạch Fail-Closed:** Tự động giới hạn quy mô từng lệnh, khóa giao dịch ngay khi chạm ngưỡng lỗ ngày (`$25` gói Free, `$500` gói Pro, `$10.000` gói Enterprise) hoặc khi thua 3 lệnh liên tiếp.
+2. **Định lượng Trung thực (`INSUFFICIENT_SAMPLE`):** Mọi chiến lược backtest có dưới 30 giao dịch đều được gắn cảnh báo mẫu nhỏ công khai trên bảng xếp hạng.
+3. **Đo lường Hạn mức Nguyên tử (Atomic PostgreSQL MCU):** Đảm bảo tính chính xác tuyệt đối cho từng tài khoản thuê bao RaaS với hơn **17.353+ bài kiểm thử tự động** xanh 100%.
 
-We don't deploy strategies without rigorous backtesting:
+### 3. Bắt đầu ngay hôm nay
 
-### Data Sources
-- Tick-level OHLCV from 6 major exchanges
-- Order book depth snapshots (every 100ms)
-- Historical fee schedules
-- Gas price history (Etherscan API)
+- **Gói Free ($0/tháng mãi mãi):** 1 chiến lược, 10 lệnh/ngày, giới hạn lỗ $25/ngày.
+- **Gói Pro ($49/tháng):** 5 chiến lược, 200 lệnh/ngày, giới hạn lỗ $500/ngày, mở khóa API.
+- **Gói Enterprise ($199/tháng):** Không giới hạn chiến lược & số lệnh, giới hạn lỗ $10.000/ngày, hỗ trợ ưu tiên.
 
-### Methodology
-1. **Walk-forward optimization** — No look-ahead bias
-2. **Latency modeling** — Add realistic delay between detection and execution
-3. **Slippage modeling** — Use historical fill data
-4. **Monte Carlo simulation** — 10,000 runs with randomized parameters
-
-### Sample Backtest Output (Q1 2026)
-```
-Strategy: Multi-Exchange Simple Arbitrage
-Period: Jan 1 - Mar 31, 2026
-Initial Capital: $50,000
-Final Capital: $67,423
-
-Total Return: 34.8%
-Annualized Return: 162%
-Sharpe Ratio: 3.8
-Max Drawdown: -4.2%
-Avg Daily Trades: 21.3
-Win Rate: 94.2%
-```
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| **Runtime** | Node.js 20 LTS |
-| **Language** | TypeScript (strict mode) |
-| **Exchange API** | CCXT library |
-| **Message Queue** | Redis |
-| **Database** | PostgreSQL + TimescaleDB |
-| **Monitoring** | Grafana + Prometheus |
-| **Deployment** | Docker + Kubernetes |
-| **Cloud** | AWS (us-east-1, ap-northeast-1) |
-
-**Lines of code:** ~6,000 (excluding tests)
-**Test coverage:** 87%
-
----
-
-## Risk Management
-
-### What We Don't Do
-❌ No leverage (always 1x)
-❌ No directional exposure (always hedged)
-❌ No illiquid pairs (min $1M 24h volume)
-❌ No exchanges without proof of reserves
-
-### Safety Mechanisms
-✅ Real-time PnL monitoring
-✅ Auto-pause on >3 consecutive losses
-✅ Daily loss limit (-2% = stop trading)
-✅ API key restrictions (no withdrawal permissions)
-✅ Encrypted secrets (AWS Secrets Manager)
-
----
-
-## Running It Yourself
-
-The bot is **open source** under MIT license.
-
-### Quick Start
-```bash
-git clone https://github.com/your-repo/algo-trader
-cd algo-trader
-npm install
-cp .env.example .env  # Add your API keys
-npm run backtest      # Test strategies
-npm run start         # Go live!
-```
-
-### Requirements
-- Node.js 20+
-- PostgreSQL 15+
-- Redis 7+
-- Exchange API keys (Binance, Coinbase, Kraken minimum)
-
-### Pricing Tiers
-- **FREE:** Basic scanning, 10 API calls/min
-- **PRO ($49/mo):** Auto-trading, triangular arb
-- **ENTERPRISE ($499/mo):** Unlimited, DEX-CEX, custom strategies
-
----
-
-## Lessons Learned
-
-1. **Start small** — Test with $100 before deploying $10K
-2. **Monitor everything** — Grafana dashboards are your friend
-3. **Latency matters** — But don't obsess over milliseconds early on
-4. **Fees are silent killers** — Model them accurately
-5. **DEX-CEX is underrated** — Less competition, more opportunity
-6. **Open source wins** — Community contributions made this 10x better
-
----
-
-## What's Next
-
-**Q2 2026 Roadmap:**
-- [ ] Funding rate arbitrage (perpetual futures)
-- [ ] MEV protection for DEX trades
-- [ ] Machine learning for opportunity prediction
-- [ ] Mobile app for monitoring
-- [ ] Copy-trading integration
-
----
-
-## Final Thoughts
-
-Crypto arbitrage isn't a get-rich-quick scheme. It's a **get-steadily-richer-slowly** strategy.
-
-Our bot generates **$4-8K/month** with zero market risk. Not life-changing, but impressive for passive income.
-
-The real edge? **Infrastructure and discipline.** Most traders can't compete with 50ms execution and 94% win rates.
-
-If you're interested in learning more or contributing, check out the [GitHub repo](#).
-
----
-
-*Disclaimer: This is not financial advice. Crypto trading involves risk of loss. Past performance does not guarantee future results. Only trade with money you can afford to lose.*
-
-**Questions?** Drop them in the comments or join our [Discord](#).
-
----
-
-**Related Posts:**
-- [Triangular Arbitrage: A Complete Guide](#)
-- [DEX vs CEX: Where Should You Trade?](#)
-- [How to Backtest Trading Strategies (Without Making These Mistakes)](#)
+👉 **Xem Phương Pháp Luận:** https://cashclaw.cc/methodology  
+👉 **Đăng Ký Miễn Phí ($0):** https://cashclaw.cc/signup?tier=free

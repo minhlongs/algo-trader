@@ -1,95 +1,32 @@
-# Discord Announcement
-
-## Launch Announcement
+# Discord & Telegram Announcement — Solo Quant Desk & CashClaw
 
 **@everyone**
 
-🚀 **ALGO-TRADER IS LIVE** 🚀
+🚀 **CashClaw & Solo Quant Desk are officially LIVE on Polymarket** 🚀
 
-After 18 months of development, we're officially launching the **Algo-Trader Crypto Arbitrage Platform**.
-
----
-
-### What is Algo-Trader?
-
-Institutional-grade arbitrage bot for retail traders:
-- 🔍 Scans 100+ exchanges 24/7
-- ⚡ Auto-executes profitable trades
-- 📊 Triangular, DEX-CEX, funding rate arbitrage
-- 🛡️ Zero directional risk (always market neutral)
+A battle-tested quantitative platform built for prediction market traders:
+- 🔍 High-liquidity Polymarket CLOB v2 scanning & market making
+- ⚡ 0% maker fees spread capture around fair-value mid-price
+- 🛡️ Quarter-Kelly position sizing + Fail-Closed Circuit Breaker
+- 🔒 100% Non-custodial — your funds remain in your wallet
 
 ---
 
-### Live Performance (Q1 2026)
-
-| Metric | Value |
-|--------|-------|
-| Opportunities detected | 2,847 |
-| Trades executed | 1,923 |
-| Win rate | 94.2% |
-| Avg profit/trade | 1.3% |
-| Sharpe ratio | 3.8 |
-| Max drawdown | -4.2% |
+### Transparent Verification & Metrics
+- **17,353+ tests passing** across our TypeScript engine, live guards, and web dashboard
+- Truthful leaderboard with **INSUFFICIENT_SAMPLE (<30)** badges on backtest samples under 30 trades
+- Open public trade log batches & methodology
 
 ---
 
-### Pricing
-
-**FREE** — Basic scanning, 10 API calls/min
-**PRO** — $49/mo — Auto-trading, triangular arb
-**ENTERPRISE** — $299/mo — Unlimited, DEX-CEX, custom strategies
-
----
-
-### Launch Offer (First 100 Users)
-
-🎁 **50% off PRO for life** ($24.50/mo)
-🎁 Free backtesting data pack ($299 value)
-🎁 Private Discord access
-🎁 Direct line to dev team
-
-Use code: **LAUNCH50**
+### Simple, Transparent Pricing
+- **FREE ($0/mo forever):** 1 active strategy, 10 trades/day, $25 daily loss cap
+- **PRO ($49/mo):** 5 active strategies, 200 trades/day, $500 daily loss cap, API access
+- **ENTERPRISE ($199/mo):** Unlimited strategies, $10,000 daily loss cap, priority support
 
 ---
 
 ### Get Started
-
-📖 **Docs:** [docs.algo-trader.com](#)
-💻 **GitHub:** [github.com/your-repo/algo-trader](#)
-🎮 **Demo:** [demo.algo-trader.com](#)
-
----
-
-### AMA Session
-
-We're hosting an **AMA this Friday at 3 PM UTC**.
-
-Drop your questions below 👇
-
-Topics we'll cover:
-- How arbitrage works
-- Technical deep dive
-- Live demo
-- Q&A
-
----
-
-**Not financial advice. DYOR. Trade responsibly.**
-
----
-
-## Follow-up: AMA Reminder
-
-**@here**
-
-⏰ **AMA Reminder: Friday at 3 PM UTC**
-
-We'll be covering:
-- How the arbitrage engine works (technical deep dive)
-- Live demo of the bot in action
-- Your questions from this thread
-- Surprise announcements 🎁
-
-**Can't make it live?** No worries — recording will be posted here.
-
-See you there! 🚀
+- 📖 **Methodology:** https://cashclaw.cc/methodology
+- 💻 **Pricing & Sign Up:** https://cashclaw.cc/pricing
+- 🎮 **Live Desk:** https://cashclaw.cc

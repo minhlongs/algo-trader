@@ -3,14 +3,94 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CashClaw Dashboard</title>
+  <title>CashClaw — Autonomous Quant Desk &amp; Prediction Market RaaS on Polymarket</title>
+  <meta name="description" content="Solo Quant Desk &amp; CashClaw RaaS: Non-custodial algorithmic market making, Quarter-Kelly sizing, fail-closed risk guards, and verifiable trade logs on Polymarket. Start Free ($0) or upgrade to Pro ($49/mo) &amp; Enterprise ($199/mo)." />
+  <meta name="keywords" content="Polymarket market making, prediction market quant desk, Quarter-Kelly sizing, CashClaw RaaS, algorithmic trading Polymarket, non-custodial CLOB bot" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://cashclaw.cc/" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta property="og:title" content="CashClaw Dashboard" />
-  <meta property="og:description" content="Real-time algorithmic trading dashboard for Polymarket market making" />
+
+  <!-- OpenGraph -->
+  <meta property="og:site_name" content="CashClaw · Solo Quant Desk" />
+  <meta property="og:title" content="CashClaw — Autonomous Quant Desk &amp; Prediction Market RaaS on Polymarket" />
+  <meta property="og:description" content="One operator, verifiable trade batches, Quarter-Kelly sizing, and non-custodial Polymarket market making. Start Free ($0) or scale with Pro ($49) &amp; Enterprise ($199)." />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://cashclaw.cc/" />
+
+  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="CashClaw Dashboard" />
-  <meta name="twitter:description" content="Real-time algorithmic trading dashboard for Polymarket market making" />
+  <meta name="twitter:title" content="CashClaw — Autonomous Quant Desk &amp; Prediction Market RaaS on Polymarket" />
+  <meta name="twitter:description" content="Verifiable prediction-market quant desk &amp; RaaS platform on Polymarket. Quarter-Kelly position sizing, fail-closed circuit breakers, and $0 Free tier." />
+
+  <!-- JSON-LD Structured Data (SoftwareApplication + FAQPage) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "CashClaw",
+        "alternateName": "Solo Quant Desk",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web, Cloud Edge",
+        "url": "https://cashclaw.cc/",
+        "description": "Autonomous quantitative desk and non-custodial market-making RaaS for Polymarket prediction markets with Quarter-Kelly sizing and fail-closed circuit breakers.",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Tier",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "1 active strategy, 10 trades/day, $25 daily loss cap, $50 max position size."
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro Tier",
+            "price": "49",
+            "priceCurrency": "USD",
+            "description": "5 active strategies, 200 trades/day, $500 daily loss cap, $1,000 max position size, API access."
+          },
+          {
+            "@type": "Offer",
+            "name": "Enterprise Tier",
+            "price": "199",
+            "priceCurrency": "USD",
+            "description": "Unlimited active strategies and daily trades, $10,000 daily loss cap, $25,000 max position size, priority support."
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does CashClaw make money on Polymarket?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "CashClaw posts bid and ask orders around the fair-value mid-price on Polymarket. When both sides fill, you capture the spread with 0% maker fees while keeping full non-custodial control of your wallet."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does CashClaw protect trading capital?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "CashClaw enforces Quarter-Kelly position sizing, strict daily loss caps, maximum position limits, and a fail-closed circuit breaker that halts order placement after consecutive losses or state-store anomalies."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What are CashClaw's pricing tiers?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "CashClaw offers a Free Forever plan ($0/month), a Pro plan ($49/month), and an Enterprise plan ($199/month) with flexible monthly billing and zero lock-in."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body class="bg-bg text-white">
   <div id="root"></div>
