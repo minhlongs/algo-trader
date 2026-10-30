@@ -37,7 +37,8 @@ export class Backtester {
           totalLoss += Math.abs(pnl);
           losingTrades++;
         }
-        capital += pnl;
+        // Do NOT compound theoretical expectedProfit into realized capital.
+        // Without a fill and fee model, expectedProfit is a detected edge, not cash.
       }
     }
 
@@ -120,10 +121,13 @@ export class Backtester {
 
     for (const opp of opportunities) {
       if (opp.executed) {
-        capital += opp.expectedProfit;
-        if (capital > peak) peak = capital;
-        const drawdown = (peak - capital) / peak;
-        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        // Only realized losses reduce equity. Positive expected profit is a
+        // detected edge, not cash, so it must not raise the drawdown peak.
+        if (opp.expectedProfit < 0) {
+          capital += opp.expectedProfit;
+          const drawdown = (peak - capital) / peak;
+          if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        }
       }
     }
 

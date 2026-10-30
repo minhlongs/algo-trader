@@ -69,11 +69,12 @@ export class PolymarketArbStrategy extends BasePolymarketStrategy {
         const yesBA = this.bestBidAsk(yesBook);
         const noBA = this.bestBidAsk(noBook);
 
-        if (yesBA.mid <= 0 || noBA.mid <= 0) continue;
-        if (yesBA.mid >= 1 || noBA.mid >= 1) continue;
+        if (yesBA.ask <= 0 || noBA.ask <= 0) continue;
+        if (yesBA.ask >= 1 || noBA.ask >= 1) continue;
 
-        // Check YES/NO arbitrage: combined price < 1
-        const spread = detectYesNoArb(yesBA.mid, noBA.mid);
+        // Check YES/NO arbitrage using executable ask prices, NOT mid prices.
+        // Entering a long position executes at the ask; mid is non-executable.
+        const spread = detectYesNoArb(yesBA.ask, noBA.ask);
         if (spread <= 0) continue;
 
         // Check spread stability
@@ -86,8 +87,8 @@ export class PolymarketArbStrategy extends BasePolymarketStrategy {
 
         if (avgSpread < this.cfg.minSpread) continue;
 
-        // Combined YES + NO price check
-        const combinedPrice = yesBA.mid + noBA.mid;
+        // Combined executable YES + NO price check
+        const combinedPrice = yesBA.ask + noBA.ask;
         if (combinedPrice >= this.cfg.maxCombinedPrice) continue;
 
         // Execute: BUY YES at the ask, BUY NO at the ask (synthetic 1)
