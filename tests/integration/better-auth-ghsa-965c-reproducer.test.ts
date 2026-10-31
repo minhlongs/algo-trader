@@ -29,9 +29,13 @@ import { magicLink } from 'better-auth/plugins';
 import { memoryAdapter } from 'better-auth/adapters/memory';
 import pg from 'pg';
 import { up as runMigration004 } from '../../src/shared/db/migrations/004-better-auth-tables';
+import {
+  assertTestDatabaseSafe,
+  createScopedCleanupTracker,
+} from '../helpers/test-db-safety-guard';
 
 const TEST_DB_NAME = 'algo_trader_test_auth';
-const TEST_PG_CONFIG = {
+const TEST_PG_CONFIG: pg.PoolConfig = {
   host: process.env.TEST_DB_HOST || 'localhost',
   port: parseInt(process.env.TEST_DB_PORT || '5432', 10),
   database: process.env.TEST_DB_NAME || TEST_DB_NAME,
@@ -56,12 +60,18 @@ describe('GHSA-965c-763c-88jm (CVE-2026-114607) Regression & Prefix Separation',
   } = { user: [], session: [], account: [], verification: [] };
   let capturedMagicToken = '';
   let fixtureAuth: ReturnType<typeof betterAuth>;
+  const cleanupTracker = createScopedCleanupTracker();
 
   beforeAll(async () => {
     try {
+      assertTestDatabaseSafe(TEST_PG_CONFIG);
       const candidatePool = new pg.Pool(TEST_PG_CONFIG);
       const client = await candidatePool.connect();
       try {
+        const dbRes = await client.query<{ current_database: string }>(
+          'SELECT current_database()',
+        );
+        assertTestDatabaseSafe({ database: dbRes.rows[0]?.current_database });
         await runMigration004(client);
         pool = candidatePool;
         isPostgres = true;
@@ -101,7 +111,19 @@ describe('GHSA-965c-763c-88jm (CVE-2026-114607) Regression & Prefix Separation',
   afterAll(async () => {
     if (pool) {
       try {
-        await pool.query(`DELETE FROM "user" WHERE email LIKE 'victim_%@cashclaw.cc'`);
+        const userIds = cleanupTracker.getUserIds();
+        if (userIds.length > 0) {
+          await pool.query('DELETE FROM "user" WHERE id = ANY($1::text[])', [
+            userIds,
+          ]);
+        }
+        const verIdentifiers = cleanupTracker.getVerificationIdentifiers();
+        if (verIdentifiers.length > 0) {
+          await pool.query(
+            'DELETE FROM verification WHERE identifier = ANY($1::text[])',
+            [verIdentifiers],
+          );
+        }
       } catch {
         // ignore cleanup error
       }
@@ -121,6 +143,7 @@ describe('GHSA-965c-763c-88jm (CVE-2026-114607) Regression & Prefix Separation',
       },
     });
     expect(victimSignup.user.email).toBe(victimEmail);
+    cleanupTracker.trackUserId(victimSignup.user.id);
 
     // 2. Attacker initiates OAuth sign-in injecting victim's email in additionalData
     const oauthInit = await fixtureAuth.api.signInSocial({
@@ -178,6 +201,9 @@ describe('GHSA-965c-763c-88jm (CVE-2026-114607) Regression & Prefix Separation',
     if (isPostgres && pool) {
       const verRes = await pool.query<VerificationRow>('SELECT identifier, value FROM verification');
       identifiers = verRes.rows.map((r) => r.identifier);
+      for (const id of identifiers) {
+        cleanupTracker.trackVerificationIdentifier(id);
+      }
     } else {
       identifiers = memoryDb.verification.map((r) => r.identifier);
     }

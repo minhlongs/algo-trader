@@ -1,61 +1,33 @@
 /**
- * Real Database Integration Test for Better Auth Lifecycle & Express Handler
+ * Portable Memory Adapter Integration Test for Better Auth Lifecycle & HTTP Handler
  *
- * Verifies with a REAL Better Auth instance and database backend
- * (isolated PostgreSQL test database `algo_trader_test_auth` when reachable,
- * or real `@better-auth/memory-adapter` in CI environments without a Postgres daemon):
+ * Dedicated to the `@better-auth/memory-adapter` backend (separated from the strict
+ * PostgreSQL suite in `better-auth-postgres-express-integration.test.ts` which never
+ * falls back to memory):
  * 1. User Signup (email/password), Auto-SignIn cookie & session creation, TrialDrip hook
- * 2. Database persistence into "user", "account", and "session" tables
+ * 2. In-memory persistence into "user", "account", and "session" collections
  * 3. Session retrieval via `getSession` with signed session cookie
  * 4. Sign-in with verified credentials and rejection of wrong password
  * 5. Password policy enforcement (minPasswordLength: 8) & duplicate email rejection
- * 6. Session revocation via `signOut` (cookie invalidated + DB session row removed)
- * 7. Express `/api/auth/*` HTTP handler (`auth.handler`) request/response round-trip
+ * 6. Session revocation via `signOut` (cookie invalidated + session row removed)
+ * 7. HTTP handler (`auth.handler`) request/response round-trip
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { betterAuth } from 'better-auth';
 import { memoryAdapter } from 'better-auth/adapters/memory';
-import pg from 'pg';
-import { up as runMigration004 } from '../../src/shared/db/migrations/004-better-auth-tables';
 
-const TEST_DB_NAME = 'algo_trader_test_auth';
-const TEST_PG_CONFIG = {
-  host: process.env.TEST_DB_HOST || 'localhost',
-  port: parseInt(process.env.TEST_DB_PORT || '5432', 10),
-  database: process.env.TEST_DB_NAME || TEST_DB_NAME,
-  user: process.env.TEST_DB_USER || 'postgres',
-  password: process.env.TEST_DB_PASSWORD || '',
-  max: 2,
-};
-
-describe('Better Auth Real DB Lifecycle & Express Handler', () => {
-  let pool: pg.Pool | null = null;
-  let isPostgres = false;
+describe('Better Auth Memory Adapter Lifecycle & HTTP Handler (Separated from PostgreSQL Suite)', () => {
   let memoryDb: Record<string, unknown[]> = {};
   let testAuth: ReturnType<typeof betterAuth>;
   const trialDripSubscribeSpy = vi.fn();
 
-  beforeAll(async () => {
-    try {
-      const candidatePool = new pg.Pool(TEST_PG_CONFIG);
-      const client = await candidatePool.connect();
-      try {
-        await runMigration004(client);
-        pool = candidatePool;
-        isPostgres = true;
-      } finally {
-        client.release();
-      }
-    } catch {
-      isPostgres = false;
-      pool = null;
-      memoryDb = { user: [], session: [], account: [], verification: [] };
-    }
+  beforeAll(() => {
+    memoryDb = { user: [], session: [], account: [], verification: [] };
 
     testAuth = betterAuth({
-      database: isPostgres && pool ? pool : memoryAdapter(memoryDb),
-      secret: 'test-real-db-lifecycle-secret-32-chars-min!!',
+      database: memoryAdapter(memoryDb),
+      secret: 'test-memory-db-lifecycle-secret-32-chars-min!!',
       baseURL: 'http://localhost:3000',
       basePath: '/api/auth',
       emailAndPassword: {
@@ -90,18 +62,7 @@ describe('Better Auth Real DB Lifecycle & Express Handler', () => {
     });
   });
 
-  afterAll(async () => {
-    if (pool) {
-      try {
-        await pool.query(`DELETE FROM "user" WHERE email LIKE 'trader_%@cashclaw.cc' OR email LIKE 'policy_%@cashclaw.cc'`);
-      } catch {
-        // ignore cleanup error
-      }
-      await pool.end().catch(() => {});
-    }
-  });
-
-  it('performs full signup, persists records, verifies cookie session, and revokes on signOut', async () => {
+  it('performs full signup, persists records in memory adapter, verifies cookie session, and revokes on signOut', async () => {
     const testEmail = `trader_${Date.now()}@cashclaw.cc`;
     const testPassword = 'StrongPassword123!';
     const testName = 'Algo Test Trader';
@@ -121,7 +82,7 @@ describe('Better Auth Real DB Lifecycle & Express Handler', () => {
     expect(signUpRes.user.name).toBe(testName);
     expect(signUpRes.token).toBeDefined();
 
-    // Verify TrialDrip after-signup databaseHook fired with synthetic user
+    // Verify TrialDrip after-signup databaseHook fired with user
     expect(trialDripSubscribeSpy).toHaveBeenCalledWith(
       testEmail,
       signUpRes.user.id,
@@ -133,23 +94,10 @@ describe('Better Auth Real DB Lifecycle & Express Handler', () => {
     expect(setCookie, 'signUpEmail must set session cookie when autoSignIn is enabled').toBeTruthy();
     const cookiePair = setCookie!.split(';')[0];
 
-    // 2. If PostgreSQL is active, verify SQL rows in user, session, and account tables
-    if (isPostgres && pool) {
-      const userRow = await pool.query('SELECT id, email, name FROM "user" WHERE email = $1', [testEmail]);
-      expect(userRow.rows).toHaveLength(1);
-      expect(userRow.rows[0].id).toBe(signUpRes.user.id);
-
-      const sessionRow = await pool.query('SELECT id, "userId", token FROM session WHERE token = $1', [signUpRes.token]);
-      expect(sessionRow.rows).toHaveLength(1);
-      expect(sessionRow.rows[0].userId).toBe(signUpRes.user.id);
-
-      const accountRow = await pool.query('SELECT "providerId", "userId" FROM account WHERE "userId" = $1', [signUpRes.user.id]);
-      expect(accountRow.rows).toHaveLength(1);
-      expect(accountRow.rows[0].providerId).toBe('credential');
-    } else {
-      expect(memoryDb.user.length).toBeGreaterThanOrEqual(1);
-      expect(memoryDb.session.length).toBeGreaterThanOrEqual(1);
-    }
+    // 2. Verify records in memory adapter collections
+    expect(memoryDb.user.length).toBeGreaterThanOrEqual(1);
+    expect(memoryDb.session.length).toBeGreaterThanOrEqual(1);
+    expect(memoryDb.account.length).toBeGreaterThanOrEqual(1);
 
     // 3. Verify active session via getSession with cookie
     const sessionRes = await testAuth.api.getSession({
@@ -159,7 +107,7 @@ describe('Better Auth Real DB Lifecycle & Express Handler', () => {
     expect(sessionRes?.user.email).toBe(testEmail);
     expect(sessionRes?.session.token).toBe(signUpRes.token);
 
-    // 4. Sign out and confirm session is revoked in both API and database
+    // 4. Sign out and confirm session is revoked in API and memory store
     await testAuth.api.signOut({
       headers: new Headers({ cookie: cookiePair }),
     });
@@ -168,11 +116,6 @@ describe('Better Auth Real DB Lifecycle & Express Handler', () => {
       headers: new Headers({ cookie: cookiePair }),
     });
     expect(afterSignOut).toBeNull();
-
-    if (isPostgres && pool) {
-      const revokedRow = await pool.query('SELECT id FROM session WHERE token = $1', [signUpRes.token]);
-      expect(revokedRow.rows).toHaveLength(0);
-    }
 
     // 5. Sign back in with valid credentials
     const { headers: signInHeaders, response: signInRes } = await testAuth.api.signInEmail({
