@@ -1,0 +1,9 @@
+{
+  "name": "ghsa-965c-old-red",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "better-auth": "1.6.29"
+  }
+}

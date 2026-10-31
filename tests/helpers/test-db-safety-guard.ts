@@ -3,8 +3,9 @@
  * Prevents accidental connection to or mutation of production/staging databases.
  *
  * Requirements:
- * - Database target MUST be explicitly approved by configuration.
- * - MUST NOT trust suffix '_test' alone — host and target must match approved isolated test environments.
+ * - Database target MUST match an exact allowlist entry.
+ * - Host MUST match an exact allowlist entry — no wildcard (e.g. `*.local`) fallback.
+ * - A `_test`/`_test_auth` suffix alone is NEVER sufficient; it proves nothing about the target.
  * - Must reject any production hosts or database named 'algo_trader'.
  * - Verifies configuration host/database before connection AND checks runtime
  *   `SELECT current_database()` before any mutation or migration.
@@ -14,6 +15,11 @@
 
 import type { PoolConfig } from 'pg';
 
+/**
+ * Exact allowlist of test database names. A name must be listed here to be a
+ * valid target; a `_test`/`_test_auth` suffix is never accepted on its own.
+ * MUST NOT contain any name with "prod" or "live" in it.
+ */
 export const ALLOWED_TEST_DB_NAMES = [
   'algo_trader_test_auth',
   'algo_trader_test',
@@ -23,6 +29,7 @@ export const ALLOWED_TEST_HOSTS = [
   'localhost',
   '127.0.0.1',
   'postgres', // CI docker service name
+  '::1',
 ];
 
 export function assertTestDatabaseSafe(config: PoolConfig): void {
@@ -45,32 +52,24 @@ export function assertTestDatabaseSafe(config: PoolConfig): void {
     );
   }
 
-  // Check host: host must be an approved isolated test host (localhost, 127.0.0.1, or postgres CI service)
+  // Host must be an explicitly approved local/CI isolated test target.
+  // No wildcard suffix matching: an unknown host is simply not on the list.
   const host = (config.host || 'localhost').trim().toLowerCase();
-  const isHostAllowed =
-    ALLOWED_TEST_HOSTS.includes(host) ||
-    host.endsWith('.local') ||
-    host === '::1';
-
-  if (!isHostAllowed) {
+  if (!ALLOWED_TEST_HOSTS.includes(host)) {
     throw new Error(
-      `[TestDbSafetyGuard] REJECTED UNSAFE HOST: "${config.host}". Tests must only connect to local/CI isolated test services.`,
+      `[TestDbSafetyGuard] REJECTED UNSAFE HOST: "${config.host}". Tests must only connect to approved local/CI isolated test services.`,
     );
   }
 
-  // Host/Target check: do NOT trust '_test' suffix alone if the database is not in allowlist
-  // and environment is not explicitly verified as test.
-  const isExplicitlyAllowedName = ALLOWED_TEST_DB_NAMES.includes(normalizedDb);
-  const hasSafeSuffix =
-    normalizedDb.endsWith('_test_auth') || normalizedDb.endsWith('_test');
-
-  if (!isExplicitlyAllowedName && !hasSafeSuffix) {
+  // Only databases named exactly in the allowlist are usable targets.
+  if (!ALLOWED_TEST_DB_NAMES.includes(normalizedDb)) {
     throw new Error(
       `[TestDbSafetyGuard] REJECTED UNSAFE DATABASE: "${dbName}". Database name is not an approved test database target.`,
     );
   }
 
-  // Additional defense: if someone attempts a dangerous pattern like 'prod_test' or 'production_test'
+  // Defense-in-depth: reject names containing "prod" or "live" even if someone
+  // later adds a matching name to the allowlist.
   if (normalizedDb.includes('prod') || normalizedDb.includes('live')) {
     throw new Error(
       `[TestDbSafetyGuard] REJECTED UNSAFE TARGET: "${dbName}". Target containing "prod" or "live" is forbidden even with test suffix.`,

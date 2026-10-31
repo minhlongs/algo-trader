@@ -5,11 +5,14 @@
  * Affected range: >= 1.4.0-beta.18, < 1.7.7
  * Patched version: >= 1.7.7
  *
- * Production exploitability note:
- * `src/platform/auth/auth-server.ts` configures ONLY `emailAndPassword` (neither
- * `magicLink` nor social/generic OAuth providers are enabled in production).
- * Therefore production was NOT runtime-exploitable, although the pinned package
- * version (<1.7.7) triggered CI Gate 2 (`pnpm audit --audit-level=critical`).
+ * Production exploitability note (limited to the source inspected):
+ * At the revision this test runs against, `src/platform/auth/auth-server.ts`
+ * configures ONLY `emailAndPassword` (neither `magicLink` nor social/generic
+ * OAuth providers are enabled). This conclusion is bounded by that inspection:
+ * it holds only while that configuration is unchanged, and enabling either plugin
+ * later invalidates it and requires re-verification. The dependency upgrade to
+ * `>= 1.7.7` is required regardless, to close the library-level vector and keep
+ * CI Gate 2 (`pnpm audit --audit-level=critical`) green.
  *
  * To verify the security fix at runtime without polluting production config,
  * this test instantiates an isolated Better Auth fixture with BOTH `magicLink`

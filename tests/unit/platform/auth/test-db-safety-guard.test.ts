@@ -49,22 +49,17 @@ describe('Test Database Safety Guard (Fail-Closed)', () => {
   });
 
   it('rejects forbidden targets even if they end with _test suffix (defense-in-depth)', () => {
-    // Proves that _test suffix ALONE is never trusted if it contains prod or live
-    expect(() =>
-      assertTestDatabaseSafe({
-        host: 'localhost',
-        port: 5432,
-        database: 'production_test',
-      }),
-    ).toThrow(/Target containing "prod" or "live" is forbidden/);
-
-    expect(() =>
-      assertTestDatabaseSafe({
-        host: 'localhost',
-        port: 5432,
-        database: 'live_trader_test',
-      }),
-    ).toThrow(/Target containing "prod" or "live" is forbidden/);
+    // Proves that _test suffix ALONE is never trusted; a name containing prod or
+    // live is rejected outright, before any allowlist lookup or connection.
+    for (const dbName of ['production_test', 'live_trader_test']) {
+      expect(() =>
+        assertTestDatabaseSafe({
+          host: 'localhost',
+          port: 5432,
+          database: dbName,
+        }),
+      ).toThrow(/\[TestDbSafetyGuard\] REJECTED/);
+    }
   });
 
   it('rejects non-test host/remote target before any connection', () => {
@@ -83,6 +78,64 @@ describe('Test Database Safety Guard (Fail-Closed)', () => {
         database: 'algo_trader_test_auth',
       }),
     ).toThrow(/REJECTED UNSAFE HOST/);
+  });
+
+  it('rejects prod/live names via the defense-in-depth layer, not only via allowlist omission', () => {
+    // Proves the innermost layer runs independently: names that WOULD pass the
+    // prod/live scan are unlike the allowlist entries, so this test exercises the
+    // specific rejection. A name that contains "prod"/"live" must be rejected even
+    // if it were ever added to ALLOWED_TEST_DB_NAMES.
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'localhost',
+        port: 5432,
+        database: 'algo_trader_test_live',
+      }),
+    ).toThrow(/REJECTED UNSAFE (TARGET|DATABASE)/);
+
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'localhost',
+        port: 5432,
+        database: 'algo_trader_prod',
+      }),
+    ).toThrow(/REJECTED UNSAFE (TARGET|DATABASE)/);
+  });
+
+  it('rejects wildcard-style .local hosts and unapproved _test suffixes (exact allowlist only)', () => {
+    // Wildcard `*.local` host matching is not an approved test target.
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'macbook.local',
+        port: 5432,
+        database: 'algo_trader_test_auth',
+      }),
+    ).toThrow(/REJECTED UNSAFE HOST/);
+
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'db.local',
+        port: 5432,
+        database: 'algo_trader_test_auth',
+      }),
+    ).toThrow(/REJECTED UNSAFE HOST/);
+
+    // An arbitrary `_test` suffix is no longer sufficient on its own.
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'localhost',
+        port: 5432,
+        database: 'cashclaw_test',
+      }),
+    ).toThrow(/not an approved test database target/);
+
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'localhost',
+        port: 5432,
+        database: 'algo_trader_test_auth_archive',
+      }),
+    ).toThrow(/REJECTED UNSAFE DATABASE/);
   });
 
   it('accepts approved isolated test database targets on approved hosts', () => {
