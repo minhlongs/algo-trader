@@ -48,7 +48,44 @@ describe('Test Database Safety Guard (Fail-Closed)', () => {
     ).toThrow(/REJECTED UNSAFE DATABASE/);
   });
 
-  it('accepts approved isolated test database names', () => {
+  it('rejects forbidden targets even if they end with _test suffix (defense-in-depth)', () => {
+    // Proves that _test suffix ALONE is never trusted if it contains prod or live
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'localhost',
+        port: 5432,
+        database: 'production_test',
+      }),
+    ).toThrow(/Target containing "prod" or "live" is forbidden/);
+
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'localhost',
+        port: 5432,
+        database: 'live_trader_test',
+      }),
+    ).toThrow(/Target containing "prod" or "live" is forbidden/);
+  });
+
+  it('rejects non-test host/remote target before any connection', () => {
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'db.cashclaw.internal',
+        port: 5432,
+        database: 'algo_trader_test_auth',
+      }),
+    ).toThrow(/REJECTED UNSAFE HOST/);
+
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: '10.0.0.5',
+        port: 5432,
+        database: 'algo_trader_test_auth',
+      }),
+    ).toThrow(/REJECTED UNSAFE HOST/);
+  });
+
+  it('accepts approved isolated test database targets on approved hosts', () => {
     expect(() =>
       assertTestDatabaseSafe({
         host: 'localhost',
@@ -59,9 +96,17 @@ describe('Test Database Safety Guard (Fail-Closed)', () => {
 
     expect(() =>
       assertTestDatabaseSafe({
-        host: 'localhost',
+        host: '127.0.0.1',
         port: 5432,
-        database: 'custom_isolated_test',
+        database: 'algo_trader_test',
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      assertTestDatabaseSafe({
+        host: 'postgres', // CI service
+        port: 5432,
+        database: 'algo_trader_test_auth',
       }),
     ).not.toThrow();
   });
