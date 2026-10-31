@@ -42,8 +42,20 @@ export async function processPositionExits(
     }
 
     if (shouldExit) {
-      await ctx.exitPosition(pos, currentPrice, reason);
-      toRemove.push(i);
+      // Only drop the position once the exit is confirmed. `exitPosition` throws
+      // on an unfilled or rejected exit; catching here keeps one failing exit from
+      // aborting the whole loop while preserving the still-open position.
+      try {
+        await ctx.exitPosition(pos, currentPrice, reason);
+        toRemove.push(i);
+      } catch (err) {
+        logger.error('Exit failed, position retained', ctx.strategyName, {
+          conditionId: pos.conditionId,
+          tokenId: pos.tokenId,
+          reason,
+          err: String(err),
+        });
+      }
     } else if (fromCache) {
       const gain = computePositionGain(pos, currentPrice);
       logger.debug('Position check (cached price)', ctx.strategyName, {

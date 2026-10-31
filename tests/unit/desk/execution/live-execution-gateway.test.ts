@@ -31,7 +31,7 @@ describe('LiveExecutionGateway', () => {
     gateway = new LiveExecutionGateway({ router, safeguard, lpEngine });
   });
 
-  it('successfully routes and fills a valid order intent', () => {
+  it('successfully routes an order intent (returns ROUTED, not simulated FILLED)', () => {
     const intent: OrderIntent = {
       intentId: 'intent-1',
       marketId: 'pres-2024',
@@ -42,7 +42,7 @@ describe('LiveExecutionGateway', () => {
     };
 
     const res = gateway.executeOrder({ intent, books: mockBooks });
-    expect(res.status).toBe('FILLED');
+    expect(res.status).toBe('ROUTED');
     expect(res.routePlan?.filledQuantity).toBe(500);
 
     const status = gateway.getStatus();

@@ -33,6 +33,11 @@ export interface OpenPosition {
   side: 'yes' | 'no';
   entryPrice: number;
   sizeUsdc: number;
+  /**
+   * Token quantity actually acquired on the entry fill. An exit must sell this
+   * quantity, never a quantity re-derived from the current exit price.
+   */
+  tokenQuantity: number;
   orderId: string;
   openedAt: number;
 }

@@ -27,8 +27,6 @@ export default defineConfig({
       // Playwright E2E tests have their own runner (npm run test:e2e).
       'tests/e2e/*.spec.ts',
       'tests/e2e/smoke.test.ts',
-      // Polymarket strategy tests excluded
-      'tests/strategies/polymarket/**',
       // .claude hooks tests reference deleted fixtures
       '**/.claude/hooks/__tests__/**',
       // Dashboard has its own vitest config (jsdom)
@@ -39,10 +37,10 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'html'],
       reportOnFailure: true,
       thresholds: {
-        lines: 75,
-        functions: 75,
-        branches: 60,
-        statements: 70,
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
       },
     },
   },

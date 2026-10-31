@@ -90,9 +90,11 @@ export class LiveExecutionGateway extends EventEmitter {
     this.totalOrdersProcessed += 1;
     this.totalVolumeProcessed += routePlan.filledQuantity;
 
+    // ROUTED signals the route plan was computed; it is NOT a venue fill.
+    // The gateway calculates routing in-process — there is no order submission here.
     const result: ExecutionResult = {
       intentId: intent.intentId,
-      status: 'FILLED',
+      status: 'ROUTED',
       routePlan,
       executedAt: now,
     };

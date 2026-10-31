@@ -86,13 +86,14 @@ const DASHBOARD_VITEST_PATH = resolve(REPO_ROOT, 'dashboard/vitest.config.ts');
 
 /**
  * Load-bearing exclude patterns. Each MUST appear in root exclude:
- * - `**\/node_modules/**` — baseline hygiene (vitest would OOM otherwise)
- * - `tests/strategies/**` — Polymarket strategies disabled (unimplemented infra)
- * - `dashboard/**` — dashboard has its own runner (jsdom environment)
+ * - `**\/node_modules\/**` — baseline hygiene (vitest would OOM otherwise)
+ * - `dashboard\/**` — dashboard has its own runner (jsdom environment)
+ *
+ * The Polymarket strategy suites under `tests/strategies/polymarket/**` are no
+ * longer excluded — they now run in the default suite (they pass honestly).
  */
 const REQUIRED_ROOT_EXCLUDE_SUBSTRINGS = [
   'node_modules',
-  'tests/strategies',
   'dashboard/',
 ];
 

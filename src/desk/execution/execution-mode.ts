@@ -46,6 +46,10 @@ export function resetExecutionModeCache(): void {
 function resolveExecutionMode(): ExecutionMode {
   // LIVE requires the literal env string. Anything else → READ_ONLY.
   if (process.env.LIVE_TRADING_ENABLED === 'true') return 'LIVE';
+  // PAPER is reachable only through its own explicit, non-default signal. It is
+  // never inferred from the absence of the live flag, so an unconfigured process
+  // still fails closed to READ_ONLY rather than silently trading on paper.
+  if (process.env.PAPER_TRADING_ENABLED === 'true') return 'PAPER';
   return 'READ_ONLY';
 }
 
@@ -59,6 +63,11 @@ export function isLiveEnabled(): boolean {
 /** True when the system may create orders at all (paper or live). */
 export function isTradingEnabled(): boolean {
   return getExecutionMode() !== 'READ_ONLY';
+}
+
+/** True in PAPER — simulated fills only, never a real exchange order. */
+export function isPaperEnabled(): boolean {
+  return getExecutionMode() === 'PAPER';
 }
 
 /** True in READ_ONLY — the safe default for research and tooling. */

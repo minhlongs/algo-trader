@@ -23,7 +23,7 @@ export interface OrderIntent {
 
 export interface ExecutionResult {
   readonly intentId: string;
-  readonly status: 'FILLED' | 'REJECTED' | 'HALTED';
+  readonly status: 'ROUTED' | 'REJECTED' | 'HALTED';
   readonly routePlan?: SmartRoutePlan;
   readonly rejectionReason?: string;
   readonly executedAt: number;

@@ -53,6 +53,46 @@ jobs:
       - name: Exchange connectivity check
         run: bash scripts/ci-exchange-health.sh --timeout 5000
 
+  gate-1c-postgres-integration:
+    name: Gate 1c — PostgreSQL Auth Integration (Strict real DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_secure_pg_password
+          POSTGRES_DB: algo_trader_test_auth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run strict real PostgreSQL Better Auth suite
+        env:
+          STRICT_PG_TEST: 'true'
+          TEST_DB_HOST: 'localhost'
+          TEST_DB_PORT: '5432'
+          TEST_DB_NAME: 'algo_trader_test_auth'
+          TEST_DB_USER: 'postgres'
+          TEST_DB_PASSWORD: 'test_secure_pg_password'
+        run: |
+          echo "Running strict PostgreSQL integration suite against isolated CI service..."
+          npx vitest run tests/integration/better-auth-postgres-express-integration.test.ts
+
   gate-2-security:
     name: Gate 2 — Security scan (secrets + audit critical)
     runs-on: ubuntu-latest
