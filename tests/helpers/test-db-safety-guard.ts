@@ -61,18 +61,18 @@ export function assertTestDatabaseSafe(config: PoolConfig): void {
     );
   }
 
+  // Defense-in-depth: reject names containing "prod" or "live" even if someone
+  // passes a `_test` suffix or attempts to add a dangerous target.
+  if (normalizedDb.includes('prod') || normalizedDb.includes('live')) {
+    throw new Error(
+      `[TestDbSafetyGuard] REJECTED UNSAFE TARGET: "${dbName}". Target containing "prod" or "live" is forbidden even with test suffix.`,
+    );
+  }
+
   // Only databases named exactly in the allowlist are usable targets.
   if (!ALLOWED_TEST_DB_NAMES.includes(normalizedDb)) {
     throw new Error(
       `[TestDbSafetyGuard] REJECTED UNSAFE DATABASE: "${dbName}". Database name is not an approved test database target.`,
-    );
-  }
-
-  // Defense-in-depth: reject names containing "prod" or "live" even if someone
-  // later adds a matching name to the allowlist.
-  if (normalizedDb.includes('prod') || normalizedDb.includes('live')) {
-    throw new Error(
-      `[TestDbSafetyGuard] REJECTED UNSAFE TARGET: "${dbName}". Target containing "prod" or "live" is forbidden even with test suffix.`,
     );
   }
 }

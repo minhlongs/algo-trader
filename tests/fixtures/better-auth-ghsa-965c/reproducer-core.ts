@@ -55,24 +55,15 @@ export interface ReproducerResult {
  * not loaded.
  */
 export function getLoadedBetterAuthVersion(): string {
-  try {
-    const require = createRequire(import.meta.url);
-    // better-auth's `exports` map does not expose `./package.json`, so resolve the
-    // real entry file path and read the manifest of that exact installed build.
-    const entryPath = require.resolve('better-auth');
-    const packageDir = dirname(dirname(entryPath));
-    const manifest = JSON.parse(
-      readFileSync(join(packageDir, 'package.json'), 'utf8'),
-    ) as { version?: string };
-    if (!manifest.version || typeof manifest.version !== 'string') {
-      throw new Error('manifest.version missing');
-    }
-    return manifest.version;
-  } catch (err) {
-    throw new Error(
-      `[GHSA-965c] Could not read the loaded better-auth manifest: ${(err as Error).message}`,
-    );
-  }
+  const require = createRequire(import.meta.url);
+  // better-auth's `exports` map does not expose `./package.json`, so resolve the
+  // real entry file path and read the manifest of that exact installed build.
+  const entryPath = require.resolve('better-auth');
+  const packageDir = dirname(dirname(entryPath));
+  const manifest = JSON.parse(
+    readFileSync(join(packageDir, 'package.json'), 'utf8'),
+  ) as { version: string };
+  return manifest.version;
 }
 
 /**
@@ -138,14 +129,7 @@ export async function runGHSA965cReproducer(): Promise<ReproducerResult> {
     },
   });
 
-  if (!oauthInit.url) {
-    throw new Error('[GHSA-965c] OAuth init failed to produce redirect URL — setup error, not the vulnerability');
-  }
-
-  const oauthState = new URL(oauthInit.url).searchParams.get('state');
-  if (!oauthState) {
-    throw new Error('[GHSA-965c] OAuth init URL did not contain state parameter — setup error, not the vulnerability');
-  }
+  const oauthState = new URL(oauthInit.url!).searchParams.get('state')!;
 
   // 3. Request legitimate Magic Link to populate comparison tokens
   await testAuth.api.signInMagicLink({
@@ -155,8 +139,8 @@ export async function runGHSA965cReproducer(): Promise<ReproducerResult> {
     },
   });
 
-  if (!capturedMagicToken) {
-    throw new Error('[GHSA-965c] Magic Link did not issue a token — setup error, not the vulnerability');
+  if (!capturedMagicToken || !oauthState) {
+    throw new Error('[GHSA-965c] Missing oauthState or magicLink token — setup error, not the vulnerability');
   }
 
   // 4. Attempt exploit: pass OAuth state to /api/auth/magic-link/verify
@@ -167,8 +151,7 @@ export async function runGHSA965cReproducer(): Promise<ReproducerResult> {
 
   const exploitRes = await testAuth.handler(exploitReq);
   const setCookie = exploitRes.headers.get('set-cookie');
-  const redirectHeader = exploitRes.headers.get('location');
-  const redirectLocation = redirectHeader || null;
+  const redirectLocation = exploitRes.headers.get('location');
 
   const storedIdentifiers = memoryDb.verification.map((v) => v.identifier);
 
@@ -182,9 +165,7 @@ export async function runGHSA965cReproducer(): Promise<ReproducerResult> {
     storedIdentifiers.some((id) => id.startsWith('auth-state:')) &&
     storedIdentifiers.some((id) => id.startsWith('magic-link:'));
 
-  const isRejected = redirectLocation !== null
-    ? redirectLocation.includes('error=INVALID_TOKEN')
-    : exploitRes.status >= 400;
+  const isRejected = Boolean(redirectLocation?.includes('error=INVALID_TOKEN')) || exploitRes.status >= 400;
 
   const isPatched = !exploitSucceeded && isRejected && hasNamespacedIdentifiers;
 
@@ -196,6 +177,6 @@ export async function runGHSA965cReproducer(): Promise<ReproducerResult> {
     cookieHeader: setCookie,
     redirectLocation,
     storedIdentifiers,
-    rejectionReason: redirectLocation || undefined,
+    rejectionReason: redirectLocation ?? undefined,
   };
 }
