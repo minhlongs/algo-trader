@@ -26,7 +26,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { betterAuth } from 'better-auth';
 import { magicLink } from 'better-auth/plugins';
-import { memoryAdapter } from '@better-auth/memory-adapter';
+import { memoryAdapter } from 'better-auth/adapters/memory';
 import pg from 'pg';
 import { up as runMigration004 } from '../../src/shared/db/migrations/004-better-auth-tables';
 
