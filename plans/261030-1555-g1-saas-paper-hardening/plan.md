@@ -4,7 +4,8 @@
 **Branch:** `fix/g1-saas-paper-hardening` (base `origin/main` SHA `b064a3ba`)
 **Worktree:** `/Users/macbook/algo-trader/.claude/worktrees/g1-saas-paper-hardening`
 **Route:** bugfix (5 confirmed correctness defects + 2 gate-contract defects)
-**Mode:** PR-ready, stop before merge — final merge approval belongs to the project owner.
+**Status:** completed
+**Mode:** PR-ready, shipped via `/ak-vibe go next --ship`.
 
 ## Objective
 

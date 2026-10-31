@@ -66,22 +66,35 @@ describe('GHSA-965c-763c-88jm (CVE-2026-114607) Regression & Prefix Separation',
   const cleanupTracker = createScopedCleanupTracker();
 
   beforeAll(async () => {
+    // 1. Fail-closed DB safety check BEFORE creating pool or falling back to memory
+    assertTestDatabaseSafe(TEST_PG_CONFIG);
+
     try {
-      assertTestDatabaseSafe(TEST_PG_CONFIG);
       const candidatePool = new pg.Pool(TEST_PG_CONFIG);
-      const client = await candidatePool.connect();
       try {
-        const dbRes = await client.query<{ current_database: string }>(
-          'SELECT current_database()',
-        );
-        assertTestDatabaseSafe({ database: dbRes.rows[0]?.current_database });
-        await runMigration004(client);
-        pool = candidatePool;
-        isPostgres = true;
-      } finally {
-        client.release();
+        const client = await candidatePool.connect();
+        try {
+          const dbRes = await client.query<{ current_database: string }>(
+            'SELECT current_database()',
+          );
+          assertTestDatabaseSafe({ database: dbRes.rows[0]?.current_database });
+          await runMigration004(client);
+          pool = candidatePool;
+          isPostgres = true;
+        } finally {
+          client.release();
+        }
+      } catch (innerErr) {
+        await candidatePool.end().catch(() => {});
+        throw innerErr;
       }
-    } catch {
+    } catch (err: unknown) {
+      if (
+        err instanceof Error &&
+        err.message.includes('[TestDbSafetyGuard]')
+      ) {
+        throw err;
+      }
       isPostgres = false;
       pool = null;
       memoryDb = { user: [], session: [], account: [], verification: [] };
