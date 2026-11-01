@@ -590,5 +590,99 @@ describe('SaaS/Paper Staging Hardening (TDD Test Suite)', () => {
       expect(body.readiness.details.columns.subscriptions).toBe(false);
       expect(body.error).toContain('subscriptions schema verification failed');
     });
+
+    it('covers staging-guard-wrangler, telegram-bot handlers, and inline routes edge branches', async () => {
+      const { handleSetTelegramWebhook } = await import('../../../../src/platform/workers/api/telegram-bot');
+      const { dispatchTelegramUpdate, resolveTelegramUser } = await import('../../../../src/platform/workers/api/telegram-bot-dispatch');
+      const { handlePaperTradingTickRoute, handlePaperTradesLedger, handleMetricsGetRoute, handleRootRoute, handleVpsFallbackRoute } = await import('../../../../src/platform/workers/edge-proxy-inline-routes');
+      const { validateResolvedWranglerTarget } = await import('../../../../src/shared/preflight/staging-guard-wrangler');
+
+      // 1. validateResolvedWranglerTarget branches
+      const baseManifest = {
+        targetEnv: 'staging',
+        workerName: 'algo-trader-staging',
+        requiredAccountId: 'acct-staging',
+        accountStatus: 'PROVISIONED',
+        allowedRoutes: [],
+        allowedHostnames: ['algo-trader-staging.workers.dev'],
+        prohibitedWorkerNames: ['algo-trader'],
+        prohibitedDatabaseNames: ['algo_trader'],
+        prohibitedD1Ids: ['prod-d1'],
+        prohibitedKvIds: ['prod-kv'],
+        prohibitedAccountIds: ['acct-prod'],
+        allowedDatabaseHosts: ['localhost'],
+      };
+      expect(() => validateResolvedWranglerTarget({ resolvedWrangler: { targetEnv: 'prod', workerName: 'w', routes: [] } }, {})).toThrow(/RESOLVED WRANGLER MISMATCH/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader', routes: [] } }, {})).toThrow(/matches production worker name/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, resolvedWrangler: { targetEnv: 'staging', workerName: 'other', routes: [] } }, {})).toThrow(/does not match manifest/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', accountId: 'acct-prod', routes: [] } }, {})).toThrow(/prohibited production account/);
+      expect(() => validateResolvedWranglerTarget({ manifest: { ...baseManifest, requiredAccountId: null }, resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [] } }, { requireAccountId: true })).toThrow(/BLOCKED/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [] } }, { requireAccountId: true })).toThrow(/missing accountId/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', accountId: 'wrong', routes: [] } }, { requireAccountId: true })).toThrow(/does not match manifest requiredAccountId/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: ['api.cashclaw.cc/*'] } }, {})).toThrow(/cannot define production route/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, targetHostname: 'https://evil.com/path', resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [] } }, {})).toThrow(/not in allowed hostnames list/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, d1Id: 'd1-a', resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [], d1Databases: [{ binding: 'DB', database_id: 'prod-d1' }] } }, {})).toThrow(/uses production database_id/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, d1Id: 'd1-a', resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [], d1Databases: [{ binding: 'DB', database_id: 'd1-b' }] } }, {})).toThrow(/does not match resolved wrangler D1/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, kvId: 'kv-a', resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [], kvNamespaces: [{ binding: 'KV', id: 'prod-kv' }] } }, {})).toThrow(/uses production id/);
+      expect(() => validateResolvedWranglerTarget({ manifest: baseManifest, kvId: 'kv-a', resolvedWrangler: { targetEnv: 'staging', workerName: 'algo-trader-staging', routes: [], kvNamespaces: [{ binding: 'KV', id: 'kv-b' }] } }, {})).toThrow(/does not match resolved wrangler KV/);
+
+      // 2. assertStagingEnvironmentSafe extra branches
+      expect(() => assertStagingEnvironmentSafe({ host: 'prod.cashclaw.cc' })).toThrow(/REJECTED UNSAFE STAGING: host/);
+      expect(() => assertStagingEnvironmentSafe({}, { requireCloudflareIds: true })).toThrow(/Missing required "d1Id"/);
+      expect(() => assertStagingEnvironmentSafe({ d1Id: 'd1-staging' }, { requireCloudflareIds: true })).toThrow(/Missing required "kvId"/);
+      expect(() => assertStagingEnvironmentSafe({ polymarketTradingMode: 'live' })).toThrow(/polymarketTradingMode is live/);
+
+      // 3. telegram-bot & dispatch branches
+      const tgEnv = {
+        ENVIRONMENT: 'staging',
+        ADMIN_API_KEY: 'adm',
+        TELEGRAM_BOT_TOKEN: 'tok',
+        TELEGRAM_WEBHOOK_SECRET: 'sec',
+        TELEGRAM_MOCK: 'true',
+        CACHE: { get: vi.fn().mockResolvedValue(null), put: vi.fn().mockResolvedValue(undefined) },
+        SUBSCRIBERS: {
+          prepare: () => ({
+            bind: () => ({
+              first: async () => ({ status: 'active', current_period_end: '2026-12-31' }),
+            }),
+          }),
+        },
+      } as any;
+
+      expect((await handleTelegramWebhook(new Request('https://x/w', { method: 'OPTIONS' }), tgEnv)).status).toBe(204);
+      expect((await handleTelegramWebhook(new Request('https://x/w', { method: 'GET' }), tgEnv)).status).toBe(405);
+      expect((await handleTelegramWebhook(new Request('https://x/w', { method: 'POST' }), { ...tgEnv, TELEGRAM_WEBHOOK_SECRET: '' })).status).toBe(503);
+      expect((await handleTelegramWebhook(new Request('https://x/w', { method: 'POST', headers: { 'X-Telegram-Bot-Api-Secret-Token': 'sec' } }), { ...tgEnv, TELEGRAM_BOT_TOKEN: '' })).status).toBe(503);
+      expect((await handleTelegramWebhook(new Request('https://x/w', { method: 'POST', headers: { 'X-Telegram-Bot-Api-Secret-Token': 'sec' }, body: JSON.stringify({ update_id: 1 }) }), tgEnv)).status).toBe(200);
+      expect((await handleTelegramWebhook(new Request('https://x/w', { method: 'POST', headers: { 'X-Telegram-Bot-Api-Secret-Token': 'sec' }, body: 'bad-json' }), tgEnv)).status).toBe(500);
+
+      await dispatchTelegramUpdate({ update_id: 1, message: { message_id: 1, chat: { id: 1, type: 'private' }, date: 1, from: { id: 9, is_bot: false, first_name: 'A' }, text: '/start' } }, 1, 'tok', tgEnv);
+      await dispatchTelegramUpdate({ update_id: 2, message: { message_id: 2, chat: { id: 1, type: 'private' }, date: 1, from: { id: 9, is_bot: false, first_name: 'A' }, text: '/status' } }, 1, 'tok', tgEnv);
+      await dispatchTelegramUpdate({ update_id: 3, message: { message_id: 3, chat: { id: 1, type: 'private' }, date: 1, from: { id: 9, is_bot: false, first_name: 'A' }, text: '/tiers' } }, 1, 'tok', tgEnv);
+      await dispatchTelegramUpdate({ update_id: 4, message: { message_id: 4, chat: { id: 1, type: 'private' }, date: 1, from: { id: 9, is_bot: false, first_name: 'A' }, text: '/ask BTC?' } }, 1, 'tok', tgEnv);
+      await dispatchTelegramUpdate({ update_id: 5, message: { message_id: 5, chat: { id: 1, type: 'private' }, date: 1, from: { id: 9, is_bot: false, first_name: 'A' }, text: 'unknown' } }, 1, 'tok', tgEnv);
+      await resolveTelegramUser({ update_id: 6 }, tgEnv);
+
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'OPTIONS' }), tgEnv)).status).toBe(204);
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'GET' }), tgEnv)).status).toBe(405);
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'POST' }), tgEnv)).status).toBe(401);
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'POST', headers: { 'x-api-key': 'adm' }, body: JSON.stringify({}) }), tgEnv)).status).toBe(400);
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'POST', headers: { 'x-api-key': 'adm' }, body: JSON.stringify({ webhookUrl: 'not-a-url' }) }), tgEnv)).status).toBe(400);
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'POST', headers: { 'x-api-key': 'adm' }, body: JSON.stringify({ webhookUrl: 'https://api.cashclaw.cc/w' }) }), tgEnv)).status).toBe(400);
+      expect((await handleSetTelegramWebhook(new Request('https://x/sw', { method: 'POST', headers: { 'x-api-key': 'adm' }, body: JSON.stringify({ webhookUrl: 'https://algo-trader-staging.workers.dev/w' }) }), { ...tgEnv, TELEGRAM_BOT_TOKEN: '' })).status).toBe(503);
+
+      // 4. inline routes branches
+      expect((await handleTenantConfigSave(new Request('https://x/api/tenants//config', { method: 'POST' }), tgEnv, '/api/tenants//config')).status).toBe(400);
+      expect((await handleTenantConfigSave(new Request('https://x/api/tenants/t1/config', { method: 'POST', headers: { Authorization: 'Bearer   ' } }), { ...tgEnv, JWT_SECRET: 's' }, '/api/tenants/t1/config')).status).toBe(401);
+      const { createJwt } = await import('../../../../src/platform/workers/crypto-utils');
+      const admTok = await createJwt({ sub: 'a@b.c', tenantId: 't1', role: 'admin' }, 's');
+      expect((await handleTenantConfigSave(new Request('https://x/api/tenants/t1/config', { method: 'POST', headers: { Authorization: `Bearer ${admTok}` }, body: 'bad-json' }), { ...tgEnv, JWT_SECRET: 's' }, '/api/tenants/t1/config')).status).toBe(500);
+      expect(handleRootRoute(tgEnv).status).toBe(200);
+      expect(handleVpsFallbackRoute().status).toBe(501);
+      expect((await handleMetricsGetRoute(new URL('https://x/metrics?token=ok'), { ...tgEnv, METRIC_PASSWORD: 'ok' }, () => new Response('ok'))).status).toBe(200);
+      expect((await handlePaperTradingTickRoute({ ...tgEnv, ADMIN_API_KEY: 'adm' }, async () => ({}), new Request('https://x/tick', { method: 'POST' }))).status).toBe(401);
+      expect((await handlePaperTradingTickRoute({ ...tgEnv, ADMIN_API_KEY: '' }, async () => { throw new Error('boom'); })).status).toBe(500);
+      expect((await handlePaperTradesLedger(new Request('https://x/pt'), { ...tgEnv, SUBSCRIBERS: { prepare: () => ({ all: async () => { throw new Error('db fail'); } }) } })).status).toBe(500);
+    });
   });
 });

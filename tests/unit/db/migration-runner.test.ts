@@ -313,7 +313,8 @@ describe('Migration Runner', () => {
       expect(migrationRunner.MIGRATIONS.length).toBeLessThanOrEqual(60);
     });
 
-    it('each migration has required properties', () => {
+    it('each migration has required properties and executes up/down', async () => {
+      const mockClient = { query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }) };
       // @ts-expect-error - testing private/internal member
       for (const m of migrationRunner.MIGRATIONS) {
         expect(m).toHaveProperty('id');
@@ -322,6 +323,8 @@ describe('Migration Runner', () => {
         expect(m).toHaveProperty('down');
         expect(typeof m.up).toBe('function');
         expect(typeof m.down).toBe('function');
+        await m.up(mockClient as any);
+        await m.down(mockClient as any);
       }
     });
 

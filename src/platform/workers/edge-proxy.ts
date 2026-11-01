@@ -28,7 +28,7 @@ import {
 } from './edge-proxy-inline-routes';
 
 // ── Paper trading (env-gated startup) ──
-import { initPaperTrading, runPaperTradingTick } from './paper-trading-entry';
+import { initPaperTrading, runPaperTradingTick, stopPaperTrading } from './paper-trading-entry';
 import type { PaperTradingEnv } from './paper-trading-entry';
 import type { D1Database } from '../../desk/paper-trading/paper-trading-loop';
 import { logger } from '../../shared/utils/logger';
@@ -41,6 +41,7 @@ type AnyEnv = AuthEnv;
 let paperTradingInitialized = false;
 function ensurePaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): void {
   if (String(env?.QWEN_KILL ?? '') === '1') {
+    stopPaperTrading();
     paperTradingInitialized = false;
     return;
   }
@@ -98,7 +99,7 @@ export default {
       return handlePaperTradingTickRoute(env, () => {
         ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
         return runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
-      });
+      }, request);
     }
 
     // ── Webhooks + Coupons ──

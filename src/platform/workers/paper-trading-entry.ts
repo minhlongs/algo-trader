@@ -47,8 +47,14 @@ function buildConfig(env?: PaperTradingEnv): PaperTradingConfig {
  */
 let paperTradingLoop: PaperTradingLoop | undefined;
 
+export function stopPaperTrading(): void {
+  paperTradingLoop?.stop();
+  paperTradingLoop = undefined;
+}
+
 export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): boolean {
   if (String(env?.QWEN_KILL ?? process.env.QWEN_KILL ?? '') === '1') {
+    stopPaperTrading();
     logger.info('[PaperTrading] Initialization blocked by L1 kill switch (QWEN_KILL=1)');
     return false;
   }
@@ -66,6 +72,7 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Dat
     PAPER_TRADING_MAX_CONCURRENT: env?.PAPER_TRADING_MAX_CONCURRENT ?? process.env.PAPER_TRADING_MAX_CONCURRENT,
     PAPER_TRADING_HOLD_DURATION_MS: env?.PAPER_TRADING_HOLD_DURATION_MS ?? process.env.PAPER_TRADING_HOLD_DURATION_MS,
   } as PaperTradingEnv);
+  stopPaperTrading();
   paperTradingLoop = new PaperTradingLoop(config, undefined, kv, db);
   paperTradingLoop.start();
 

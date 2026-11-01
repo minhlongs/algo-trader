@@ -112,7 +112,9 @@ export async function handleSetTelegramWebhook(request: Request, _env: Env): Pro
   } catch {
     return json(_env, { error: 'Invalid webhookUrl' }, 400);
   }
-  const allowedWebhookHosts = ['api.cashclaw.cc', 'algo-trader-staging.agencyos-openclaw.workers.dev', 'algo-trader-staging.workers.dev'];
+  const allowedWebhookHosts = _env.ENVIRONMENT === 'staging'
+    ? ['algo-trader-staging.agencyos-openclaw.workers.dev', 'algo-trader-staging.workers.dev']
+    : ['api.cashclaw.cc'];
   if (parsedWebhookUrl.protocol !== 'https:' || !allowedWebhookHosts.includes(parsedWebhookUrl.hostname)) {
     return json(_env, { error: 'Forbidden webhookUrl host' }, 400);
   }

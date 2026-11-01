@@ -19,6 +19,7 @@ const { mockInstances, MockCtor, makeMockInstance } = vi.hoisted(() => {
   }> = [];
   const make = () => ({
     start: vi.fn(),
+    stop: vi.fn(),
     setKV: vi.fn(),
     setDB: vi.fn(),
     loadState: vi.fn(),
