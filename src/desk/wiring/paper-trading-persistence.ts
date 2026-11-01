@@ -33,10 +33,14 @@ export function createDefaultPortfolio(capital = 1000): PaperPortfolio {
 
 let portfolio: PaperPortfolio = createDefaultPortfolio();
 let tradesFile = TRADES_FILE;
+let customDbPersister: ((trade: PaperTrade) => Promise<void>) | null = null;
 
 export function getPortfolio(): PaperPortfolio { return portfolio; }
 export function setPortfolio(p: PaperPortfolio): void { portfolio = p; }
 export function setTradesFile(filePath: string): void { tradesFile = filePath; }
+export function setCustomDbPersister(fn: ((trade: PaperTrade) => Promise<void>) | null): void {
+  customDbPersister = fn;
+}
 
 export function __resetPortfolioForTests(): void {
   portfolio = createDefaultPortfolio();
@@ -116,6 +120,15 @@ export async function settleStalePositions(): Promise<void> {
  * Qwen trades are always paper_only=TRUE — NEVER routed to live.
  */
 export async function savePaperTradeV3(trade: PaperTrade): Promise<void> {
+  if (customDbPersister) {
+    try {
+      await customDbPersister(trade);
+    } catch (err) {
+      logger.warn('[PaperOrchestrator] customDbPersister failed', { id: trade.id, err });
+    }
+    return;
+  }
+
   try {
     await query(
       `INSERT INTO paper_trades_v3

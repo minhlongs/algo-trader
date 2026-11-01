@@ -16,8 +16,18 @@ export async function sendTelegramMessage(
   chatId: number,
   text: string,
   parseMode?: string,
+  env?: Env,
 ): Promise<void> {
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+  if (env?.TELEGRAM_MOCK === 'true') {
+    logger.info('[telegram] mock send message intercepted (outbound network suppressed)', {
+      chatId,
+      textLength: text.length,
+    });
+    return;
+  }
+
+  const baseUrl = env?.TELEGRAM_API_BASE_URL || 'https://api.telegram.org';
+  const url = `${baseUrl}/bot${botToken}/sendMessage`;
   const body: Record<string, unknown> = { chat_id: chatId, text };
   if (parseMode) body.parse_mode = parseMode;
 
@@ -75,7 +85,7 @@ export async function dispatchTelegramUpdate(
   const lower = text.toLowerCase();
 
   if (lower.startsWith('/start') || lower.startsWith('/help')) {
-    await sendTelegramMessage(botToken, chatId, escapeMd(WELCOME_MSG), 'Markdown');
+    await sendTelegramMessage(botToken, chatId, escapeMd(WELCOME_MSG), 'Markdown', env);
     return { sent: true, method: 'welcome' };
   }
 
@@ -99,7 +109,7 @@ export async function dispatchTelegramUpdate(
       }
     }
     const msg = `📊 *CashClaw Status*\n\nTier: ${tier.toUpperCase()}\nLangganan: ${subStatus}\n${periodEnd ? `Berakhir: ${periodEnd}` : ''}`;
-    await sendTelegramMessage(botToken, chatId, escapeMd(msg), 'Markdown');
+    await sendTelegramMessage(botToken, chatId, escapeMd(msg), 'Markdown', env);
     return { sent: true, method: 'status' };
   }
 
@@ -116,20 +126,20 @@ export async function dispatchTelegramUpdate(
       msg += `${t.tier} ${t.price} — ${t.features}\n`;
     }
     msg += '\nUpgrade: hubungi support atau pakai kupon.';
-    await sendTelegramMessage(botToken, chatId, escapeMd(msg), 'Markdown');
+    await sendTelegramMessage(botToken, chatId, escapeMd(msg), 'Markdown', env);
     return { sent: true, method: 'tiers' };
   }
 
   if (lower.startsWith('/ask ')) {
     const question = text.slice(5).trim();
     if (!question) {
-      await sendTelegramMessage(botToken, chatId, '⚠️ Tulis pertanyaan setelah /ask\nContoh: /ask Prediksi BTC minggu ini?');
+      await sendTelegramMessage(botToken, chatId, '⚠️ Tulis pertanyaan setelah /ask\nContoh: /ask Prediksi BTC minggu ini?', undefined, env);
       return { sent: true, method: 'ask_empty' };
     }
-    await sendTelegramMessage(botToken, chatId, '🤔 Sedang menganalisis...');
+    await sendTelegramMessage(botToken, chatId, '🤔 Sedang menganalisis...', undefined, env);
     return { sent: true, method: 'ask_dispatched' };
   }
 
-  await sendTelegramMessage(botToken, chatId, 'Perintah tidak dikenali. Ketik /help untuk daftar perintah.');
+  await sendTelegramMessage(botToken, chatId, 'Perintah tidak dikenali. Ketik /help untuk daftar perintah.', undefined, env);
   return { sent: true, method: 'fallback' };
 }

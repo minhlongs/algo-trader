@@ -26,7 +26,12 @@ MODE="${1:-full}"
 COMMIT_SHORT=""
 ERRORS=0
 
-# ─── Quality Gates ───────────────────────────────────────────────────
+# ─── Production Deployment Guard ──────────────────────────────────────
+if [ "${ALLOW_PRODUCTION_DEPLOY:-0}" != "1" ]; then
+  echo -e "${RED}❌ PRODUCTION DEPLOY BLOCKED: ALLOW_PRODUCTION_DEPLOY=1 required.${NC}"
+  echo "   Current environment is guarded against unauthorized production mutations."
+  exit 1
+fi
 
 gate() {
   local label="$1" cmd="$2"

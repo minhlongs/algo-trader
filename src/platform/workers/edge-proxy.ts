@@ -40,9 +40,12 @@ type AnyEnv = AuthEnv;
 // Lazy init: KV binding is only available inside fetch/scheduled handlers.
 let paperTradingInitialized = false;
 function ensurePaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): void {
+  if (String(env?.QWEN_KILL ?? '') === '1') {
+    paperTradingInitialized = false;
+    return;
+  }
   if (paperTradingInitialized) return;
-  paperTradingInitialized = true;
-  initPaperTrading(kv, env, db);
+  paperTradingInitialized = initPaperTrading(kv, env, db);
 }
 
 export default {
@@ -71,8 +74,8 @@ export default {
     // ── Health & Root ──
     // `/api/health` is an alias for `/health`: the deploy verifiers and the root
     // handler advertise the /api-prefixed form, so both resolve to the same response.
-    if (path === '/api/health' && request.method === 'GET') return handleHealthRoute(env, routingEnabled);
-    if (path === '/health' && request.method === 'GET') return handleHealthRoute(env, routingEnabled);
+    if (path === '/api/health' && request.method === 'GET') return await handleHealthRoute(env, routingEnabled);
+    if (path === '/health' && request.method === 'GET') return await handleHealthRoute(env, routingEnabled);
     if (path === '/' && request.method === 'GET') return handleRootRoute(env);
 
     // ── Auth routes ──

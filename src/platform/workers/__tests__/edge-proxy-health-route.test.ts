@@ -72,6 +72,16 @@ import worker from '../edge-proxy';
 function makeEnv(): Env {
   return {
     CACHE: { get: async () => null, put: async () => undefined, delete: async () => {} } as unknown as KVNamespace,
+    SUBSCRIBERS: {
+      prepare: (query: string) => ({
+        first: async () => {
+          if (query.includes('SELECT 1')) return { ready: 1 };
+          if (query.includes('subscriptions')) return { id: 's1', user_id: 'u1', status: 'active', tier: 'PRO', created_at: Date.now() };
+          if (query.includes('paper_trades_v3')) return { id: 'p1', market_id: 'm1', side: 'BUY', size_usd: 100, entry_price: 0.5, status: 'OPEN', strategy: 's', created_at: Date.now() };
+          return null;
+        },
+      }),
+    } as unknown as any,
     ENVIRONMENT: 'test',
     REGION_ROUTING_ENABLED: 'false',
   } as unknown as Env;
@@ -132,11 +142,24 @@ describe('Worker health route', () => {
     const metricEnv = { ...env, METRIC_PASSWORD: 'sec' };
     expect((await worker.fetch(get('/metrics?token=wrong'), metricEnv)).status).toBe(401);
 
-    const cfgReq = new Request('https://api.cashclaw.cc/api/tenants/t1/config', {
+    const { createJwt } = await import('../crypto-utils');
+    const authEnv = { ...env, JWT_SECRET: 'test-jwt-secret' } as Env;
+    const validToken = await createJwt({ sub: 'user@example.com', tenantId: 't1', tier: 'PRO' }, 'test-jwt-secret');
+
+    // Missing auth header -> 401
+    const cfgReqUnauth = new Request('https://api.cashclaw.cc/api/tenants/t1/config', {
       method: 'POST',
       body: JSON.stringify({ theme: 'dark' }),
     });
-    expect((await worker.fetch(cfgReq, env)).status).toBe(200);
+    expect((await worker.fetch(cfgReqUnauth, authEnv)).status).toBe(401);
+
+    // Valid auth header for tenant t1 -> 200
+    const cfgReq = new Request('https://api.cashclaw.cc/api/tenants/t1/config', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: 'dark' }),
+    });
+    expect((await worker.fetch(cfgReq, authEnv)).status).toBe(200);
 
     expect((await worker.fetch(get('/api/v1/paper-trades'), env)).status).toBe(500);
     const d1Env = {

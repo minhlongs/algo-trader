@@ -14,6 +14,10 @@ export type Env = {
   VPS_ORIGIN?: string;
   REGION_ROUTING_ENABLED?: string;
   TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  ADMIN_API_KEY?: string;
+  TELEGRAM_MOCK?: string;
+  TELEGRAM_API_BASE_URL?: string;
 };
 
 export interface TelegramUpdate {

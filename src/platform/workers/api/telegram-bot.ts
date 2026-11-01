@@ -50,6 +50,18 @@ export async function handleTelegramWebhook(request: Request, env: Env): Promise
     return json(env, { error: 'Method not allowed' }, 405);
   }
 
+  // Fail-closed: always require TELEGRAM_WEBHOOK_SECRET and matching header
+  if (!env.TELEGRAM_WEBHOOK_SECRET) {
+    logger.warn('[telegram] webhook secret not configured');
+    return json(env, { error: 'Webhook secret not configured' }, 503);
+  }
+
+  const secretHeader = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+  if (!secretHeader || secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+    logger.warn('[telegram] unauthorized webhook call: missing or mismatched secret token');
+    return json(env, { error: 'Unauthorized' }, 401);
+  }
+
   const botToken = env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     logger.warn('[telegram] bot token not configured');
@@ -82,10 +94,27 @@ export async function handleSetTelegramWebhook(request: Request, _env: Env): Pro
     return json(_env, { error: 'Method not allowed' }, 405);
   }
 
+  const adminKey = _env.ADMIN_API_KEY;
+  const providedKey = request.headers.get('x-api-key');
+  if (!adminKey || !providedKey || providedKey !== adminKey) {
+    return json(_env, { error: 'Unauthorized' }, 401);
+  }
+
   const body = (await request.json()) as { webhookUrl?: string };
   const { webhookUrl } = body;
   if (!webhookUrl) {
     return json(_env, { error: 'webhookUrl required' }, 400);
+  }
+
+  let parsedWebhookUrl: URL;
+  try {
+    parsedWebhookUrl = new URL(webhookUrl);
+  } catch {
+    return json(_env, { error: 'Invalid webhookUrl' }, 400);
+  }
+  const allowedWebhookHosts = ['api.cashclaw.cc', 'algo-trader-staging.agencyos-openclaw.workers.dev', 'algo-trader-staging.workers.dev'];
+  if (parsedWebhookUrl.protocol !== 'https:' || !allowedWebhookHosts.includes(parsedWebhookUrl.hostname)) {
+    return json(_env, { error: 'Forbidden webhookUrl host' }, 400);
   }
 
   const botToken = _env.TELEGRAM_BOT_TOKEN || '';
@@ -93,10 +122,15 @@ export async function handleSetTelegramWebhook(request: Request, _env: Env): Pro
     return json(_env, { error: 'TELEGRAM_BOT_TOKEN not set' }, 503);
   }
 
+  const webhookPayload: Record<string, string> = { url: webhookUrl };
+  if (_env.TELEGRAM_WEBHOOK_SECRET) {
+    webhookPayload.secret_token = _env.TELEGRAM_WEBHOOK_SECRET;
+  }
+
   const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: webhookUrl }),
+    body: JSON.stringify(webhookPayload),
   });
 
   const result = (await res.json()) as { ok: boolean; description?: string };

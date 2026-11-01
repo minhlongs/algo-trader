@@ -47,12 +47,16 @@ function buildConfig(env?: PaperTradingEnv): PaperTradingConfig {
  */
 let paperTradingLoop: PaperTradingLoop | undefined;
 
-export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): void {
+export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): boolean {
+  if (String(env?.QWEN_KILL ?? process.env.QWEN_KILL ?? '') === '1') {
+    logger.info('[PaperTrading] Initialization blocked by L1 kill switch (QWEN_KILL=1)');
+    return false;
+  }
   // Accept both CF Worker env bindings (preferred) and process.env (tests/Node.js)
   const enabled = String(env?.PAPER_TRADING_ENABLED ?? process.env.PAPER_TRADING_ENABLED ?? '');
   if (enabled !== 'true') {
     logger.info('[PaperTrading] Disabled (PAPER_TRADING_ENABLED != true)');
-    return;
+    return false;
   }
 
   const config = buildConfig({
@@ -70,6 +74,7 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Dat
     intervalMs: config.intervalMs,
     maxConcurrent: config.maxConcurrentTrades,
   });
+  return true;
 }
 
 /**
@@ -84,10 +89,17 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Dat
 export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): Promise<{
   ok: true;
   initialized: boolean;
+  killed?: boolean;
   tradesBefore: number;
   tradesAfter: number;
   hasKv: boolean;
 }> {
+  if (String(env?.QWEN_KILL ?? process.env.QWEN_KILL ?? '') === '1') {
+    paperTradingLoop?.stop();
+    paperTradingLoop = undefined;
+    logger.info('[PaperTrading] Tick blocked by L1 kill switch (QWEN_KILL=1)');
+    return { ok: true, initialized: false, killed: true, tradesBefore: 0, tradesAfter: 0, hasKv: !!kv };
+  }
   if (!paperTradingLoop) {
     // Cron triggers hit `scheduled` directly — initialize the loop on first tick
     // so the stateless worker has a live PaperTradingLoop to run against.
