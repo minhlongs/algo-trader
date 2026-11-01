@@ -83,7 +83,7 @@ class_name = "StrategyShard"
 binding = "SUBSCRIBERS"
 database_name = "algo-trader-db"
 database_id = "f29559f2-8e0b-461a-bd01-5665581beeee"
-migrations_dir = "src/shared/db/migrations"
+migrations_dir = "migrations/d1"
 
 # Migrations for DO deployment
 [[migrations]]
@@ -113,9 +113,28 @@ crons = ["*/5 * * * *"]
 # if a new [env.*] is ever added.
 [env.staging]
 name = "algo-trader-staging"
+account_id = "f691e83094f776311a1bfe3f8b126f1c"
 routes = []
+
 [env.staging.vars]
 ENVIRONMENT = "staging"
+REGION_ROUTING_ENABLED = "false"
+TELEGRAM_MOCK = "true"
+PAPER_TRADING_ENABLED = "true"
+PAPER_TRADING_SYMBOLS = "BTC/USD,ETH/USD,SOL/USD,AVAX/USD"
+PAPER_TRADING_INTERVAL_MS = "300000"
+PAPER_TRADING_MAX_CONCURRENT = "5"
+PAPER_TRADING_HOLD_DURATION_MS = "3600000"
+
+[[env.staging.kv_namespaces]]
+binding = "CACHE"
+id = "1ef051223fde46629f0af6bf270e8315"
+
+[[env.staging.d1_databases]]
+binding = "SUBSCRIBERS"
+database_name = "algo-trader-staging"
+database_id = "943fd11e-c81a-4342-afa6-7e80aa7a18df"
+migrations_dir = "migrations/d1"
 
 [env.us-east]
 name = "algo-trader-us-east"

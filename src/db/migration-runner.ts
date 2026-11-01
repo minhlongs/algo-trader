@@ -5,6 +5,7 @@
  */
 
 import { logger } from '../shared/utils/logger';
+import { assertStagingEnvironmentSafe } from '../shared/preflight/staging-guard';
 import * as migration001 from './migrations/001-create-trades-table';
 import * as migration002 from './migrations/002-phase33-indexes';
 import * as migration019 from './migrations/019_add_trades_composite_index';
@@ -22,7 +23,23 @@ import * as migration047 from './migrations/047-model-registry';
 import * as migration049 from './migrations/049-funding-rates';
 import * as migration035 from '../shared/db/migrations/035-add-blog-engagement-tables';
 import * as migration037 from '../shared/db/migrations/037-add-newsletter-preferences';
+import * as migration042Shared from '../shared/db/migrations/042-add-dunning-state';
+import * as migration043Shared from '../shared/db/migrations/043-add-billing-subscriptions';
+import * as migration044Shared from '../shared/db/migrations/044-add-billing-payments';
+import * as migration045Shared from '../shared/db/migrations/045-add-billing-licenses';
+import * as migration046Shared from '../shared/db/migrations/046-add-billing-coupons';
+import * as migration047Shared from '../shared/db/migrations/047-add-billing-drip-subscribers';
+import * as migration048Shared from '../shared/db/migrations/048-add-billing-enterprise-inquiries';
+import * as migration049Shared from '../shared/db/migrations/049-add-billing-api-keys';
+import * as migration050Shared from '../shared/db/migrations/050-add-billing-onboarding-signups';
+import * as migration051Shared from '../shared/db/migrations/051-add-usage-metering';
+import * as migration052Shared from '../shared/db/migrations/052-add-starter-tier-and-billing-interval';
+import * as migration053Shared from '../shared/db/migrations/053-add-telegram-sessions';
 import * as migration055 from '../shared/db/migrations/055-add-blog-page-views';
+import * as migration056Shared from '../shared/db/migrations/056-add-kyc-verifications';
+import * as migration057Shared from '../shared/db/migrations/057-add-usage-metrics-table';
+import * as migration058Shared from '../shared/db/migrations/058-add-usage-metrics-alerted-thresholds';
+import * as migration059Shared from '../shared/db/migrations/059-add-usage-metrics-mcu-units';
 import {
   rollbackMigration as executeRollbackMigration,
   rollbackLastMigration as executeRollbackLastMigration,
@@ -80,7 +97,23 @@ export const MIGRATIONS: Migration[] = [
   migration049,
   migration035,
   migration037,
+  migration042Shared,
+  migration043Shared,
+  migration044Shared,
+  migration045Shared,
+  migration046Shared,
+  migration047Shared,
+  migration048Shared,
+  migration049Shared,
+  migration050Shared,
+  migration051Shared,
+  migration052Shared,
+  migration053Shared,
   migration055,
+  migration056Shared,
+  migration057Shared,
+  migration058Shared,
+  migration059Shared,
   migration002, // Phase 33 composite indexes — runs after all tables exist (025-031 create them)
   createSqlMigration('048-prediction-history.sql', '048-prediction-history', 'Prediction history table (migrate from predictions.json)'),
 ];
@@ -90,6 +123,22 @@ export const MIGRATIONS: Migration[] = [
  */
 export async function runMigrations(): Promise<void> {
   try {
+    const envName = (process.env.ENVIRONMENT || process.env.NODE_ENV || '').toLowerCase();
+    // Fail-closed guard: run staging safety assertions when explicitly targeting staging,
+    // or when ENVIRONMENT is staging even when NODE_ENV is erroneously set to production.
+    if (envName === 'staging' || (process.env.ENVIRONMENT || '').toLowerCase() === 'staging') {
+      assertStagingEnvironmentSafe({
+        database: process.env.DB_NAME,
+        host: process.env.DB_HOST,
+        d1Id: process.env.CLOUDFLARE_D1_DATABASE_ID,
+        kvId: process.env.CLOUDFLARE_KV_NAMESPACE_ID,
+        liveTradingEnabled: process.env.LIVE_TRADING_ENABLED,
+        polymarketTradingMode: process.env.POLYMARKET_TRADING_MODE,
+      }, {
+        requireDbFields: true,
+      });
+    }
+
     await ensureMigrationsTable();
     const applied = await getAppliedMigrations();
 

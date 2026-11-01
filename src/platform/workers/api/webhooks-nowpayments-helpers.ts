@@ -106,8 +106,8 @@ export async function processConfirmedPayment(
 
     await db.prepare(
       `INSERT INTO subscriptions (id, user_id, tier, status, amount_cents, currency, nowpayments_invoice_id, current_period_start, current_period_end, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, mapping.userId, tier, 'active', Math.round(ipn.price_amount * 100), ipn.price_currency, String(ipn.payment_id), now, periodEnd, now).run();
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, mapping.userId, tier, 'active', Math.round(ipn.price_amount * 100), ipn.price_currency, String(ipn.payment_id), now, periodEnd, now, now).run();
 
     await cache.put(`tier:${mapping.userId}`, tier, { expirationTtl: 300 });
     logger.info('[nowpayments-ipn] tier updated', { userId: mapping.userId, tier });

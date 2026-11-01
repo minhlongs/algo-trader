@@ -118,3 +118,10 @@ export function createScopedCleanupTracker(): ScopedCleanupTracker {
     },
   };
 }
+
+export {
+  assertStagingEnvironmentSafe,
+  type StagingEnvironmentConfig,
+  type StagingGuardOptions,
+} from '../../src/shared/preflight/staging-guard';
+

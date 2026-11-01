@@ -1,17 +1,16 @@
 /**
  * Edge Proxy — Inline Route Handlers
  *
- * Houses two inline D1/KV route handlers that were previously embedded
- * in the main fetch() body, each too short to warrant their own handler module
- * but together sufficient to keep edge-proxy.ts over 200 LOC.
- *
- * Extracted from edge-proxy.ts to keep files under 200 lines.
- * Called directly from the main fetch() dispatch table.
+ * Houses inline D1/KV route handlers that were previously embedded
+ * in the main fetch() body. Health route extracted to edge-proxy-health-handler.ts.
  */
 
 import { logger } from '../../shared/utils/logger';
 import { CORS, SECURITY_HEADERS } from './edge-proxy-constants';
+import { verifyJwt } from './crypto-utils';
 import type { Env } from './edge-proxy-types';
+
+export { handleHealthRoute } from './edge-proxy-health-handler';
 
 const JSON_HEADERS = { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' } as const;
 
@@ -19,8 +18,54 @@ const JSON_HEADERS = { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'applicatio
 
 export async function handleTenantConfigSave(request: Request, env: Env, path: string): Promise<Response> {
   try {
-    const body = await request.json();
     const tenantId = path.split('/')[3];
+    if (!tenantId) {
+      return new Response(JSON.stringify({ error: 'Tenant ID required' }), {
+        status: 400, headers: JSON_HEADERS,
+      });
+    }
+
+    if (!env.JWT_SECRET) {
+      logger.warn('[EdgeProxy] tenant config write rejected: JWT_SECRET not configured');
+      return new Response(JSON.stringify({ error: 'Authentication not configured' }), {
+        status: 401, headers: JSON_HEADERS,
+      });
+    }
+
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Bearer token required' }), {
+        status: 401, headers: JSON_HEADERS,
+      });
+    }
+
+    const token = authHeader.slice(7).trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Empty token' }), {
+        status: 401, headers: JSON_HEADERS,
+      });
+    }
+
+    const payload = await verifyJwt(token, env.JWT_SECRET);
+    if (!payload) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid or expired token' }), {
+        status: 401, headers: JSON_HEADERS,
+      });
+    }
+
+    const tokenTenantId = typeof payload.tenantId === 'string' ? payload.tenantId : '';
+    const isAdmin = payload.role === 'admin';
+    if (!isAdmin && tokenTenantId !== tenantId) {
+      logger.warn('[EdgeProxy] tenant config cross-tenant write rejected', {
+        requestedTenant: tenantId,
+        tokenTenant: tokenTenantId,
+      });
+      return new Response(JSON.stringify({ error: 'Forbidden: Cross-tenant modification denied' }), {
+        status: 403, headers: JSON_HEADERS,
+      });
+    }
+
+    const body = await request.json();
     await env.CACHE.put(`config:${tenantId}`, JSON.stringify(body));
     return new Response(JSON.stringify({ saved: true }), { headers: JSON_HEADERS });
   } catch {
@@ -69,17 +114,6 @@ export async function handlePaperTradesLedger(_request: Request, env: Env): Prom
   }
 }
 
-export function handleHealthRoute(env: Env, routingEnabled: boolean): Response {
-  return new Response(JSON.stringify({
-    status: 'ok', service: 'Cloudflare Worker Edge Proxy', environment: env.ENVIRONMENT,
-    edge: 'cloudflare', hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
-    checks: {
-      kv: env.CACHE ? 'configured' : 'missing', d1: env.DB ? 'configured' : 'missing',
-      metrics: !!env.METRIC_PASSWORD, regionRouting: routingEnabled,
-    },
-  }), { status: 200, headers: JSON_HEADERS });
-}
-
 export function handleRootRoute(env: Env): Response {
   return new Response(JSON.stringify({
     service: 'algo-trader API', version: '1.0', status: 'ok', edge: 'cloudflare',
@@ -111,7 +145,11 @@ export function handleMetricsGetRoute(
 export async function handlePaperTradingTickRoute(
   env: Env,
   runTick: () => Promise<unknown>,
+  request?: Request,
 ): Promise<Response> {
+  if (env.ADMIN_API_KEY && request?.headers.get('x-api-key') !== env.ADMIN_API_KEY) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: JSON_HEADERS });
+  }
   try {
     const result = await runTick();
     return new Response(JSON.stringify({

@@ -10,9 +10,6 @@ import { describe, it, expect, vi } from 'vitest';
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { Env } from '../edge-proxy-types';
 
-// Stub out unrelated route submodules so testing the health route on the
-// top-level Worker dispatcher does not eagerly import the entire worker
-// dependency graph into V8 coverage collection.
 vi.mock('../../durable-objects', () => ({ ShardManager: class {}, StrategyShard: class {} }));
 vi.mock('../auth-handlers', () => ({
   handleSignup: vi.fn(),
@@ -65,6 +62,7 @@ vi.mock('../edge-proxy-metrics', () => ({
 vi.mock('../paper-trading-entry', () => ({
   initPaperTrading: vi.fn(),
   runPaperTradingTick: vi.fn(),
+  stopPaperTrading: vi.fn(),
 }));
 
 import worker from '../edge-proxy';
@@ -72,6 +70,16 @@ import worker from '../edge-proxy';
 function makeEnv(): Env {
   return {
     CACHE: { get: async () => null, put: async () => undefined, delete: async () => {} } as unknown as KVNamespace,
+    SUBSCRIBERS: {
+      prepare: (query: string) => ({
+        first: async () => {
+          if (query.includes('SELECT 1')) return { ready: 1 };
+          if (query.includes('subscriptions')) return { id: 's1', user_id: 'u1', status: 'active', tier: 'PRO', created_at: Date.now() };
+          if (query.includes('paper_trades_v3')) return { id: 'p1', market_id: 'm1', side: 'BUY', size_usd: 100, entry_price: 0.5, status: 'OPEN', strategy: 's', created_at: Date.now() };
+          return null;
+        },
+      }),
+    } as unknown as Env['SUBSCRIBERS'],
     ENVIRONMENT: 'test',
     REGION_ROUTING_ENABLED: 'false',
   } as unknown as Env;
@@ -95,8 +103,6 @@ describe('Worker health route', () => {
     const bare = (await bareResponse.json()) as Record<string, unknown>;
     const aliased = (await aliasedResponse.json()) as Record<string, unknown>;
 
-    // `timestamp` is a clock reading and differs between any two calls; the
-    // rest of the payload must be identical.
     expect(aliased.status).toBe(bare.status);
     expect(aliased.service).toBe(bare.service);
     expect(aliased.environment).toBe(bare.environment);
@@ -111,14 +117,12 @@ describe('Worker health route', () => {
 
   it('rejects non-GET methods on the aliased health path', async () => {
     const res = await worker.fetch(new Request('https://api.cashclaw.cc/api/health', { method: 'POST' }), makeEnv());
-    // POST on a GET-only route must not be served as a health check.
     expect(res.status).not.toBe(200);
   });
 
   it('exposes no secret-bearing fields in the health payload', async () => {
     const res = await worker.fetch(get('/api/health'), makeEnv());
     const raw = JSON.stringify(await res.json());
-    // Bindings are reported as a configured/missing flag, never as their values.
     expect(raw).not.toMatch(/NOWPAYMENTS_API_KEY|SUBSCRIBERS|METRIC_PASSWORD/);
   });
 
@@ -132,13 +136,25 @@ describe('Worker health route', () => {
     const metricEnv = { ...env, METRIC_PASSWORD: 'sec' };
     expect((await worker.fetch(get('/metrics?token=wrong'), metricEnv)).status).toBe(401);
 
-    const cfgReq = new Request('https://api.cashclaw.cc/api/tenants/t1/config', {
+    const { createJwt } = await import('../crypto-utils');
+    const authEnv = { ...env, JWT_SECRET: 'test-jwt-secret' } as Env;
+    const validToken = await createJwt({ sub: 'user@example.com', tenantId: 't1', tier: 'PRO' }, 'test-jwt-secret');
+
+    const cfgReqUnauth = new Request('https://api.cashclaw.cc/api/tenants/t1/config', {
       method: 'POST',
       body: JSON.stringify({ theme: 'dark' }),
     });
-    expect((await worker.fetch(cfgReq, env)).status).toBe(200);
+    expect((await worker.fetch(cfgReqUnauth, authEnv)).status).toBe(401);
 
-    expect((await worker.fetch(get('/api/v1/paper-trades'), env)).status).toBe(500);
+    const cfgReq = new Request('https://api.cashclaw.cc/api/tenants/t1/config', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: 'dark' }),
+    });
+    expect((await worker.fetch(cfgReq, authEnv)).status).toBe(200);
+
+    const noD1Env = { ...env, SUBSCRIBERS: undefined } as unknown as Env;
+    expect((await worker.fetch(get('/api/v1/paper-trades'), noD1Env)).status).toBe(500);
     const d1Env = {
       ...env,
       SUBSCRIBERS: {
@@ -161,38 +177,19 @@ describe('Worker health route', () => {
     const env = makeEnv();
     const post = (p: string) => new Request(`https://api.cashclaw.cc${p}`, { method: 'POST' });
     const del = (p: string) => new Request(`https://api.cashclaw.cc${p}`, { method: 'DELETE' });
-
-    for (const req of [
-      post('/metrics'),
-      post('/api/auth/signup'),
-      post('/api/auth/login'),
-      get('/api/auth/me'),
-      get('/api/auth/users'),
-      post('/api/auth/role'),
-      post('/api/auth/delete'),
-      get('/api/v1/subscriptions/me'),
-      post('/api/v1/subscriptions/upgrade'),
-      del('/api/v1/subscriptions/cancel'),
-      get('/api/v1/subscriptions/tiers'),
-      post('/api/webhooks/nowpayments'),
-      post('/api/coupons/validate'),
-      post('/api/coupons/apply'),
-      post('/api/coupons/redeem'),
-      post('/api/coupons/activate'),
-      get('/api/version'),
-      get('/api/delivery/energy-9'),
-      post('/api/copilot/ask'),
-      post('/api/telegram/webhook'),
-      post('/api/telegram/set-webhook'),
-      get('/api/markets'),
-      get('/api/v1/shard/ring'),
-      get('/api/v1/shard/1/health'),
-      post('/api/v1/strategies/execute'),
-      get('/api/v1/strategies/list'),
-    ]) {
+    const endpoints = [
+      post('/metrics'), post('/api/auth/signup'), post('/api/auth/login'), get('/api/auth/me'),
+      get('/api/auth/users'), post('/api/auth/role'), post('/api/auth/delete'), get('/api/v1/subscriptions/me'),
+      post('/api/v1/subscriptions/upgrade'), del('/api/v1/subscriptions/cancel'), get('/api/v1/subscriptions/tiers'),
+      post('/api/webhooks/nowpayments'), post('/api/coupons/validate'), post('/api/coupons/apply'),
+      post('/api/coupons/redeem'), post('/api/coupons/activate'), get('/api/version'), get('/api/delivery/energy-9'),
+      post('/api/copilot/ask'), post('/api/telegram/webhook'), post('/api/telegram/set-webhook'),
+      get('/api/markets'), get('/api/v1/shard/ring'), get('/api/v1/shard/1/health'),
+      post('/api/v1/strategies/execute'), get('/api/v1/strategies/list'),
+    ];
+    for (const req of endpoints) {
       await worker.fetch(req, env);
     }
-
     const regionEnv = { ...env, REGION_ROUTING_ENABLED: 'true', VPS_ORIGIN: 'https://vps.example' };
     await worker.fetch(get('/api/markets'), regionEnv);
   });

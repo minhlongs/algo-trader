@@ -13,8 +13,30 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$APP_DIR"
 
-: "${PROD_BASE:=https://api.cashclaw.cc}"
-: "${CUSTOM_BASE:=https://cashclaw.cc}"
+# ─── Staging Preflight Guard & Target Resolver ─────────────────────────
+TARGET_ENV="${CF_WORKER_ENV:-${ENVIRONMENT:-staging}}"
+echo "==> Staging Target Resolution: TARGET_ENV=$TARGET_ENV"
+
+if [ "$TARGET_ENV" = "staging" ]; then
+  echo "==> Running fail-closed staging preflight safety checks..."
+  export DB_NAME="${DB_NAME:-algo_trader_staging}"
+  export DB_HOST="${DB_HOST:-staging-db}"
+  TARGET_ENV="staging" npx tsx scripts/staging-preflight-check.ts
+  WRANGLER_ENV_FLAG="--env staging"
+  # Staging must never verify against production custom domain api.cashclaw.cc
+  WORKER_URL="${STAGING_WORKER_URL:-https://algo-trader-staging.agencyos-openclaw.workers.dev}"
+elif [ "$TARGET_ENV" = "production" ]; then
+  if [ "${ALLOW_PRODUCTION_DEPLOY:-0}" != "1" ]; then
+    echo "❌ FATAL: Production deploy is strictly blocked by staging safety guard."
+    echo "   Set ALLOW_PRODUCTION_DEPLOY=1 only with formal authorized approval."
+    exit 1
+  fi
+  WRANGLER_ENV_FLAG=""
+  WORKER_URL="${WORKER_URL:-https://api.cashclaw.cc}"
+else
+  echo "❌ FATAL: Unrecognized deploy target '$TARGET_ENV'. Must be 'staging' or 'production'."
+  exit 1
+fi
 
 # ─── Dirty check ───────────────────────────────────────────────────
 if [ "${ALLOW_DIRTY_DEPLOY:-0}" != "1" ]; then
@@ -41,38 +63,57 @@ echo "    Time:   $DEPLOYED_AT"
 echo "==> tsc -p tsconfig.worker.json"
 npx tsc -p tsconfig.worker.json
 
-# ─── Inject secrets ─────────────────────────────────────────────────
-echo "==> Setting Worker secrets (COMMIT_SHA, DEPLOYED_AT, DEPLOY_BRANCH)"
-echo "$COMMIT_SHA" | npx wrangler secret put COMMIT_SHA --config wrangler.toml
-echo "$DEPLOYED_AT" | npx wrangler secret put DEPLOYED_AT --config wrangler.toml
-echo "$DEPLOY_BRANCH" | npx wrangler secret put DEPLOY_BRANCH --config wrangler.toml
-
 # ─── Deploy ─────────────────────────────────────────────────────────
-echo "==> wrangler deploy"
-npx wrangler deploy --config wrangler.toml
+echo "==> wrangler deploy $WRANGLER_ENV_FLAG"
+npx wrangler deploy --config wrangler.toml $WRANGLER_ENV_FLAG
 
-# ─── Verify SHA match (workers.dev + custom domain) ────────────────
-WORKER_URL="${WORKER_URL:-https://api.cashclaw.cc}"
+# ─── Inject secrets ─────────────────────────────────────────────────
+echo "==> Setting Worker secrets (COMMIT_SHA, DEPLOYED_AT, DEPLOY_BRANCH) for target $TARGET_ENV"
+echo "$COMMIT_SHA" | npx wrangler secret put COMMIT_SHA --config wrangler.toml $WRANGLER_ENV_FLAG
+echo "$DEPLOYED_AT" | npx wrangler secret put DEPLOYED_AT --config wrangler.toml $WRANGLER_ENV_FLAG
+echo "$DEPLOY_BRANCH" | npx wrangler secret put DEPLOY_BRANCH --config wrangler.toml $WRANGLER_ENV_FLAG
+
+# ─── Verify SHA match (target URL) ─────────────────────────────────
 echo ""
-echo "==> Verifying deploy SHA..."
-LIVE_SHA=$(curl -sf "$WORKER_URL/api/version" | python3 -c "import json,sys; print(json.load(sys.stdin).get('shortSha',''))" 2>/dev/null || echo "")
-if [ "$COMMIT_SHORT" = "$LIVE_SHA" ]; then
-  echo "✅ DEPLOY VERIFIED — SHA $COMMIT_SHORT matches live worker"
-else
-  echo "❌ SHA MISMATCH — local=$COMMIT_SHORT live=$LIVE_SHA"
-  echo "   Worker may be serving stale code. Try re-running deploy."
+echo "==> Verifying deploy SHA on $WORKER_URL..."
+HTTP_RESPONSE=$(curl -s -S --max-time 15 -w "\n%{http_code}" "$WORKER_URL/api/version" 2>&1 || echo "CURL_ERROR")
+HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -n1)
+BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+if [ "$HTTP_RESPONSE" = "CURL_ERROR" ] || [ "$HTTP_CODE" != "200" ]; then
+  echo "❌ DEPLOY VERIFICATION FAILED: Endpoint $WORKER_URL/api/version returned HTTP $HTTP_CODE or connection failed"
+  echo "   Response: $BODY"
   exit 1
 fi
 
-# ─── Verify custom domain ───────────────────────────────────────────
-echo ""
-CUSTOM_URL="https://cashclaw.cc"
-API_HTTP=$(curl -s -o /tmp/api_health_body -w "%{http_code}" "$CUSTOM_URL/api/health")
-if [ "$API_HTTP" = "200" ]; then
-  echo "✅ Custom domain: HTTP $API_HTTP (cashclaw.cc operational)"
-else
-  echo "⚠️  Custom domain: HTTP $API_HTTP — check CF Dashboard CNAME for cashclaw.cc"
+LIVE_SHA=$(echo "$BODY" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('shortSha') or '')" 2>/dev/null || echo "")
+
+if [ -z "$LIVE_SHA" ]; then
+  echo "❌ DEPLOY VERIFICATION FAILED: Response from $WORKER_URL/api/version did not contain valid shortSha"
+  echo "   Body: $BODY"
+  exit 1
+fi
+
+if [ "$COMMIT_SHORT" != "$LIVE_SHA" ]; then
+  echo "❌ DEPLOY VERIFICATION FAILED: SHA MISMATCH for target $TARGET_ENV"
+  echo "   Expected local SHA: $COMMIT_SHORT"
+  echo "   Live worker SHA:   $LIVE_SHA"
+  exit 1
+fi
+
+echo "✅ DEPLOY VERIFIED — SHA $COMMIT_SHORT matches live worker for target $TARGET_ENV"
+
+# ─── Verify custom domain (Only on production) ──────────────────────
+if [ "$TARGET_ENV" = "production" ]; then
+  echo ""
+  CUSTOM_URL="https://cashclaw.cc"
+  API_HTTP=$(curl -s -o /tmp/api_health_body -w "%{http_code}" "$CUSTOM_URL/api/health")
+  if [ "$API_HTTP" = "200" ]; then
+    echo "✅ Custom domain: HTTP $API_HTTP (cashclaw.cc operational)"
+  else
+    echo "⚠️  Custom domain: HTTP $API_HTTP — check CF Dashboard CNAME for cashclaw.cc"
+  fi
 fi
 
 echo ""
-echo "Deploy complete: $WORKER_URL | $CUSTOM_URL"
+echo "Deploy step finished for target: $TARGET_ENV ($WORKER_URL)"

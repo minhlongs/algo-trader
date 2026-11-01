@@ -19,8 +19,9 @@ type Env = AuthEnv;
 
 export async function handleSignup(request: Request, env: Env): Promise<Response> {
   try {
-    const body = await request.json() as { email?: string; password?: string; tier?: string };
-    const { email, password, tier = 'free' } = body;
+    const body = await request.json() as { email?: string; password?: string };
+    const { email, password } = body;
+    const tier = 'free';
 
     const validationError = validateSignupInput(email, password);
     if (validationError) return validationError;

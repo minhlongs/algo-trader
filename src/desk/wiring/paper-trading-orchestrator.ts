@@ -34,10 +34,16 @@ export function deriveSource(strategy: string): string {
   return 'legacy';
 }
 
-export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, __resetPortfolioForTests, resetPortfolio, settleStalePositions as checkPositions } from './paper-trading-persistence';
+export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, setTradesFile, setCustomDbPersister, __resetPortfolioForTests, resetPortfolio, settleStalePositions as checkPositions } from './paper-trading-persistence';
 export { resetCapitalReservations } from './paper-capital-reservation';
 
-export async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
+export async function processCandidate(
+  candidate: SignalCandidate,
+  maxPositions: number,
+  options?: {
+    inFlightBarrier?: () => void | Promise<void>;
+  },
+): Promise<void> {
   const vibe = getVibeState();
   const portfolio = getPortfolio();
 
@@ -83,6 +89,18 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
 
     const market = candidate.markets[0];
     if (!market) {
+      reservation.release();
+      return;
+    }
+
+    if (options?.inFlightBarrier) {
+      await options.inFlightBarrier();
+    }
+
+    if (source === 'qwen' && !isQwenEnabled()) {
+      logger.info('[PaperOrchestrator] Qwen signal BLOCKED before mutation — kill switch tripped in-flight', {
+        signalType: candidate.signalType,
+      });
       reservation.release();
       return;
     }
