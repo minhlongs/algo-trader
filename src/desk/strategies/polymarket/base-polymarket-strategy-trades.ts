@@ -69,14 +69,20 @@ export async function performEntry(
     logger.warn('Entry filled with zero tokens', ctx.strategyName, { conditionId, orderId: order.id });
     throw new Error(`Entry order ${order.id} filled with zero tokens`);
   }
+  const actualNotionalUsdc = order.filledSize !== undefined || order.fillPrice !== undefined
+    ? tokenQuantity * fillPrice
+    : sizeUsdc;
+  const feeStr = order.fees ?? '0';
+  const entryFeesUsdc = parseFloat(feeStr) || 0;
 
   ctx.positions.push({
     tokenId,
     conditionId,
     side,
     entryPrice: fillPrice,
-    sizeUsdc,
+    sizeUsdc: actualNotionalUsdc,
     tokenQuantity,
+    entryFeesUsdc,
     orderId: order.id,
     openedAt: Date.now(),
   });
@@ -85,7 +91,7 @@ export async function performEntry(
     conditionId,
     side,
     entryPrice: fillPrice.toFixed(4),
-    sizeUsdc: sizeUsdc.toFixed(2),
+    sizeUsdc: actualNotionalUsdc.toFixed(2),
     tokenQuantity,
   });
 
@@ -94,8 +100,8 @@ export async function performEntry(
     marketId: conditionId,
     side: 'buy',
     fillPrice: fillPrice.toFixed(4),
-    fillSize: sizeUsdc.toFixed(2),
-    fees: '0',
+    fillSize: actualNotionalUsdc.toFixed(2),
+    fees: feeStr,
     timestamp: Date.now(),
     strategy: ctx.strategyName,
   });
@@ -144,8 +150,10 @@ export async function performExit(
   const filledTokens = order.filledSize !== undefined
     ? Math.round(parseFloat(order.filledSize))
     : exitTokenQuantity;
+  const feeStr = order.fees ?? '0';
+  const exitFeesUsdc = parseFloat(feeStr) || 0;
 
-  const pnl = computeExitPnl(pos, fillPrice);
+  const pnl = computeExitPnl(pos, fillPrice, exitFeesUsdc);
 
   logger.info('Exit position', ctx.strategyName, {
     conditionId: pos.conditionId,
@@ -161,7 +169,7 @@ export async function performExit(
     side: exitSide,
     fillPrice: fillPrice.toFixed(4),
     fillSize: (filledTokens * fillPrice).toFixed(2),
-    fees: '0',
+    fees: feeStr,
     timestamp: Date.now(),
     strategy: ctx.strategyName,
   });

@@ -21,19 +21,25 @@ vi.mock('../polymarket-adapter', () => ({
 }));
 
 import { buildPolymarketAdapter } from '../polymarket-execution-adapter';
+import { resetExecutionModeCache } from '../execution-mode';
 
 const FAKE_ENV = {
+  LIVE_TRADING_ENABLED: 'true',
   POLYMARKET_API_KEY: 'test-api-key', POLYMARKET_API_SECRET: 'test-api-secret',
   POLYMARKET_PASSPHRASE: 'test-passphrase', POLYMARKET_PRIVATE_KEY: 'a'.repeat(64),
 };
 
 describe('buildPolymarketAdapter', () => {
-  beforeEach(() => { for (const [k, v] of Object.entries(FAKE_ENV)) process.env[k] = v; });
+  beforeEach(() => {
+    for (const [k, v] of Object.entries(FAKE_ENV)) process.env[k] = v;
+    resetExecutionModeCache();
+  });
 
   afterEach(() => {
     for (const k of [...Object.keys(FAKE_ENV), 'POLY_API_KEY', 'POLY_API_SECRET', 'POLY_PASSPHRASE', 'POLY_PRIVATE_KEY', 'POLYMARKET_TRADING_MODE']) {
       delete process.env[k];
     }
+    resetExecutionModeCache();
   });
 
   it('returns paper stub when paperTrading is true (default)', () => {
@@ -119,7 +125,8 @@ describe('buildPolymarketAdapter', () => {
 
   it('accepts deprecated POLY_* env vars as fallback', () => {
     for (const k of Object.keys(FAKE_ENV)) delete process.env[k];
-    Object.assign(process.env, { POLY_API_KEY: 'old-key', POLY_API_SECRET: 'old-secret', POLY_PASSPHRASE: 'old-passphrase', POLY_PRIVATE_KEY: 'b'.repeat(64) });
+    Object.assign(process.env, { LIVE_TRADING_ENABLED: 'true', POLY_API_KEY: 'old-key', POLY_API_SECRET: 'old-secret', POLY_PASSPHRASE: 'old-passphrase', POLY_PRIVATE_KEY: 'b'.repeat(64) });
+    resetExecutionModeCache();
     const result = buildPolymarketAdapter({ paperTrading: false });
     expect(result.adapter).not.toBeNull();
     expect(result.signer).not.toBeNull();

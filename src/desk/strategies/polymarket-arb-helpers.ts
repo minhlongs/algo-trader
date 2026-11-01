@@ -3,6 +3,7 @@
  */
 
 import type { StrategyName } from '../core/types';
+import type { RawOrderBook } from '../polymarket/clob-client';
 import type { BaseStrategyConfig } from './polymarket/base-polymarket-strategy';
 
 export interface PolymarketArbConfig extends BaseStrategyConfig {
@@ -67,3 +68,19 @@ export function updateSpreadHistory(history: Map<string, number[]>, key: string,
   if (arr.length === 0) return 0;
   return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
+
+/**
+ * Verify that top-of-book ask depth can fill the requested leg size (in USDC)
+ * without walking the book. If the book reports explicit ask sizes, requires
+ * bestAskSize >= Math.round(legSizeUsdc / askPrice).
+ */
+export function hasSufficientAskDepth(book: RawOrderBook, askPrice: number, legSizeUsdc: number): boolean {
+  if (askPrice <= 0 || legSizeUsdc <= 0) return false;
+  const asks = book?.asks;
+  if (!Array.isArray(asks) || asks.length === 0) return false;
+  const requiredTokens = Math.round(legSizeUsdc / askPrice);
+  const topAskSize = parseFloat(String(asks[0]?.size ?? '0'));
+  if (!Number.isFinite(topAskSize) || topAskSize <= 0) return false;
+  return topAskSize >= requiredTokens;
+}
+

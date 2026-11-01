@@ -38,6 +38,8 @@ export interface OpenPosition {
    * quantity, never a quantity re-derived from the current exit price.
    */
   tokenQuantity: number;
+  /** Venue fees paid on entry in USDC (default 0 when venue reports none). */
+  entryFeesUsdc?: number;
   orderId: string;
   openedAt: number;
 }

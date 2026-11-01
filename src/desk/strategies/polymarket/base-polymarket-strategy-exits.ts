@@ -60,11 +60,15 @@ export function evaluateExitCondition(
 }
 
 /**
- * Compute realized PnL for a closed position.
- * Mirrors the original exitPosition() pnl math exactly.
+ * Compute realized PnL for a closed position, net of entry and exit fees when present.
+ * Mirrors the original exitPosition() pnl math while accounting for actual token quantity
+ * and venue fees.
  */
-export function computeExitPnl(pos: OpenPosition, currentPrice: number): number {
-  return pos.side === 'yes'
-    ? (currentPrice - pos.entryPrice) * (pos.sizeUsdc / pos.entryPrice)
-    : (pos.entryPrice - currentPrice) * (pos.sizeUsdc / pos.entryPrice);
+export function computeExitPnl(pos: OpenPosition, currentPrice: number, exitFeesUsdc = 0): number {
+  const qty = pos.tokenQuantity > 0 ? pos.tokenQuantity : pos.sizeUsdc / pos.entryPrice;
+  const gross = pos.side === 'yes'
+    ? (currentPrice - pos.entryPrice) * qty
+    : (pos.entryPrice - currentPrice) * qty;
+  const entryFees = pos.entryFeesUsdc ?? 0;
+  return gross - entryFees - exitFeesUsdc;
 }

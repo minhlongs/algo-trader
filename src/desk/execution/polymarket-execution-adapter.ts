@@ -18,6 +18,7 @@
 
 import { PolymarketAdapter } from './polymarket-adapter';
 import { PolymarketSigner } from './polymarket-signer';
+import { isLiveEnabled } from './execution-mode';
 import { logger } from '../../shared/utils/logger';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -109,6 +110,14 @@ export function buildPolymarketAdapter(
 
   if (!isLive) {
     logger.debug('[PolymarketAdapter] PAPER mode — no API keys required');
+    return { adapter: null, signer: null, paperTrading: true };
+  }
+
+  // Unified LIVE gate: refuse live signer/adapter unless LIVE_TRADING_ENABLED=true
+  if (!isLiveEnabled()) {
+    logger.warn(
+      '[PolymarketAdapter] LIVE adapter requested but LIVE_TRADING_ENABLED !== "true" — falling back to PAPER',
+    );
     return { adapter: null, signer: null, paperTrading: true };
   }
 

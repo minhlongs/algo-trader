@@ -1,0 +1,11 @@
+# 03 — Risk Register (`audit-261101-golive-poly`)
+
+| ID | Severity | Surface | Description | Mitigation / Resolution | Status |
+|---|---|---|---|---|---|
+| `R-01` | Critical | Execution Mode Gate | `submitOnlyOrder` and `buildPolymarketAdapter` previously did not check `LIVE_TRADING_ENABLED === 'true'`. | Patched in `src/desk/execution/live-order-submission.ts` and `src/desk/execution/polymarket-execution-adapter.ts` + pinned by unit tests. | **CLOSED** |
+| `R-02` | High | Strategy Accounting | `performEntry` / `performExit` hardcoded `fees: '0'` and ignored partial-fill notional and fees in `computeExitPnl`. | Patched in `order-manager.ts`, `base-polymarket-strategy-types.ts`, `base-polymarket-strategy-exits.ts`, and `base-polymarket-strategy-trades.ts`. | **CLOSED** |
+| `R-03` | High | Multi-Leg Arbitrage | `PolymarketArbStrategy` did not check top-of-book ask depth and left Leg 1 (`YES`) open unhedged if Leg 2 (`NO`) failed. | Added `hasSufficientAskDepth` check and immediate compensatory IOC unwind (`exitPosition`) + cooldown when Leg 2 fails. | **CLOSED** |
+| `R-04` | High | Order State & Drift | Duplicate fill events or `UNKNOWN` timeout states could cause double-counting or concurrent orders on an un-reconciled market. | Implemented `PolymarketOrderReconciler` (`src/desk/execution/polymarket-order-reconciler.ts`) with `intentId`/`eventId` idempotency, `UNKNOWN` market lock, and zero-drift audit. | **CLOSED** |
+| `R-05` | High | Staging Isolation | `--env staging` without `routes = []` in `wrangler.toml` could hijack `api.cashclaw.cc/*`. | Enforced `routes = []`, `workers_dev = true`, and fail-closed `scripts/verify-staging-preflight.ts` (`PR #216`). | **CLOSED** |
+| `R-06` | Medium | Host PG Staging | No dedicated non-production Docker host provisioned yet for PostgreSQL migrations (`001–007`). | Marked `#5, #9-PG` as `BLOCKED`; production host `m1pro-home` strictly excluded. | **OPEN (BLOCKED)** |
+| `R-07` | High | Live Capital (`G2/G3`) | Live Polymarket liquidity, slippage, and resolution edge cases require 30-day real-market shadow validation before capital deployment. | Gates `G2` and `G3` remain `BLOCKED`; `LIVE_TRADING_ENABLED` remains unset. | **OPEN (BLOCKED)** |
