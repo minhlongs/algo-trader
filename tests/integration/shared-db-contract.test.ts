@@ -218,14 +218,14 @@ describe('Shared DB Contract', () => {
  while ((mm = sqlIdRe.exec(runnerSrc)) !== null) {
   allIds.push(mm[1]);
  }
- const importRe = /import \* as migration(\d+) from '(\.\/migrations\/|\.\.\/shared\/db\/migrations\/)([^']+)'/g;
+ const importRe = /import \* as migration\w+ from '(\.\/migrations\/|\.\.\/shared\/db\/migrations\/)([^']+)'/g;
  importRe.lastIndex = 0;
  while ((mm = importRe.exec(runnerSrc)) !== null) {
   try {
-   const importPath = mm[2];
+   const importPath = mm[1];
    const isShared = importPath.startsWith('../shared/');
    const dir = isShared ? SHARED_MIGRATIONS_DIR : MIGRATIONS_DIR;
-   const filename = mm[3];
+   const filename = mm[2];
    const tsSrc = readFileSync(dir + '/' + filename + '.ts', 'utf8');
    const idMatch = tsSrc.match(/export\s+const\s+id\s*=\s*'([^']+)'/);
    if (idMatch) allIds.push(idMatch[1]);
@@ -255,14 +255,14 @@ describe('Shared DB Contract', () => {
  while ((mm = sqlIdRe.exec(runnerSrc)) !== null) {
   allIds.push(mm[1]);
  }
- const importRe = /import \* as migration(\d+) from '(\.\/migrations\/|\.\.\/shared\/db\/migrations\/)([^']+)'/g;
+ const importRe = /import \* as migration\w+ from '(\.\/migrations\/|\.\.\/shared\/db\/migrations\/)([^']+)'/g;
  importRe.lastIndex = 0;
  while ((mm = importRe.exec(runnerSrc)) !== null) {
   try {
-   const importPath = mm[2];
+   const importPath = mm[1];
    const isShared = importPath.startsWith('../shared/');
    const dir = isShared ? SHARED_MIGRATIONS_DIR : MIGRATIONS_DIR;
-   const filename = mm[3];
+   const filename = mm[2];
    const tsSrc = readFileSync(dir + '/' + filename + '.ts', 'utf8');
    const idMatch = tsSrc.match(/export\s+const\s+id\s*=\s*'([^']+)'/);
    if (idMatch) allIds.push(idMatch[1]);

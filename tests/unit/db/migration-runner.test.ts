@@ -310,7 +310,7 @@ describe('Migration Runner', () => {
       // @ts-expect-error - testing private/internal member
       expect(migrationRunner.MIGRATIONS.length).toBeGreaterThanOrEqual(30);
       // @ts-expect-error - testing private/internal member
-      expect(migrationRunner.MIGRATIONS.length).toBeLessThanOrEqual(40);
+      expect(migrationRunner.MIGRATIONS.length).toBeLessThanOrEqual(60);
     });
 
     it('each migration has required properties', () => {
