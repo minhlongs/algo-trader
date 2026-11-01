@@ -141,12 +141,12 @@ export async function handleHealthRoute(env: Env, routingEnabled: boolean): Prom
 
       // 1. Verify subscriptions table & required hot columns
       try {
-        const subProbe = await db.prepare(
+        await db.prepare(
           'SELECT id, user_id, status, tier, created_at FROM subscriptions LIMIT 1',
         ).first();
         schemaChecks.subscriptions = true;
         schemaChecks.columns.subscriptions = true;
-      } catch (err) {
+      } catch {
         schemaChecks.subscriptions = false;
         schemaChecks.columns.subscriptions = false;
         sanitizedErrorMessage = 'subscriptions schema verification failed';
@@ -154,12 +154,12 @@ export async function handleHealthRoute(env: Env, routingEnabled: boolean): Prom
 
       // 2. Verify paper_trades_v3 table & required hot columns
       try {
-        const paperProbe = await db.prepare(
+        await db.prepare(
           'SELECT id, market_id, side, size_usd, entry_price, status, strategy, created_at FROM paper_trades_v3 LIMIT 1',
         ).first();
         schemaChecks.paperTrades = true;
         schemaChecks.columns.paperTrades = true;
-      } catch (err) {
+      } catch {
         schemaChecks.paperTrades = false;
         schemaChecks.columns.paperTrades = false;
         sanitizedErrorMessage = sanitizedErrorMessage || 'paper_trades_v3 schema verification failed';
