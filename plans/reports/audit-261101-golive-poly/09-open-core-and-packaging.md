@@ -2,7 +2,7 @@
 
 ## 1. Readiness & Boundary Verification
 - **Important Caveat (Memory & Audit Rule):** Historical readiness scorers that only check `fs.existsSync` or markdown checkboxes (`25/25 READY`) prove file existence, **not** runtime behavior.
-- In this audit (`S0–S5`), every claim in `02-verification-matrix.md` is backed by behavioral unit/integration tests and live Cloudflare Edge Staging probes (`algo-trader-staging.minhlongs.workers.dev/api/health`), never by `existsSync` alone.
+- In this audit (`S0–S5`), every claim in `02-verification-matrix.md` is backed by behavioral unit/integration tests and live Cloudflare Edge Staging probes (`https://algo-trader-staging.agencyos-openclaw.workers.dev/api/health`), never by `existsSync` alone.
 
 ## 2. Packaging & Hygiene Checks
 - `.claude/` rules, hooks, skills, and internal session artifacts are excluded from customer-facing builds and npm packaging.
