@@ -10,7 +10,7 @@
 - Configured `[env.staging]` in `wrangler.toml` with `routes = []`, `workers_dev = true`, and isolated staging D1/KV bindings.
 - Wired D1/KV persistence in `src/platform/workers/paper-trading-entry.ts` and health probes in `src/platform/workers/edge-proxy-health.ts`.
 
-## 3. Stage S4 & S5 (`Issue #217` — Current Branch `feat/s4-s5-polymarket-execution-and-research`)
+## 3. Stage S4 & S5 (`PR #218` — `eb04a19f`, `Issue #217`; Audit Identifier Sync `PR #220` — `2ea1d983`, `Issue #219`)
 - `src/desk/execution/live-order-submission.ts`: Enforced `if (host.stopped)` and `requireLiveEnabled('LiveOrderManager.submitOnly')` in `submitOnlyOrder`.
 - `src/desk/execution/polymarket-execution-adapter.ts`: Enforced `isLiveEnabled()` in `buildPolymarketAdapter` before constructing `PolymarketSigner` / `PolymarketAdapter`.
 - `src/desk/polymarket/order-manager.ts`, `src/desk/strategies/polymarket/base-polymarket-strategy-types.ts`, `src/desk/strategies/polymarket/base-polymarket-strategy-exits.ts`, `src/desk/strategies/polymarket/base-polymarket-strategy-trades.ts`: Added venue `fees` and partial-fill notional accounting across entry, exit, and `computeExitPnl`.

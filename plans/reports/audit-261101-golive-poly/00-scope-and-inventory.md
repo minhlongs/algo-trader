@@ -3,7 +3,7 @@
 ## 1. Snapshot & Provenance
 - **Repository:** `minhlongs/algo-trader`
 - **Base Commit (`main`):** `8927dbc62d6ba302361cbef6ac7143fdd1a9b4e5` (includes `S0–S2` PR `#214` and `S3/G1` PR `#216`)
-- **Feature Branch (`S4–S5`):** `feat/s4-s5-polymarket-execution-and-research` (Issue `#217`)
+- **Stage `S4–S5` Delivery (`main`):** Merged in `PR #218` (`eb04a19fa5f711671967a9fe491a2b15a5ccc552`, `Issue #217`) and identifier rectification `PR #220` (`2ea1d983faa645b951181f360d56ffedbcfc13f0`, `Issue #219`)
 - **Audit Date:** `2026-11-01`
 - **Runtime / Mode:** `READ_ONLY` by default (`LIVE_TRADING_ENABLED` unset); `PAPER` on Cloudflare Edge Staging (`algo-trader-staging`).
 
