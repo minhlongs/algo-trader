@@ -53,5 +53,7 @@ export async function submitOnlyOrder(
   host: LiveOrderManagerCtx,
   order: PolymarketOrder
 ): Promise<PolymarketOrderResponse> {
+  if (host.stopped) throw new Error('LiveOrderManager is stopped');
+  requireLiveEnabled('LiveOrderManager.submitOnly');
   return host.adapter.placeOrder(order);
 }

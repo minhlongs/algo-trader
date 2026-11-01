@@ -14,6 +14,8 @@ export interface PlaceOrderResult {
   filledSize?: string;
   /** Execution price of the confirmed fill. Absent until the venue confirms a fill. */
   fillPrice?: string;
+  /** Venue fee charged on the fill in USDC, as a decimal string. */
+  fees?: string;
   /** True once `filledSize` is a venue-confirmed fill rather than a resting order. */
   filled?: boolean;
 }

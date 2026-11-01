@@ -13,11 +13,9 @@
  */
 
 import type { GammaMarket } from '../polymarket/gamma-client';
-import type { StrategyName } from '../core/types';
 import { logger } from '../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type StrategyDeps,
 } from './polymarket/base-polymarket-strategy';
 import {
@@ -27,6 +25,7 @@ import {
   detectYesNoArb,
   detectCrossMarketArb,
   updateSpreadHistory,
+  hasSufficientAskDepth,
 } from './polymarket-arb-helpers';
 
 export type { PolymarketArbConfig };
@@ -35,6 +34,7 @@ export {
   detectYesNoArb,
   detectCrossMarketArb,
   updateSpreadHistory,
+  hasSufficientAskDepth,
 };
 
 // ── Strategy class ─────────────────────────────────────────────────────────────
@@ -97,7 +97,19 @@ export class PolymarketArbStrategy extends BasePolymarketStrategy {
         const yesEntryPrice = yesBA.ask;
         const noEntryPrice = noBA.ask;
 
-        // Enter YES position
+        // Verify executable top-of-book ask depth on both legs before submitting Leg 1
+        if (
+          !hasSufficientAskDepth(yesBook, yesEntryPrice, legSize) ||
+          !hasSufficientAskDepth(noBook, noEntryPrice, legSize)
+        ) {
+          logger.debug('Insufficient ask depth for two-leg arb', STRATEGY_NAME, {
+            conditionId: market.conditionId,
+            legSize,
+          });
+          continue;
+        }
+
+        // Enter YES position (Leg 1)
         await this.enterPosition(
           market.yesTokenId,
           market.conditionId,
@@ -106,14 +118,39 @@ export class PolymarketArbStrategy extends BasePolymarketStrategy {
           legSize,
         );
 
-        // Enter NO position
-        await this.enterPosition(
-          market.noTokenId,
-          market.conditionId,
-          'no',
-          noEntryPrice,
-          legSize,
-        );
+        // Enter NO position (Leg 2) — if Leg 2 fails, immediately unwind Leg 1
+        try {
+          await this.enterPosition(
+            market.noTokenId,
+            market.conditionId,
+            'no',
+            noEntryPrice,
+            legSize,
+          );
+        } catch (leg2Err) {
+          logger.warn('Arb leg 2 failed; attempting immediate compensatory unwind of leg 1', STRATEGY_NAME, {
+            conditionId: market.conditionId,
+            err: String(leg2Err),
+          });
+          const leg1Idx = this.positions.findIndex(
+            (p) => p.conditionId === market.conditionId && p.tokenId === market.yesTokenId && p.side === 'yes',
+          );
+          if (leg1Idx >= 0) {
+            const leg1Pos = this.positions[leg1Idx]!;
+            const unwindPrice = yesBA.bid > 0 ? yesBA.bid : yesEntryPrice;
+            try {
+              await this.exitPosition(leg1Pos, unwindPrice, 'leg2-failed-compensatory-unwind');
+              this.positions.splice(leg1Idx, 1);
+            } catch (unwindErr) {
+              logger.error('Unhedged leg 1 unwind failed; market placed on cooldown', STRATEGY_NAME, {
+                conditionId: market.conditionId,
+                err: String(unwindErr),
+              });
+            }
+          }
+          this.setCooldown(market.conditionId);
+          continue;
+        }
 
         logger.info('Arbitrage entry', STRATEGY_NAME, {
           conditionId: market.conditionId,
