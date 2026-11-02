@@ -1,9 +1,5 @@
 /**
- * Worker health-route contract.
- *
- * `/api/health` is an alias for `/health`: the SHA deploy verifier and the root
- * handler both advertise the /api-prefixed form, so it must never fall through
- * to notImplementedResponse (501).
+ * Worker health-route contract (`/api/health` alias for `/health`).
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -12,53 +8,31 @@ import type { Env } from '../edge-proxy-types';
 
 vi.mock('../../durable-objects', () => ({ ShardManager: class {}, StrategyShard: class {} }));
 vi.mock('../auth-handlers', () => ({
-  handleSignup: vi.fn(),
-  handleLogin: vi.fn(),
-  handleMe: vi.fn(),
-  handleListUsers: vi.fn(),
-  handleSetRole: vi.fn(),
-  handleDeleteUser: vi.fn(),
+  handleSignup: vi.fn(), handleLogin: vi.fn(), handleMe: vi.fn(),
+  handleListUsers: vi.fn(), handleSetRole: vi.fn(), handleDeleteUser: vi.fn(),
   notImplementedResponse: (path: string) =>
     new Response(JSON.stringify({ error: 'Not implemented', path }), { status: 501 }),
 }));
 vi.mock('../api/subscriptions', () => ({
-  handleGetMySubscription: vi.fn(),
-  handleUpgrade: vi.fn(),
-  handleCancel: vi.fn(),
-  handleGetTiers: vi.fn(),
+  handleGetMySubscription: vi.fn(), handleUpgrade: vi.fn(), handleCancel: vi.fn(), handleGetTiers: vi.fn(),
 }));
 vi.mock('../api/webhooks-nowpayments', () => ({ handleNowPaymentsIPN: vi.fn() }));
 vi.mock('../coupon-handlers', () => ({
-  handleValidateCoupon: vi.fn(),
-  handleApplyCoupon: vi.fn(),
-  handleRedeemCoupon: vi.fn(),
-  handleActivateCoupon: vi.fn(),
+  handleValidateCoupon: vi.fn(), handleApplyCoupon: vi.fn(), handleRedeemCoupon: vi.fn(), handleActivateCoupon: vi.fn(),
 }));
 vi.mock('../api/version', () => ({ handleVersion: vi.fn() }));
 vi.mock('../api/energy-9', () => ({ handleEnergy9Delivery: vi.fn() }));
 vi.mock('../api/copilot', () => ({ handleCopilotAsk: vi.fn() }));
-vi.mock('../api/telegram-bot', () => ({
-  handleTelegramWebhook: vi.fn(),
-  handleSetTelegramWebhook: vi.fn(),
-}));
+vi.mock('../api/telegram-bot', () => ({ handleTelegramWebhook: vi.fn(), handleSetTelegramWebhook: vi.fn() }));
 vi.mock('../api/markets', () => ({
-  handleGetRing: vi.fn(),
-  handleExecuteStrategy: vi.fn(),
-  handleGetStrategiesList: vi.fn(),
-  handleGetMarkets: vi.fn(),
-  handleGetShardById: vi.fn(),
+  handleGetRing: vi.fn(), handleExecuteStrategy: vi.fn(), handleGetStrategiesList: vi.fn(),
+  handleGetMarkets: vi.fn(), handleGetShardById: vi.fn(),
 }));
 vi.mock('../edge-proxy-regions', () => ({
-  getClientRegion: vi.fn(),
-  getCachedRegionHealth: vi.fn(),
-  selectBestRegion: vi.fn(),
-  routeToRegion: vi.fn(),
-  updateRegionHealthCache: vi.fn(),
+  getClientRegion: vi.fn(), getCachedRegionHealth: vi.fn(), selectBestRegion: vi.fn(),
+  routeToRegion: vi.fn(), updateRegionHealthCache: vi.fn(),
 }));
-vi.mock('../edge-proxy-metrics', () => ({
-  handleMetrics: vi.fn(),
-  metricEntry: vi.fn(),
-}));
+vi.mock('../edge-proxy-metrics', () => ({ handleMetrics: vi.fn(), metricEntry: vi.fn() }));
 vi.mock('../paper-trading-entry', () => ({
   initPaperTrading: vi.fn(), runPaperTradingTick: vi.fn(), stopPaperTrading: vi.fn(),
   getPaperTradingStatus: vi.fn(async () => ({ ok: true, enabled: true, killed: false, state: {}, tradeCounter: 0 })),
@@ -160,14 +134,24 @@ describe('Worker health route', () => {
         prepare: () => ({
           all: async () => ({
             results: [
-              { id: '1', tokenId: 'tok', side: 'YES', price: 0.5, size: 10, pnl: 1, strategy: 's', source: 'p', timestamp: Date.now() },
-              { id: '2', tokenId: 'tok', side: 'NO', price: 0.5, size: 10, pnl: null, strategy: 's', source: 'p', timestamp: Date.now() },
+              { id: '1', tokenId: 'tok', side: 'YES', price: 0.5, exit_price: 0.52, size: 10, pnl: 1, strategy: 's', source: 'p', timestamp: 1793580000000, closed_at: 1793580060000 },
+              { id: '2', tokenId: 'tok', side: 'NO', price: 0.5, exit_price: null, size: 10, pnl: null, strategy: 's', source: 'p', timestamp: 1793580120000, closed_at: null },
             ],
           }),
         }),
       },
     } as unknown as Env;
-    expect((await worker.fetch(get('/api/v1/paper-trades'), d1Env)).status).toBe(200);
+    const tradesRes = await worker.fetch(get('/api/v1/paper-trades'), d1Env);
+    expect(tradesRes.status).toBe(200);
+    const tradesBody = (await tradesRes.json()) as {
+      count: number;
+      trades: Array<{ id: string; exitPrice: number | null; closedAt: string | null }>;
+    };
+    expect(tradesBody.count).toBe(2);
+    expect(tradesBody.trades[0].exitPrice).toBe(0.52);
+    expect(tradesBody.trades[0].closedAt).toBe(new Date(1793580060000).toISOString());
+    expect(tradesBody.trades[1].exitPrice).toBeNull();
+    expect(tradesBody.trades[1].closedAt).toBeNull();
     expect((await worker.fetch(get('/api/v1/paper-trading/status'), env)).status).toBe(200);
     expect((await worker.fetch(new Request('https://api.cashclaw.cc/api/v1/paper-trading/tick', { method: 'POST' }), env)).status).toBe(200);
     await worker.scheduled({} as ScheduledEvent, env);

@@ -46,6 +46,14 @@ describe('GET /api/v1/paper-trading/status & getPaperTradingStatus', () => {
         uptimeMs: number;
       };
       tradeCounter: number;
+      timestamp: string;
+      versionIdentity: {
+        commitSha: string;
+        shortSha: string;
+        deployedAt: string | null;
+        deployBranch: string | null;
+        environment: string;
+      };
     };
     expect(body.ok).toBe(true);
     expect(body.enabled).toBe(false);
@@ -58,10 +66,18 @@ describe('GET /api/v1/paper-trading/status & getPaperTradingStatus', () => {
     expect(body.state.startedAt).toBeNull();
     expect(body.state.uptimeMs).toBe(0);
     expect(body.tradeCounter).toBe(0);
+    expect(Number.isNaN(Date.parse(body.timestamp))).toBe(false);
+    expect(body.versionIdentity).toEqual({
+      commitSha: 'unknown',
+      shortSha: 'unknown',
+      deployedAt: null,
+      deployBranch: null,
+      environment: 'unknown',
+    });
     expect(kv.put).not.toHaveBeenCalled();
   });
 
-  it('reads persisted KV state (STATE_KEY) and computes open/closed trades, PnL, winRate, and uptimeMs', async () => {
+  it('reads persisted KV state (STATE_KEY) and computes open/closed trades, PnL, winRate, uptimeMs, and versionIdentity', async () => {
     const startTime = Date.now() - 15_000;
     const sampleTrades: PaperTradeRecord[] = [
       {
@@ -105,6 +121,10 @@ describe('GET /api/v1/paper-trading/status & getPaperTradingStatus', () => {
     const status = await getPaperTradingStatus(kv, {
       PAPER_TRADING_ENABLED: 'true',
       QWEN_KILL: '0',
+      COMMIT_SHA: '2512e432dec281e49fefbf03e08241e538ef46c1',
+      DEPLOYED_AT: '2026-11-02T01:45:27.894Z',
+      DEPLOY_BRANCH: 'main',
+      ENVIRONMENT: 'staging',
     });
 
     expect(status.ok).toBe(true);
@@ -119,6 +139,14 @@ describe('GET /api/v1/paper-trading/status & getPaperTradingStatus', () => {
     expect(status.state.winRate).toBeCloseTo(0.5, 5);
     expect(status.state.startedAt).toBe(startTime);
     expect(status.state.uptimeMs).toBeGreaterThanOrEqual(10_000);
+    expect(Number.isNaN(Date.parse(status.timestamp))).toBe(false);
+    expect(status.versionIdentity).toEqual({
+      commitSha: '2512e432dec281e49fefbf03e08241e538ef46c1',
+      shortSha: '2512e432',
+      deployedAt: '2026-11-02T01:45:27.894Z',
+      deployBranch: 'main',
+      environment: 'staging',
+    });
     expect((await handlePaperTradingStatusRoute(() => getPaperTradingStatus(kv, { PAPER_TRADING_ENABLED: 'true' }))).status).toBe(200);
     expect(kv.put).not.toHaveBeenCalled();
   });

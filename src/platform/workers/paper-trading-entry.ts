@@ -1,10 +1,6 @@
 /**
  * Paper Trading Entry Point — conditionally starts the paper trading loop.
- *
- * Activated by PAPER_TRADING_ENABLED=true env var.
- * Reads configuration from CF Worker env bindings (NOT process.env —
- * CF Workers [vars] are only available via the env object passed to handlers).
- * Designed to be called once during worker startup.
+ * Activated by PAPER_TRADING_ENABLED=true via CF Worker env bindings.
  */
 
 import { PaperTradingLoop, type D1Database } from '../../desk/paper-trading/paper-trading-loop';
@@ -24,10 +20,7 @@ const DEFAULT_INTERVAL_MS = 60_000;
 const DEFAULT_MAX_CONCURRENT = 3;
 const DEFAULT_HOLD_DURATION_MS = 60_000;
 
-/** Env bindings from CF Worker (forwarded from handler env object).
- *  Uses Record<string, unknown> so the Env type (_InternalEnv & Record<string,unknown>)
- *  is assignable without complaints.
- */
+/** Env bindings from CF Worker (forwarded from handler env object). */
 export type PaperTradingEnv = Record<string, unknown>;
 
 function buildConfig(env?: PaperTradingEnv): PaperTradingConfig {
@@ -45,13 +38,6 @@ function buildConfig(env?: PaperTradingEnv): PaperTradingConfig {
   };
 }
 
-/**
- * Conditionally start the paper trading loop.
- * No-op when PAPER_TRADING_ENABLED is not set or is falsy.
- *
- * Accepts env bindings from CF Worker handler (env object) instead of
- * reading process.env, which is undefined in CF Workers runtime.
- */
 let paperTradingLoop: PaperTradingLoop | undefined;
 
 export function stopPaperTrading(): void {
@@ -65,7 +51,6 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Dat
     logger.info('[PaperTrading] Initialization blocked by L1 kill switch (QWEN_KILL=1)');
     return false;
   }
-  // Accept both CF Worker env bindings (preferred) and process.env (tests/Node.js)
   const enabled = String(env?.PAPER_TRADING_ENABLED ?? process.env.PAPER_TRADING_ENABLED ?? '');
   if (enabled !== 'true') {
     logger.info('[PaperTrading] Disabled (PAPER_TRADING_ENABLED != true)');
@@ -91,15 +76,7 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Dat
   return true;
 }
 
-/**
- * Run one tick of the paper trading loop.
- * CF Workers are stateless per invocation — setInterval does not survive
- * across cron trigger boundaries. Each scheduled tick runs a single iteration
- * via this entry point rather than relying on a long-lived timer.
- * State is loaded from KV before the tick and saved after.
- *
- * Returns diagnostic info so callers can verify the tick actually ran.
- */
+/** Run one stateless tick of the paper trading loop, loading from and saving to KV/D1. */
 export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): Promise<{
   ok: true;
   initialized: boolean;
@@ -115,8 +92,6 @@ export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv, d
     return { ok: true, initialized: false, killed: true, tradesBefore: 0, tradesAfter: 0, hasKv: !!kv };
   }
   if (!paperTradingLoop) {
-    // Cron triggers hit `scheduled` directly — initialize the loop on first tick
-    // so the stateless worker has a live PaperTradingLoop to run against.
     initPaperTrading(kv, env, db);
     if (!paperTradingLoop) {
       return { ok: true, initialized: false, tradesBefore: 0, tradesAfter: 0, hasKv: false };
@@ -128,19 +103,21 @@ export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv, d
   const tradesBefore = paperTradingLoop.getTrades().length;
   await paperTradingLoop.runTick();
   const tradesAfter = paperTradingLoop.getTrades().length;
-  return {
-    ok: true,
-    initialized: true,
-    tradesBefore,
-    tradesAfter,
-    hasKv: !!kv,
-  };
+  return { ok: true, initialized: true, tradesBefore, tradesAfter, hasKv: !!kv };
 }
 
 /**
  * Read-only paper trading status snapshot for GET /api/v1/paper-trading/status.
  * Reads persisted KV state (STATE_KEY = 'paper-trading-loop-state') without mutating KV or D1.
  */
+export interface PaperTradingVersionIdentity {
+  commitSha: string;
+  shortSha: string;
+  deployedAt: string | null;
+  deployBranch: string | null;
+  environment: string;
+}
+
 export async function getPaperTradingStatus(
   kv?: KVStore,
   env?: PaperTradingEnv,
@@ -150,6 +127,8 @@ export async function getPaperTradingStatus(
   killed: boolean;
   state: PaperTradingStatus;
   tradeCounter: number;
+  timestamp: string;
+  versionIdentity: PaperTradingVersionIdentity;
 }> {
   const killed = String(env?.QWEN_KILL ?? process.env.QWEN_KILL ?? '') === '1';
   const enabled = String(env?.PAPER_TRADING_ENABLED ?? process.env.PAPER_TRADING_ENABLED ?? '') === 'true';
@@ -163,12 +142,26 @@ export async function getPaperTradingStatus(
   const startTime = loaded?.startTime ?? (running ? inMemoryState?.startTime : undefined);
   const state = buildLoopStatus(running, trades, startTime);
   const tradeCounter = typeof loaded?.tradeCounter === 'number' ? loaded.tradeCounter : trades.length;
+  const rawCommitSha = String(env?.COMMIT_SHA ?? process.env.COMMIT_SHA ?? '').trim();
+  const commitSha = rawCommitSha || 'unknown';
+  const shortSha = commitSha !== 'unknown' && commitSha.length >= 8 ? commitSha.slice(0, 8) : commitSha;
+  const rawDeployedAt = String(env?.DEPLOYED_AT ?? process.env.DEPLOYED_AT ?? '').trim();
+  const rawDeployBranch = String(env?.DEPLOY_BRANCH ?? process.env.DEPLOY_BRANCH ?? '').trim();
+  const rawEnvironment = String(env?.ENVIRONMENT ?? process.env.ENVIRONMENT ?? '').trim();
   return {
     ok: true,
     enabled,
     killed,
     state,
     tradeCounter,
+    timestamp: new Date().toISOString(),
+    versionIdentity: {
+      commitSha,
+      shortSha,
+      deployedAt: rawDeployedAt || null,
+      deployBranch: rawDeployBranch || null,
+      environment: rawEnvironment || 'unknown',
+    },
   };
 }
 
