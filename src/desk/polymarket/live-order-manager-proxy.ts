@@ -74,13 +74,30 @@ export class LiveOrderManagerProxy implements OrderManager {
     });
 
     if (result.response?.status === 'matched') {
-      const feeUsdc = calcTakerFee('politics', priceNum) * sizeNum * priceNum;
+      const filledSizeNum =
+        typeof result.response.filledSize === 'number' ? result.response.filledSize : sizeNum;
+      const fillPriceNum =
+        typeof result.response.fillPrice === 'number' ? result.response.fillPrice : priceNum;
+      const feeUsdc =
+        typeof result.response.feeUsdc === 'number'
+          ? result.response.feeUsdc
+          : calcTakerFee('politics', fillPriceNum) * filledSizeNum * fillPriceNum;
       return {
         id: orderId,
-        filled: true,
-        filledSize: String(params.size),
-        fillPrice: String(params.price),
+        filled: filledSizeNum > 0,
+        filledSize: String(filledSizeNum),
+        fillPrice: String(fillPriceNum),
         fees: feeUsdc.toFixed(6),
+      };
+    }
+
+    if (result.response?.status === 'unmatched') {
+      return {
+        id: orderId,
+        filled: false,
+        filledSize: '0',
+        fillPrice: '0',
+        fees: '0.000000',
       };
     }
 

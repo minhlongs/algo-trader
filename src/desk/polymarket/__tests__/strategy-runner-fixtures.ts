@@ -11,6 +11,8 @@ export const JOURNAL_FILES = [
   'live-positions.json',
   'live-pnl.json',
   'live-journal.jsonl',
+  'live-reconciler-state.json',
+  'g2-poly-shadow-telemetry.jsonl',
 ] as const;
 
 export function cleanJournalFiles(): void {

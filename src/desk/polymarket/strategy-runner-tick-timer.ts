@@ -11,6 +11,7 @@ import { logger } from '@shared/utils/logger';
 
 export interface TickTimerContext {
   status: string;
+  getStatus?: () => string;
   strategyName: string;
   tickIntervalMs: number;
   execute: () => Promise<void>;
@@ -23,7 +24,8 @@ export function createTickTimer(ctx: TickTimerContext): { start: () => NodeJS.Ti
   let timer: NodeJS.Timeout | null = null;
 
   const tick = async () => {
-    if (ctx.status !== 'running') return;
+    const status = ctx.getStatus ? ctx.getStatus() : ctx.status;
+    if (status !== 'running') return;
 
     logger.debug('Tick timer firing', 'StrategyRunner', {
       strategy: ctx.strategyName,

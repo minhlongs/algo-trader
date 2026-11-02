@@ -13,15 +13,20 @@ import type { LiveOrderManagerProxy } from './live-order-manager-proxy';
 
 export interface StrategyExecutionContext {
   status: 'stopped' | 'running' | 'error';
+  getStatus?: () => 'stopped' | 'running' | 'error';
   strategy: BasePolymarketStrategy | null;
+  getStrategy?: () => BasePolymarketStrategy | null;
   strategyName: string;
   minExecutionIntervalMs: number;
   maxTicks?: number;
   trackedTokens: Set<string>;
   lastExecutionTime: number;
+  getLastExecutionTime?: () => number;
   executionCount: number;
+  getExecutionCount?: () => number;
   updateLastExecutionTime: (time: number) => void;
   incrementExecutionCount: () => void;
+  executeTick?: () => Promise<void>;
   stop: () => Promise<void>;
 }
 
@@ -74,21 +79,40 @@ export async function processPriceUpdate(
   ctx: StrategyExecutionContext,
   payload: PriceUpdatePayload,
 ): Promise<void> {
-  if (ctx.status !== 'running' || !ctx.strategy) return;
+  const status = ctx.getStatus ? ctx.getStatus() : ctx.status;
+  const strategy = ctx.getStrategy ? ctx.getStrategy() : ctx.strategy;
+  if (status !== 'running' || !strategy) return;
+
   const now = Date.now();
-  if (now - ctx.lastExecutionTime < ctx.minExecutionIntervalMs) return;
+  const lastExec = ctx.getLastExecutionTime ? ctx.getLastExecutionTime() : ctx.lastExecutionTime;
+  if (now - lastExec < ctx.minExecutionIntervalMs) return;
+
   const isRelevant = ctx.trackedTokens.size === 0 || ctx.trackedTokens.has(payload.tokenId);
   if (!isRelevant) return;
+
+  if (
+    payload.tokenId !== 'tick-trigger' &&
+    payload.bid > 0 &&
+    payload.ask > 0 &&
+    typeof strategy.updatePrice === 'function'
+  ) {
+    strategy.updatePrice(payload.tokenId, payload.bid, payload.ask);
+  }
 
   ctx.updateLastExecutionTime(now);
   try {
     ctx.incrementExecutionCount();
-    await ctx.strategy.execute();
-    if (ctx.maxTicks && ctx.executionCount >= ctx.maxTicks) {
+    if (ctx.executeTick) {
+      await ctx.executeTick();
+    } else {
+      await strategy.execute();
+    }
+    const currentCount = ctx.getExecutionCount ? ctx.getExecutionCount() : ctx.executionCount;
+    if (ctx.maxTicks && currentCount >= ctx.maxTicks) {
       logger.info('Max ticks reached', 'StrategyRunner', { strategy: ctx.strategyName });
       await ctx.stop();
     }
-    logger.debug('Execution complete', 'StrategyRunner', { execution: ctx.executionCount });
+    logger.debug('Execution complete', 'StrategyRunner', { execution: currentCount });
   } catch (err) {
     logger.error('Execution error', 'StrategyRunner', { err: String(err) });
   }

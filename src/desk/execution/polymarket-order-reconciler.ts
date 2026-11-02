@@ -9,23 +9,12 @@
  */
 
 export type ReconcilerOrderStatus =
-  | 'CREATED'
-  | 'SUBMITTED'
-  | 'ACKNOWLEDGED'
-  | 'PARTIALLY_FILLED'
-  | 'FILLED'
-  | 'CANCELLED'
-  | 'REJECTED'
-  | 'UNKNOWN';
+  | 'CREATED' | 'SUBMITTED' | 'ACKNOWLEDGED' | 'PARTIALLY_FILLED'
+  | 'FILLED' | 'CANCELLED' | 'REJECTED' | 'UNKNOWN';
 
 export type OrderLifecycleEventType =
-  | 'SUBMITTED'
-  | 'ACKNOWLEDGED'
-  | 'PARTIALLY_FILLED'
-  | 'FILLED'
-  | 'CANCELLED'
-  | 'REJECTED'
-  | 'TIMEOUT_UNKNOWN';
+  | 'SUBMITTED' | 'ACKNOWLEDGED' | 'PARTIALLY_FILLED'
+  | 'FILLED' | 'CANCELLED' | 'REJECTED' | 'TIMEOUT_UNKNOWN';
 
 export interface CreateReconciledOrderInput {
   intentId: string;
@@ -66,6 +55,17 @@ export interface ReconciliationSummary {
   positionsByToken: Record<string, number>;
 }
 
+export interface ReconcilerSnapshot {
+  initialCashUsdc: number;
+  cashUsdc: number;
+  totalFeesUsdc: number;
+  netFillCashDeltaUsdc: number;
+  orders: ReconciledOrderRecord[];
+  intents: string[];
+  processedEvents: string[];
+  positionsByToken: Record<string, number>;
+}
+
 export class PolymarketOrderReconciler {
   private readonly orders = new Map<string, ReconciledOrderRecord>();
   private readonly intents = new Set<string>();
@@ -75,7 +75,7 @@ export class PolymarketOrderReconciler {
   private totalFeesUsdc = 0;
   private netFillCashDeltaUsdc = 0;
 
-  constructor(private readonly initialCashUsdc: number = 1000) {
+  constructor(private initialCashUsdc: number = 1000) {
     this.cashUsdc = initialCashUsdc;
   }
 
@@ -140,15 +140,9 @@ export class PolymarketOrderReconciler {
           event.type === 'FILLED' || order.filledSize >= order.requestedSize ? 'FILLED' : 'PARTIALLY_FILLED';
         break;
       }
-      case 'CANCELLED':
-        order.status = 'CANCELLED';
-        break;
-      case 'REJECTED':
-        order.status = 'REJECTED';
-        break;
-      case 'TIMEOUT_UNKNOWN':
-        order.status = 'UNKNOWN';
-        break;
+      case 'CANCELLED': order.status = 'CANCELLED'; break;
+      case 'REJECTED': order.status = 'REJECTED'; break;
+      case 'TIMEOUT_UNKNOWN': order.status = 'UNKNOWN'; break;
     }
     order.updatedAt = Math.max(order.updatedAt, event.timestamp);
     return { ...order };
@@ -173,5 +167,33 @@ export class PolymarketOrderReconciler {
       unknownOrderCount,
       positionsByToken: Object.fromEntries(this.positions.entries()),
     };
+  }
+
+  serialize(): ReconcilerSnapshot {
+    return {
+      initialCashUsdc: this.initialCashUsdc,
+      cashUsdc: this.cashUsdc,
+      totalFeesUsdc: this.totalFeesUsdc,
+      netFillCashDeltaUsdc: this.netFillCashDeltaUsdc,
+      orders: Array.from(this.orders.values()).map((o) => ({ ...o })),
+      intents: Array.from(this.intents),
+      processedEvents: Array.from(this.processedEvents),
+      positionsByToken: Object.fromEntries(this.positions.entries()),
+    };
+  }
+
+  hydrate(snapshot: ReconcilerSnapshot): void {
+    this.initialCashUsdc = snapshot.initialCashUsdc;
+    this.cashUsdc = snapshot.cashUsdc;
+    this.totalFeesUsdc = snapshot.totalFeesUsdc;
+    this.netFillCashDeltaUsdc = snapshot.netFillCashDeltaUsdc;
+    this.orders.clear();
+    for (const o of snapshot.orders ?? []) this.orders.set(o.orderId, { ...o });
+    this.intents.clear();
+    for (const id of snapshot.intents ?? []) this.intents.add(id);
+    this.processedEvents.clear();
+    for (const ev of snapshot.processedEvents ?? []) this.processedEvents.add(ev);
+    this.positions.clear();
+    for (const [k, v] of Object.entries(snapshot.positionsByToken ?? {})) this.positions.set(k, v);
   }
 }
