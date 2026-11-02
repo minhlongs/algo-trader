@@ -8,9 +8,16 @@
  */
 
 import { PaperTradingLoop, type D1Database } from '../../desk/paper-trading/paper-trading-loop';
+import { loadLoopState } from '../../desk/paper-trading/paper-trading-persistence';
+import { buildLoopStatus } from '../../desk/paper-trading/paper-trading-metrics';
 import { logger } from '../../shared/utils/logger';
-import type { PaperTradingConfig } from '../../desk/paper-trading/paper-trading-loop';
-import type { KVStore } from '../../desk/paper-trading/paper-trading-loop';
+import type {
+  PaperTradingConfig,
+  KVStore,
+  PaperTradeRecord,
+  PaperTradingStatus,
+} from '../../desk/paper-trading/paper-trading-loop';
+import { asKVStore } from '../../desk/paper-trading/paper-trading-loop';
 
 const DEFAULT_SYMBOLS = ['BTC/USD', 'ETH/USD'];
 const DEFAULT_INTERVAL_MS = 60_000;
@@ -127,6 +134,41 @@ export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv, d
     tradesBefore,
     tradesAfter,
     hasKv: !!kv,
+  };
+}
+
+/**
+ * Read-only paper trading status snapshot for GET /api/v1/paper-trading/status.
+ * Reads persisted KV state (STATE_KEY = 'paper-trading-loop-state') without mutating KV or D1.
+ */
+export async function getPaperTradingStatus(
+  kv?: KVStore,
+  env?: PaperTradingEnv,
+): Promise<{
+  ok: true;
+  enabled: boolean;
+  killed: boolean;
+  state: PaperTradingStatus;
+  tradeCounter: number;
+}> {
+  const killed = String(env?.QWEN_KILL ?? process.env.QWEN_KILL ?? '') === '1';
+  const enabled = String(env?.PAPER_TRADING_ENABLED ?? process.env.PAPER_TRADING_ENABLED ?? '') === 'true';
+  if (killed) {
+    stopPaperTrading();
+  }
+  const running = enabled && !killed;
+  const trades: PaperTradeRecord[] = paperTradingLoop ? paperTradingLoop.getTrades() : [];
+  const loaded = await loadLoopState(asKVStore(kv), trades);
+  const inMemoryState = paperTradingLoop?.getState?.();
+  const startTime = loaded?.startTime ?? (running ? inMemoryState?.startTime : undefined);
+  const state = buildLoopStatus(running, trades, startTime);
+  const tradeCounter = typeof loaded?.tradeCounter === 'number' ? loaded.tradeCounter : trades.length;
+  return {
+    ok: true,
+    enabled,
+    killed,
+    state,
+    tradeCounter,
   };
 }
 

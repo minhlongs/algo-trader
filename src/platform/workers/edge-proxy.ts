@@ -24,11 +24,11 @@ import { handleMetrics, metricEntry } from './edge-proxy-metrics';
 import {
   handleTenantConfigSave, handlePaperTradesLedger,
   handleHealthRoute, handleRootRoute, handleVpsFallbackRoute,
-  handleMetricsGetRoute, handlePaperTradingTickRoute,
+  handleMetricsGetRoute, handlePaperTradingTickRoute, handlePaperTradingStatusRoute,
 } from './edge-proxy-inline-routes';
 
 // ── Paper trading (env-gated startup) ──
-import { initPaperTrading, runPaperTradingTick, stopPaperTrading } from './paper-trading-entry';
+import { initPaperTrading, runPaperTradingTick, stopPaperTrading, getPaperTradingStatus } from './paper-trading-entry';
 import type { PaperTradingEnv } from './paper-trading-entry';
 import type { D1Database } from '../../desk/paper-trading/paper-trading-loop';
 import { logger } from '../../shared/utils/logger';
@@ -51,9 +51,11 @@ function ensurePaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
     const url = new URL(request.url);
     const path = url.pathname;
+    if (String(env?.QWEN_KILL ?? '') === '1' || path !== '/api/v1/paper-trading/status') {
+      ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
+    }
 
     // CORS preflight
     if (request.method === 'OPTIONS') {
@@ -94,7 +96,10 @@ export default {
     if (path === '/api/v1/subscriptions/cancel' && request.method === 'DELETE') return handleCancel(request, env);
     if (path === '/api/v1/subscriptions/tiers' && request.method === 'GET') return handleGetTiers();
 
-    // ── Paper trading tick (dev/test trigger) ──
+    // ── Paper trading tick & status ──
+    if (path === '/api/v1/paper-trading/status' && request.method === 'GET') {
+      return handlePaperTradingStatusRoute(() => getPaperTradingStatus(env.CACHE, env));
+    }
     if (path === '/api/v1/paper-trading/tick' && request.method === 'POST') {
       return handlePaperTradingTickRoute(env, () => {
         ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);

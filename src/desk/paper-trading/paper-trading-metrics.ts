@@ -23,14 +23,23 @@ export function buildLoopStatus(
   startTime?: number
 ): PaperTradingStatus {
   const totalPnl = computeTotalPnl(trades);
+  const openTrades = trades.filter((t) => t.exitPrice === undefined).length;
+  const closedTrades = trades.length - openTrades;
+  const startedAt = typeof startTime === 'number' ? startTime : null;
+  const uptimeMs = isRunning && typeof startTime === 'number'
+    ? Math.max(0, Date.now() - startTime)
+    : 0;
   return {
     isRunning,
     running: isRunning,
-    openTrades: trades.filter((t) => t.exitPrice === undefined).length,
+    openTrades,
+    closedTrades,
     totalTrades: trades.length,
     winRate: computeWinRate(trades),
     totalPnl,
     totalPnlUsd: totalPnl,
     startTime,
+    startedAt,
+    uptimeMs,
   };
 }

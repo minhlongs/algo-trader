@@ -46,6 +46,7 @@ const { mockInstances, MockCtor, makeMockInstance } = vi.hoisted(() => {
 
 vi.mock('@desk/paper-trading/paper-trading-loop', () => ({
   PaperTradingLoop: MockCtor,
+  asKVStore: (kv: unknown) => kv,
 }));
 
 vi.mock('@shared/utils/logger', () => ({

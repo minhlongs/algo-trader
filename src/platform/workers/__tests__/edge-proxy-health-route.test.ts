@@ -60,9 +60,8 @@ vi.mock('../edge-proxy-metrics', () => ({
   metricEntry: vi.fn(),
 }));
 vi.mock('../paper-trading-entry', () => ({
-  initPaperTrading: vi.fn(),
-  runPaperTradingTick: vi.fn(),
-  stopPaperTrading: vi.fn(),
+  initPaperTrading: vi.fn(), runPaperTradingTick: vi.fn(), stopPaperTrading: vi.fn(),
+  getPaperTradingStatus: vi.fn(async () => ({ ok: true, enabled: true, killed: false, state: {}, tradeCounter: 0 })),
 }));
 
 import worker from '../edge-proxy';
@@ -169,6 +168,7 @@ describe('Worker health route', () => {
       },
     } as unknown as Env;
     expect((await worker.fetch(get('/api/v1/paper-trades'), d1Env)).status).toBe(200);
+    expect((await worker.fetch(get('/api/v1/paper-trading/status'), env)).status).toBe(200);
     expect((await worker.fetch(new Request('https://api.cashclaw.cc/api/v1/paper-trading/tick', { method: 'POST' }), env)).status).toBe(200);
     await worker.scheduled({} as ScheduledEvent, env);
   });
