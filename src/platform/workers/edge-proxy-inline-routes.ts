@@ -163,3 +163,17 @@ export async function handlePaperTradingTickRoute(
     });
   }
 }
+
+export async function handlePaperTradingStatusRoute(
+  getStatus: () => Promise<unknown>,
+): Promise<Response> {
+  try {
+    const status = await getStatus();
+    return new Response(JSON.stringify(status), { status: 200, headers: JSON_HEADERS });
+  } catch (err) {
+    logger.error('[EdgeProxy] Paper trading status failed', { err });
+    return new Response(JSON.stringify({ error: 'Status query failed', err: String(err) }), {
+      status: 500, headers: JSON_HEADERS,
+    });
+  }
+}

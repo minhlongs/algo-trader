@@ -56,9 +56,12 @@ export interface PaperTradingStatus {
   isRunning: boolean;
   running: boolean;
   openTrades: number;
+  closedTrades: number;
   totalTrades: number;
   winRate: number;
   totalPnl: number;
   totalPnlUsd: number;
   startTime?: number;
+  startedAt: number | null;
+  uptimeMs: number;
 }
