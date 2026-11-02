@@ -2,7 +2,8 @@
  * Strategy Runner Event Handlers
  *
  * EventBus subscription and handling logic for the strategy runner.
- * Extracted from main class for better modularity.
+ * Supports live state getters to avoid stale closure copies and routes ticks
+ * through the orchestrator's RiskGate when `executeTick` is provided.
  */
 
 import { logger } from '@shared/utils/logger';
@@ -14,14 +15,19 @@ import type { StrategyRunnerConfig } from './strategy-runner-types';
 
 export interface EventHandlerContext {
   status: string;
+  getStatus?: () => string;
   strategy: BasePolymarketStrategy | null;
+  getStrategy?: () => BasePolymarketStrategy | null;
   config: StrategyRunnerConfig;
   strategyName: string;
   executionCount: number;
+  getExecutionCount?: () => number;
   lastExecutionTime: number;
+  getLastExecutionTime?: () => number;
   trackedTokens: { has(token: string): boolean; size: number };
   updateLastExecutionTime: (time: number) => void;
   incrementExecutionCount: () => void;
+  executeTick?: () => Promise<void>;
   stop: () => Promise<void>;
 }
 
@@ -31,11 +37,14 @@ export async function handlePriceUpdate(
   ctx: EventHandlerContext,
   payload: PriceUpdatePayload,
 ): Promise<void> {
-  if (ctx.status !== 'running' || !ctx.strategy) return;
+  const status = ctx.getStatus ? ctx.getStatus() : ctx.status;
+  const strategy = ctx.getStrategy ? ctx.getStrategy() : ctx.strategy;
+  if (status !== 'running' || !strategy) return;
 
   // Debounce: prevent execution more than once per minExecutionIntervalMs
   const now = Date.now();
-  if (now - ctx.lastExecutionTime < ctx.config.minExecutionIntervalMs!) {
+  const lastExec = ctx.getLastExecutionTime ? ctx.getLastExecutionTime() : ctx.lastExecutionTime;
+  if (now - lastExec < ctx.config.minExecutionIntervalMs!) {
     return;
   }
 
@@ -43,16 +52,30 @@ export async function handlePriceUpdate(
   const isRelevant = ctx.trackedTokens.size === 0 || ctx.trackedTokens.has(payload.tokenId);
   if (!isRelevant) return;
 
+  if (
+    payload.tokenId !== 'tick-trigger' &&
+    payload.bid > 0 &&
+    payload.ask > 0 &&
+    typeof strategy.updatePrice === 'function'
+  ) {
+    strategy.updatePrice(payload.tokenId, payload.bid, payload.ask);
+  }
+
   ctx.updateLastExecutionTime(now);
 
   try {
     ctx.incrementExecutionCount();
-    await ctx.strategy.execute();
+    if (ctx.executeTick) {
+      await ctx.executeTick();
+    } else {
+      await strategy.execute();
+    }
 
-    if (ctx.config.maxTicks && ctx.executionCount >= ctx.config.maxTicks) {
+    const currentCount = ctx.getExecutionCount ? ctx.getExecutionCount() : ctx.executionCount;
+    if (ctx.config.maxTicks && currentCount >= ctx.config.maxTicks) {
       logger.info('Max ticks reached, auto-stopping', 'StrategyRunner', {
         strategy: ctx.strategyName,
-        executions: ctx.executionCount,
+        executions: currentCount,
         maxTicks: ctx.config.maxTicks,
       });
       await ctx.stop();
@@ -61,15 +84,16 @@ export async function handlePriceUpdate(
 
     logger.debug('Reactive execution complete', 'StrategyRunner', {
       strategy: ctx.strategyName,
-      execution: ctx.executionCount,
+      execution: currentCount,
       triggerToken: payload.tokenId,
       triggerBid: payload.bid,
       triggerAsk: payload.ask,
     });
   } catch (err) {
+    const currentCount = ctx.getExecutionCount ? ctx.getExecutionCount() : ctx.executionCount;
     logger.error('Reactive execution error', 'StrategyRunner', {
       err: String(err),
-      execution: ctx.executionCount,
+      execution: currentCount,
     });
   }
 }

@@ -2,12 +2,19 @@
  * Live Trading Orchestrator — State Persistence Helpers
  *
  * Orchestrator-level state persistence: daily P&L, position snapshots,
- * day rollover. Works in concert with LiveTradingJournal (lower-level I/O).
+ * day rollover, and PolymarketOrderReconciler / T0_G2 state.
  */
 
 import type { LiveTradingJournal, DailyPnlState } from '../execution/live-trading-journal';
 import type { LiveExecutionGuard } from '../execution/live-execution-guard';
 import type { LivePositionTracker, LivePosition } from '../execution/live-position-tracker';
+import type { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
+import type { Leg2DecayStats } from './paper-orderbook-simulator';
+import {
+  saveReconcilerState,
+  restoreReconcilerState,
+  appendG2ShadowTelemetry,
+} from './g2-shadow-telemetry';
 import { logger } from '../../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
@@ -18,6 +25,11 @@ export interface StateContext {
   journal: LiveTradingJournal;
   guard: LiveExecutionGuard;
   positionTracker: LivePositionTracker;
+  reconciler?: PolymarketOrderReconciler;
+  startedAtMs?: number;
+  mode?: 'PAPER' | 'LIVE';
+  leg2DecayStats?: Leg2DecayStats;
+  onStartedAtMs?: (startedAtMs: number) => void;
 }
 
 export interface RestoreStateOptions {
@@ -30,11 +42,11 @@ export interface RestoreStateOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Persist orchestrator state to journal (positions, daily P&L, circuit trip).
+ * Persist orchestrator state to journal (positions, daily P&L, circuit trip, reconciler).
  * Safe to call from stop() — catches internally so it never blocks shutdown.
  */
 export async function persistOrchestratorState(ctx: StateContext): Promise<void> {
-  const { journal, guard, positionTracker } = ctx;
+  const { journal, guard, positionTracker, reconciler, startedAtMs, mode, leg2DecayStats } = ctx;
   try {
     const positions = positionTracker.getPositions();
     journal.savePositions(positions);
@@ -53,6 +65,19 @@ export async function persistOrchestratorState(ctx: StateContext): Promise<void>
     };
     journal.saveDailyPnl(pnlState);
 
+    if (reconciler) {
+      const loopStartedAt = startedAtMs && startedAtMs > 0 ? startedAtMs : Date.now();
+      saveReconcilerState(reconciler, loopStartedAt, leg2DecayStats);
+      appendG2ShadowTelemetry({
+        loopStartedAtMs: loopStartedAt,
+        mode: mode ?? 'PAPER',
+        event: 'stop',
+        positionSummary: summary,
+        reconciliationSummary: reconciler.reconcile(),
+        leg2DecayStats,
+      });
+    }
+
     if (guardStatus.circuitTripped) {
       journal.recordEvent('circuit_trip', {
         consecutiveLosses: guardStatus.consecutiveLosses,
@@ -65,14 +90,15 @@ export async function persistOrchestratorState(ctx: StateContext): Promise<void>
 }
 
 /**
- * Restore state from journal on startup: day rollover, daily P&L, open positions, and circuit breaker.
+ * Restore state from journal on startup: day rollover, daily P&L, open positions, reconciler, and circuit breaker.
  * When `options.failClosed` is true (LIVE mode), rethrows errors so trading cannot start with blank risk limits.
  */
 export async function restoreOrchestratorState(
   ctx: StateContext,
   options: RestoreStateOptions = {},
 ): Promise<void> {
-  const { journal, guard, positionTracker } = ctx;
+  const { journal, guard, positionTracker, reconciler, mode, leg2DecayStats, onStartedAtMs } = ctx;
+  let startedAtMs = ctx.startedAtMs && ctx.startedAtMs > 0 ? ctx.startedAtMs : Date.now();
   try {
     const rolled = journal.checkDayRollover();
     if (rolled) {
@@ -98,6 +124,20 @@ export async function restoreOrchestratorState(
     const savedPositions = await journal.loadPositions<LivePosition>();
     if (Array.isArray(savedPositions) && typeof positionTracker.restorePositions === 'function') {
       positionTracker.restorePositions(savedPositions, savedPnl?.realizedPnl);
+    }
+
+    if (reconciler) {
+      const restoredRec = restoreReconcilerState(reconciler);
+      startedAtMs = restoredRec.startedAtMs;
+      onStartedAtMs?.(startedAtMs);
+      appendG2ShadowTelemetry({
+        loopStartedAtMs: startedAtMs,
+        mode: mode ?? 'PAPER',
+        event: 'start',
+        positionSummary: positionTracker.getSummary(),
+        reconciliationSummary: reconciler.reconcile(),
+        leg2DecayStats: restoredRec.leg2DecayStats ?? leg2DecayStats,
+      });
     }
 
     logger.info('State restored', 'Orchestrator', {

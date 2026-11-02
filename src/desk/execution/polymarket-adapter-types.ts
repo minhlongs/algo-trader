@@ -12,6 +12,10 @@ export interface PolymarketOrderResponse {
   orderID: string;
   status: 'matched' | 'delayed' | 'unmatched' | 'canceled';
   error?: string;
+  filledSize?: number;
+  fillPrice?: number;
+  feeUsdc?: number;
+  partial?: boolean;
 }
 
 export interface PolymarketOpenOrder {

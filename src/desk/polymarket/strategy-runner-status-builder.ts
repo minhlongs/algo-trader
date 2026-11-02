@@ -15,6 +15,7 @@ export interface RunnerStatusParams {
 }
 
 export function buildRunnerStatusSnapshot(params: RunnerStatusParams) {
+  const proxyStatsRaw = params.proxy?.getStats();
   return {
     status: params.status,
     strategyName: params.strategyName,
@@ -23,7 +24,7 @@ export function buildRunnerStatusSnapshot(params: RunnerStatusParams) {
     tickCount: params.executionCount,
     mode: params.orchestrator.getMode(),
     positions: params.orchestrator.getPositions(),
-    bridgeStats: params.proxy?.getStats().bridgeStats ?? {
+    bridgeStats: proxyStatsRaw?.bridgeStats ?? {
       scansCompleted: 0,
       signalsProcessed: 0,
       signalsRejected: 0,
@@ -31,9 +32,10 @@ export function buildRunnerStatusSnapshot(params: RunnerStatusParams) {
       scannerActive: false,
     },
     proxyStats: {
-      ordersPlaced: params.executionCount,
+      ordersPlaced: proxyStatsRaw?.ordersPlaced ?? 0,
+      cancelsRequested: proxyStatsRaw?.cancelsRequested ?? 0,
       strategy: params.strategyName,
-      ...params.proxy?.getStats(),
+      ...proxyStatsRaw,
     },
   };
 }

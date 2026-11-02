@@ -46,23 +46,13 @@ export async function runSingleStrategy(opts: {
       clearInterval(statusInterval);
       return;
     }
-    type SummaryGetter = {
-      getPositionSummary?: () => {
-        positionCount: number;
-        totalExposure: number;
-        totalRealizedPnl: number;
-      };
-    };
-    const summary = (runner as unknown as SummaryGetter).getPositionSummary?.() ?? {
-      positionCount: 0,
-      totalExposure: 0,
-      totalRealizedPnl: 0,
-    };
+    const summary = runner.getPositionSummary();
+    const rec = runner.getReconciliationSummary();
     logger.info(
       `[${new Date().toISOString().slice(11, 19)}] ` +
         `Tick#${s.tickCount} | Orders: ${s.proxyStats.ordersPlaced} | ` +
         `Positions: ${summary.positionCount} | Exposure: $${summary.totalExposure.toFixed(2)} | ` +
-        `PnL: ${formatCurrencyPnl(summary.totalRealizedPnl)}`,
+        `PnL: ${formatCurrencyPnl(summary.totalRealizedPnl)} | Drift: $${rec.unexplainedDriftUsdc.toFixed(2)}`,
     );
   }, opts.tickIntervalMs);
 

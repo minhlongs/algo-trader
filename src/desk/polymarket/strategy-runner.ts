@@ -8,6 +8,8 @@ import type { BasePolymarketStrategy } from '@desk/strategies/polymarket/base-po
 import { StrategyLiveBridge } from './strategy-live-bridge';
 import { LiveOrderManagerProxy } from './live-order-manager-proxy';
 import { LiveTradingOrchestrator } from './live-trading-orchestrator';
+import type { PositionSummary } from '../execution/live-position-tracker';
+import type { ReconciliationSummary } from '../execution/polymarket-order-reconciler';
 import { logger } from '@shared/utils/logger';
 import { tradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
 import type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
@@ -17,7 +19,6 @@ import { buildRunnerStatusSnapshot } from './strategy-runner-status-builder';
 import {
   processPriceUpdate, deriveStrategyName, createRunnerStrategyDeps,
   createTickTriggerPayload, startHealthCheckTimer, clearRunnerTimers,
-  type StrategyExecutionContext,
 } from './strategy-runner-executor';
 import type { StrategyEntryConstructor } from './strategy-registry-types';
 
@@ -60,6 +61,8 @@ export class StrategyRunner {
   getTrackedTokens(): string[] { return Array.from(this.trackedTokens); }
   getOrchestrator(): LiveTradingOrchestrator { return this.orchestrator; }
   getBridge(): StrategyLiveBridge | null { return this.bridge; }
+  getPositionSummary(): PositionSummary { return this.orchestrator.getPositionSummary(); }
+  getReconciliationSummary(): ReconciliationSummary { return this.orchestrator.getReconciliationSummary(); }
 
   async start(): Promise<void> {
     if (this.status === 'running') return;
@@ -69,6 +72,9 @@ export class StrategyRunner {
     this.bridge = new StrategyLiveBridge(this.orchestrator);
     this.proxy = new LiveOrderManagerProxy(this.bridge, this.strategyName);
     const deps = createRunnerStrategyDeps(this.proxy, this.config.deps);
+    if (this.orchestrator.getMode() === 'PAPER' && deps.clob && typeof deps.clob.getOrderBook === 'function') {
+      this.orchestrator.setPaperOrderBookProvider((tokenId) => deps.clob!.getOrderBook(tokenId));
+    }
     this.strategy = new this.strategyClass(deps, this.config.strategyConfig, this.strategyName as StrategyName);
 
     this.setupEventBus();
@@ -96,11 +102,22 @@ export class StrategyRunner {
 
   private buildExecutionBase() {
     return {
-      status: this.status, strategy: this.strategy, strategyName: this.strategyName,
-      executionCount: this.executionCount, lastExecutionTime: this.lastExecutionTime,
+      status: this.status,
+      getStatus: () => this.status,
+      strategy: this.strategy,
+      getStrategy: () => this.strategy,
+      strategyName: this.strategyName,
+      executionCount: this.executionCount,
+      getExecutionCount: () => this.executionCount,
+      lastExecutionTime: this.lastExecutionTime,
+      getLastExecutionTime: () => this.lastExecutionTime,
       trackedTokens: this.trackedTokens,
       updateLastExecutionTime: (time: number) => { this.lastExecutionTime = time; },
       incrementExecutionCount: () => { this.executionCount++; },
+      executeTick: async () => {
+        if (!this.strategy) return;
+        await this.orchestrator.executeStrategyTick(this.strategyName, () => this.strategy!.execute());
+      },
       stop: () => this.stop(),
     };
   }
@@ -114,8 +131,11 @@ export class StrategyRunner {
 
   private createTickTimer(): NodeJS.Timeout {
     const ctx: TickTimerContext = {
-      status: this.status, strategyName: this.strategyName,
-      tickIntervalMs: this.config.tickIntervalMs!, trackedTokens: this.trackedTokens,
+      status: this.status,
+      getStatus: () => this.status,
+      strategyName: this.strategyName,
+      tickIntervalMs: this.config.tickIntervalMs!,
+      trackedTokens: this.trackedTokens,
       execute: async () => {
         if (this.trackedTokens.size === 0) this.trackedTokens.add('tick-trigger');
         await this.handlePriceUpdate(createTickTriggerPayload());
