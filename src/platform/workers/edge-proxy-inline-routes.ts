@@ -88,7 +88,7 @@ export async function handlePaperTradesLedger(_request: Request, env: Env): Prom
     const result = await db
       .prepare(
         `SELECT id, market_id AS tokenId, side, size_usd AS size, entry_price AS price,
-             pnl, strategy, source, created_at AS timestamp
+             exit_price, pnl, strategy, source, created_at AS timestamp, closed_at
            FROM paper_trades_v3 ORDER BY created_at DESC LIMIT 1000`,
       )
       .all();
@@ -97,11 +97,13 @@ export async function handlePaperTradesLedger(_request: Request, env: Env): Prom
       tokenId: String(r.tokenId),
       side: r.side === 'YES' || r.side === 'NO' ? (r.side === 'YES' ? 'BUY' : 'SELL') : String(r.side),
       price: Number(r.price),
+      exitPrice: r.exit_price == null ? null : Number(r.exit_price),
       size: Number(r.size),
       pnl: r.pnl == null ? null : Number(r.pnl),
       strategy: String(r.strategy),
       source: String(r.source),
       timestamp: new Date(Number(r.timestamp)).toISOString(),
+      closedAt: r.closed_at == null ? null : new Date(Number(r.closed_at)).toISOString(),
     }));
     return new Response(JSON.stringify({ trades, count: trades.length }), {
       status: 200, headers: JSON_HEADERS,
