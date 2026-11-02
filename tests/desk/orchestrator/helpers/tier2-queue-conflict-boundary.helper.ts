@@ -96,11 +96,13 @@ export function registerTier2QueueConflictBoundaryTests(): void {
 
     it('B7: Deterministic tie-breaking preserves stability when composite scores are equal', () => {
       const q = new MockPriorityQueue(10);
-      const item1 = createArbitrageIntent({ intentId: 'tie-1', urgency: 'HIGH', expectedEdgeBps: 30 });
-      const item2 = createArbitrageIntent({ intentId: 'tie-2', urgency: 'HIGH', expectedEdgeBps: 30 });
+      const fixedNow = Date.now();
+      const fixedExpiresAt = fixedNow + 500;
+      const item1 = createArbitrageIntent({ intentId: 'tie-1', urgency: 'HIGH', expectedEdgeBps: 30, expiresAt: fixedExpiresAt });
+      const item2 = createArbitrageIntent({ intentId: 'tie-2', urgency: 'HIGH', expectedEdgeBps: 30, expiresAt: fixedExpiresAt });
 
-      q.enqueue(item1);
-      q.enqueue(item2);
+      q.enqueue(item1, fixedNow);
+      q.enqueue(item2, fixedNow);
 
       expect(q.dequeue()?.intentId).toBe('tie-1');
       expect(q.dequeue()?.intentId).toBe('tie-2');
