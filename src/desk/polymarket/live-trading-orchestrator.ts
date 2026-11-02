@@ -13,12 +13,19 @@ import { LiveOrderManager, type OrderState } from '../execution/live-order-manag
 import type { LiveExecutionGuard, GuardStatus } from '../execution/live-execution-guard';
 import type { LiveTradingJournal } from '../execution/live-trading-journal';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
+import type { PolymarketOrderReconciler, ReconciliationSummary } from '../execution/polymarket-order-reconciler';
 import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
 import type { TradeSignal } from './strategy-live-bridge';
 import { LiveTradingStrategyExecutor } from './live-trading-strategy-executor';
 import type { OrchestratorStatus, LiveTradingConfig } from './live-trading-types';
-import { normalizeConfig, buildCoreComponents, buildStartComponents } from './live-trading-adapter-setup';
+import {
+  normalizeConfig,
+  buildCoreComponents,
+  buildStartComponents,
+  recordPaperOrderFill,
+  recordPaperOrderCancel,
+} from './live-trading-adapter-setup';
 import { persistOrchestratorState, restoreOrchestratorState } from './live-trading-state-persistence';
 import { LiveTradingEventSubscriber } from './live-trading-event-subscriber';
 
@@ -45,6 +52,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
   private journal: LiveTradingJournal;
   private riskManager: RiskGateManager;
   private strategyExecutor: LiveTradingStrategyExecutor;
+  private reconciler: PolymarketOrderReconciler;
   private eventSubscriber: LiveTradingEventSubscriber;
 
   constructor(rawConfig: LiveTradingConfig) {
@@ -58,6 +66,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.journal = c.journal;
     this.riskManager = c.riskManager;
     this.strategyExecutor = c.strategyExecutor;
+    this.reconciler = c.reconciler;
     this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
   }
 
@@ -73,6 +82,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
       this.journal = c.journal;
       this.riskManager = c.riskManager;
       this.strategyExecutor = c.strategyExecutor;
+      this.reconciler = c.reconciler;
       this.guard.attachTracker(this.positionTracker);
 
       // Hydrate state before wiring live execution (fail-closed if live mode)
@@ -112,11 +122,14 @@ export class LiveTradingOrchestrator extends EventEmitter {
       throw new Error(`Guard rejected: ${result.reason}`);
     }
     if (this.orderManager) return this.orderManager.submitAndTrack(order);
-    return { orderID: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, status: 'matched' };
+    const orderID = `paper-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    recordPaperOrderFill(this.reconciler, order, orderID);
+    return { orderID, status: 'matched' };
   }
 
   async cancelOrder(orderId: string): Promise<void> {
     if (this.orderManager) await this.orderManager.cancelOrder(orderId);
+    recordPaperOrderCancel(this.reconciler, orderId);
   }
 
   getStatus(): OrchestratorStatus { return this.status; }
@@ -126,6 +139,8 @@ export class LiveTradingOrchestrator extends EventEmitter {
   getGuardStatus(): GuardStatus { return this.guard.getStatus(); }
   getActiveOrders(): OrderState[] { return this.orderManager?.getActiveOrders() ?? []; }
   getJournal(): LiveTradingJournal { return this.journal; }
+  getReconciler(): PolymarketOrderReconciler { return this.reconciler; }
+  getReconciliationSummary(): ReconciliationSummary { return this.reconciler.reconcile(); }
   getOrderBook(tokenId: string): Promise<PolymarketOrderBook> {
     if (!this.adapter) throw new Error('Orderbook only available in LIVE mode');
     return this.adapter.getOrderBook(tokenId);

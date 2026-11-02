@@ -13,8 +13,9 @@
  *   // Pass orderMgr as a StrategyDeps.orderManager to any V2 strategy
  */
 
-import type { OrderManager } from '../polymarket/order-manager';
+import type { OrderManager, PlaceOrderResult } from '../polymarket/order-manager';
 import type { StrategyLiveBridge, TradeSignal } from './strategy-live-bridge';
+import { calcTakerFee } from './polymarket-fee-calculator';
 import { logger } from '../../shared/utils/logger';
 
 // ── Proxy ────────────────────────────────────────────────────────────────────────
@@ -38,14 +39,16 @@ export class LiveOrderManagerProxy implements OrderManager {
     price: string | number;
     size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
-  }): Promise<{ id: string }> {
+  }): Promise<PlaceOrderResult> {
     this.orderCount++;
+    const priceNum = parseFloat(String(params.price));
+    const sizeNum = parseFloat(String(params.size));
 
     const signal: TradeSignal = {
       tokenId: params.tokenId,
       side: params.side === 'buy' ? 'BUY' : 'SELL',
-      price: parseFloat(String(params.price)),
-      size: parseFloat(String(params.size)),
+      price: priceNum,
+      size: sizeNum,
       description: `${this.strategyName}:order#${this.orderCount}`,
       confidence: 0.7,
       timestamp: Date.now(),
@@ -69,6 +72,17 @@ export class LiveOrderManagerProxy implements OrderManager {
       side: params.side,
       orderId,
     });
+
+    if (result.response?.status === 'matched') {
+      const feeUsdc = calcTakerFee('politics', priceNum) * sizeNum * priceNum;
+      return {
+        id: orderId,
+        filled: true,
+        filledSize: String(params.size),
+        fillPrice: String(params.price),
+        fees: feeUsdc.toFixed(6),
+      };
+    }
 
     return { id: orderId };
   }

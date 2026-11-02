@@ -9,11 +9,14 @@
 import { buildPolymarketAdapter } from '../execution/polymarket-execution-adapter';
 import { CircuitBreaker } from '../risk/circuit-breaker';
 import type { PolymarketAdapter } from '../execution/polymarket-adapter';
+import type { PolymarketOrder } from '../execution/polymarket-signer';
 import { LivePositionTracker } from '../execution/live-position-tracker';
 import { LiveExecutionGuard } from '../execution/live-execution-guard';
 import { LiveTradingJournal } from '../execution/live-trading-journal';
 import { RiskGateManager } from '../risk/risk-gate-manager';
 import { LiveOrderManager } from '../execution/live-order-manager';
+import { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
+import { calcTakerFee } from './polymarket-fee-calculator';
 import { logger } from '../../shared/utils/logger';
 import type { LiveTradingConfig } from './live-trading-types';
 import { LiveTradingStrategyExecutor } from './live-trading-strategy-executor';
@@ -30,6 +33,7 @@ export interface OrchestratorComponents {
   journal: LiveTradingJournal;
   riskManager: RiskGateManager;
   strategyExecutor: LiveTradingStrategyExecutor;
+  reconciler: PolymarketOrderReconciler;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +77,53 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
     riskManager,
     (msg, ctx, meta) => logger.warn(msg, ctx, meta),
   );
-  return { adapter: null, positionTracker, orderManager: null, guard, journal, riskManager, strategyExecutor };
+  const reconciler = new PolymarketOrderReconciler(config.capitalUsdc);
+  return { adapter: null, positionTracker, orderManager: null, guard, journal, riskManager, strategyExecutor, reconciler };
+}
+
+export function recordPaperOrderFill(
+  reconciler: PolymarketOrderReconciler,
+  order: PolymarketOrder,
+  orderId: string,
+): void {
+  const ts = Date.now();
+  const raw = order as unknown as Record<string, unknown>;
+  const side: 'BUY' | 'SELL' = order.side === 'SELL' || Number(raw['side']) === 1 ? 'SELL' : 'BUY';
+  const requestedSize = Number(order.size) > 0 ? Number(order.size) : Number(raw['makerAmount'] ?? 0) / 1e6 || 1;
+  const limitPrice = Number(order.price) > 0 ? Number(order.price) : 0.5;
+  const feeUsdc = calcTakerFee('politics', limitPrice) * requestedSize * limitPrice;
+  reconciler.createOrder({
+    intentId: orderId,
+    orderId,
+    marketId: order.tokenId,
+    tokenId: order.tokenId,
+    side,
+    requestedSize,
+    limitPrice,
+    timestamp: ts,
+  });
+  reconciler.applyEvent({ eventId: `${orderId}:submitted`, orderId, type: 'SUBMITTED', timestamp: ts });
+  reconciler.applyEvent({ eventId: `${orderId}:ack`, orderId, type: 'ACKNOWLEDGED', timestamp: ts });
+  reconciler.applyEvent({
+    eventId: `${orderId}:filled`,
+    orderId,
+    type: 'FILLED',
+    fillSize: requestedSize,
+    fillPrice: limitPrice,
+    feeUsdc,
+    timestamp: ts,
+  });
+}
+
+export function recordPaperOrderCancel(reconciler: PolymarketOrderReconciler, orderId: string): void {
+  if (reconciler.getOrder(orderId)) {
+    reconciler.applyEvent({
+      eventId: `${orderId}:cancel:${Date.now()}`,
+      orderId,
+      type: 'CANCELLED',
+      timestamp: Date.now(),
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

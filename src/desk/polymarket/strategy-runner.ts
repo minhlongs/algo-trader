@@ -68,7 +68,7 @@ export class StrategyRunner {
 
     this.bridge = new StrategyLiveBridge(this.orchestrator);
     this.proxy = new LiveOrderManagerProxy(this.bridge, this.strategyName);
-    const deps = createRunnerStrategyDeps(this.proxy);
+    const deps = createRunnerStrategyDeps(this.proxy, this.config.deps);
     this.strategy = new this.strategyClass(deps, this.config.strategyConfig, this.strategyName as StrategyName);
 
     this.setupEventBus();
