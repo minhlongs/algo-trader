@@ -24,6 +24,8 @@ export interface StrategyRunnerConfig {
   minExecutionIntervalMs?: number;
   /** Auto-start endgame scanner (default: false) */
   autoScan?: boolean;
+  /** Optional dependency overrides (clob, gamma, eventBus) for testing / shadow feed injection */
+  deps?: Partial<StrategyDeps>;
 }
 
 export interface RunnerStatus {

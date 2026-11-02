@@ -7,6 +7,8 @@
 import { logger } from '@shared/utils/logger';
 import type { PriceUpdatePayload } from '../events/trading-event-bus';
 import type { BasePolymarketStrategy, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import { clobClient } from './clob-client';
+import { GammaClientImpl } from './strategy-runner-types';
 import type { LiveOrderManagerProxy } from './live-order-manager-proxy';
 
 export interface StrategyExecutionContext {
@@ -31,12 +33,15 @@ export function deriveStrategyName(strategyClass: { name: string }): string {
     .replace(/^-/, '');
 }
 
-export function createRunnerStrategyDeps(proxy: LiveOrderManagerProxy): StrategyDeps {
+export function createRunnerStrategyDeps(
+  proxy: LiveOrderManagerProxy,
+  overrides?: Partial<StrategyDeps>,
+): StrategyDeps {
   return {
-    clob: null as unknown as StrategyDeps['clob'],
-    orderManager: proxy,
-    eventBus: { emit: () => {}, on: () => {}, off: () => {} },
-    gamma: null as unknown as StrategyDeps['gamma'],
+    clob: overrides?.clob ?? clobClient,
+    orderManager: overrides?.orderManager ?? proxy,
+    eventBus: overrides?.eventBus ?? { emit: () => {}, on: () => {}, off: () => {} },
+    gamma: overrides?.gamma ?? new GammaClientImpl(),
   };
 }
 

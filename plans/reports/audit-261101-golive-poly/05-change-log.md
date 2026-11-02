@@ -19,7 +19,18 @@
 - `src/desk/polymarket/polymarket-oos-evaluator.ts`: Added deterministic walk-forward OOS & stressed evaluator comparing `no_trade_baseline`, `naive_mid_arb`, and `executable_ask_fee_arb`.
 - `tests/unit/desk/execution/s4-s5-polymarket-hardening.test.ts`: Added 8 unit, replay, fault-injection, and OOS evaluation tests.
 
-## 4. Post-S5 CI/CD Hardening & Paper Trading Status Telemetry (`PR #222` — `c726a401`, `Issue #221`; `PR #224` — `2512e432`, `Issue #223`)
+## 4. Post-S5 CI/CD Hardening & Paper Trading Status Telemetry (`PR #222` — `c726a401`, `Issue #221`; `PR #224` — `2512e432`, `Issue #223`; `PR #226` — `c842756f`, `Issue #225`)
 - `.github/workflows/ci-cd.yml`: Added `workflow_dispatch` and `paths-ignore: ['plans/**', 'docs/**', '**.md']`, gated `docker` behind `vars.DOCKER_AUTO_PUSH == 'true'`, decoupled `deploy-worker.needs` to `test`, and gated `health-check` behind `vars.WORKER_AUTO_DEPLOY == 'true'`.
 - `src/desk/paper-trading/paper-trading-types.ts`, `src/desk/paper-trading/paper-trading-metrics.ts`, `src/platform/workers/paper-trading-entry.ts`, `src/platform/workers/edge-proxy-inline-routes.ts`, `src/platform/workers/edge-proxy.ts`: Added read-only `GET /api/v1/paper-trading/status` (`getPaperTradingStatus` & `handlePaperTradingStatusRoute`) reading `STATE_KEY = 'paper-trading-loop-state'` from KV with zero KV/D1 writes.
 - `src/platform/workers/__tests__/paper-trading-status-route.test.ts`, `src/platform/workers/__tests__/edge-proxy-health-route.test.ts`: Added unit tests verifying `GET /api/v1/paper-trading/status` and CI/CD workflow gates; deployed and verified live on `algo-trader-staging` (Version `1222ce87-907a-402d-87d6-10cb8172be4f`).
+
+## 5. Telemetry Version Identity Envelope, Closed-Trade D1 Fields & Two-Tier 30-Day Shadow Protocol (`PR #228` — `175bb045`, `Issue #227`)
+- `src/platform/workers/paper-trading-entry.ts`: Added `timestamp` (ISO-8601 UTC) and `versionIdentity: { commitSha, shortSha, deployedAt, deployBranch, environment }` to `getPaperTradingStatus`.
+- `src/platform/workers/edge-proxy-inline-routes.ts`: Exposed `exitPrice` (`exit_price`) and `closedAt` (`closed_at`) on `GET /api/v1/paper-trades`.
+- `plans/reports/audit-261101-golive-poly/{04,08,11}*.md`: Recorded Worker Version `1222ce87-907a-402d-87d6-10cb8172be4f` vs static `COMMIT_SHA` `1fa01ca4b89eea4b88e335cdbf0e928da65c1142` vs `2512e432`/`c842756f` provenance proof, 63-trade zero-drift KV/D1 reconciliation (`SUM(pnl) = -5.193679`), and the Two-Tier 30-Day Shadow Protocol (`G1-Soak` vs `G2-Poly-Shadow`).
+
+## 6. `G2-Poly-Shadow` Paper Runtime Reconciler & Runner Wiring (`Issue #229`)
+- `src/desk/polymarket/live-trading-adapter-setup.ts`, `src/desk/polymarket/live-trading-orchestrator.ts`: Wired `PolymarketOrderReconciler(config.capitalUsdc)` into `LiveTradingOrchestrator`, recording `CREATED -> SUBMITTED -> ACKNOWLEDGED -> FILLED` (with taker fee via `calcTakerFee`) on `placeOrder` in `PAPER` mode and `CANCELLED` on `cancelOrder`, and exposed `getReconciler()` + `getReconciliationSummary()`.
+- `src/desk/polymarket/live-order-manager-proxy.ts`: Populated `filled: true`, `filledSize`, `fillPrice`, and dynamic taker `fees` when `result.response?.status === 'matched'`, preserving `{ id }` for non-matched responses.
+- `src/desk/polymarket/strategy-runner-types.ts`, `src/desk/polymarket/strategy-runner-executor.ts`, `src/desk/polymarket/strategy-runner.ts`: Wired read-only `clobClient` and `new GammaClientImpl()` defaults in `createRunnerStrategyDeps` with optional `deps?: Partial<StrategyDeps>` overrides on `StrategyRunnerConfig`.
+- `tests/unit/desk/polymarket/g2-poly-shadow-runtime-wiring.test.ts`: Added unit and end-to-end integration tests verifying `StrategyRunner` + `PolymarketArbStrategy` + `LiveTradingOrchestrator` + `PolymarketOrderReconciler` in `PAPER` mode with `unexplainedDriftUsdc === 0`.
