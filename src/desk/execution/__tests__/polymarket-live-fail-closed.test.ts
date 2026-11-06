@@ -27,6 +27,7 @@ vi.mock('../polymarket-adapter', () => ({
 }));
 
 import { buildPolymarketAdapter } from '../polymarket-execution-adapter';
+import { resetExecutionModeCache } from '../execution-mode';
 
 /** The four credentials the error message must name for a live run. */
 const CREDENTIAL_NAMES = [
@@ -52,8 +53,21 @@ const CREDENTIALS: Record<string, string> = {
   POLYMARKET_PRIVATE_KEY: 'a'.repeat(64),
 };
 
+/**
+ * The live-arming flag. The unified execution-mode gate reads it before the
+ * credential check, so a LIVE request only reaches the credentials this suite
+ * is about when the operator has actually armed live trading. Without it the
+ * mode resolves to READ_ONLY and the adapter returns a paper stub early, which
+ * is a different contract from the fail-closed one asserted here.
+ */
+const ARM_LIVE = 'LIVE_TRADING_ENABLED';
+
 function clearCredentials(): void {
   for (const key of ALL_CREDENTIAL_KEYS) delete process.env[key];
+}
+
+function armLiveTrading(): void {
+  process.env[ARM_LIVE] = 'true';
 }
 
 function messageFrom(build: () => unknown): string {
@@ -68,10 +82,16 @@ function messageFrom(build: () => unknown): string {
 describe('buildPolymarketAdapter LIVE fail-closed', () => {
   beforeEach(() => {
     clearCredentials();
+    armLiveTrading();
     Object.assign(process.env, CREDENTIALS);
+    resetExecutionModeCache();
   });
 
-  afterEach(() => { clearCredentials(); });
+  afterEach(() => {
+    clearCredentials();
+    delete process.env[ARM_LIVE];
+    resetExecutionModeCache();
+  });
 
   it('throws when paperTrading is false and one credential is missing', () => {
     delete process.env.POLYMARKET_PRIVATE_KEY;
