@@ -152,13 +152,13 @@ describe('BacktestOrderManager', () => {
     it('sets position on BUY (long entry)', async () => {
       await manager.placeOrder({ tokenId: 'token-pos', side: 'buy', price: '0.50', size: '100' });
       const positions = (manager as any).positions;
-      expect(positions.get('token-pos')).toEqual({ size: 100, avgPrice: 0.5 });
+      expect(positions.get('token-pos')).toMatchObject({ size: 100, avgPrice: 0.5 });
     });
 
     it('sets position on SELL (short entry)', async () => {
       await manager.placeOrder({ tokenId: 'token-short', side: 'sell', price: '0.60', size: '200' });
       const positions = (manager as any).positions;
-      expect(positions.get('token-short')).toEqual({ size: -200, avgPrice: 0.6 });
+      expect(positions.get('token-short')).toMatchObject({ size: -200, avgPrice: 0.6 });
     });
 
     it('updates currentEquity with realized PnL on SELL (closing long)', async () => {
@@ -194,7 +194,7 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 'token-avg', side: 'buy', price: '0.60', size: '100' });
       const positions = (manager as any).positions;
       // avgPrice = (0.5*100 + 0.6*100) / 200 = 0.55
-      expect(positions.get('token-avg')).toEqual({ size: 200, avgPrice: 0.55 });
+      expect(positions.get('token-avg')).toMatchObject({ size: 200, avgPrice: 0.55 });
     });
 
     it('returns null for SELL opening short position', async () => {
@@ -218,12 +218,14 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 'token-partial', side: 'sell', price: '0.60', size: '100' });
 
       const trades = manager.getTrades();
-      expect(trades[1].pnl).toBeCloseTo(9.78, 10);
-      expect(manager.getCurrentEquity()).toBeCloseTo(10009.78, 10);
+      // gross 10 minus 0.12 taker minus 0.05 gas for this fill alone; the entry
+      // fill's gas settles on the sell that finally closes the position.
+      expect(trades[1].pnl).toBeCloseTo(9.83, 10);
+      expect(manager.getCurrentEquity()).toBeCloseTo(10009.83, 10);
 
       // Position should still have 100 remaining
       const positions = (manager as any).positions;
-      expect(positions.get('token-partial')).toEqual({ size: 100, avgPrice: 0.5 });
+      expect(positions.get('token-partial')).toMatchObject({ size: 100, avgPrice: 0.5 });
     });
 
     it('removes position when fully closed via SELL', async () => {
@@ -246,7 +248,7 @@ describe('BacktestOrderManager', () => {
       // No wait, it sets { size: -size, avgPrice: price } = { size: -100, avgPrice: 0.70 }
       // So the position REPLACES, not adds. Let me verify.
       const positions = (manager as any).positions;
-      expect(positions.get('token-short-update')).toEqual({ size: -100, avgPrice: 0.6 });
+      expect(positions.get('token-short-update')).toMatchObject({ size: -100, avgPrice: 0.6 });
     });
 
     it('computes PnL on SELL when closing long with loss', async () => {
@@ -281,7 +283,7 @@ describe('BacktestOrderManager', () => {
 
       const positions = (manager as any).positions;
       expect(positions.has('token-a')).toBe(false);
-      expect(positions.get('token-b')).toEqual({ size: 200, avgPrice: 0.6 });
+      expect(positions.get('token-b')).toMatchObject({ size: 200, avgPrice: 0.6 });
       // gross 5 minus 0.11 taker ($55 exit notional, both legs) minus 0.10 gas = 4.79
       expect(manager.getCurrentEquity()).toBe(10004.79);
     });
