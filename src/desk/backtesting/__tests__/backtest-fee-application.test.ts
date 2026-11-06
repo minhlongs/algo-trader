@@ -141,6 +141,47 @@ describe('BacktestOrderManager venue costs', () => {
     const [close] = om.getFillCosts();
     expect(close!.gasUsd).toBe(0.15);
   });
+
+  it('settles one gas charge per entry fill when a short is built then covered', async () => {
+    const om = new BacktestOrderManager(1000);
+    await om.placeOrder({ tokenId: 't1', side: 'sell', price: 0.4, size: 100 });
+    await om.placeOrder({ tokenId: 't1', side: 'sell', price: 0.5, size: 100 });
+    await om.placeOrder({ tokenId: 't1', side: 'buy', price: 0.6, size: 200 });
+
+    // Three fills on chain: two entry sells and one covering buy.
+    const [close] = om.getFillCosts();
+    expect(close!.gasUsd).toBe(0.15);
+
+    // Entry averages to 0.45 and the cover is 0.60, so the short loses on 200
+    // shares; the buy-back notional carries both taker legs.
+    expect(close!.grossPnlUsd).toBe(-30);
+    expect(close!.feeUsd).toBe(0.24);
+    expect(close!.netPnlUsd).toBe(-30.39);
+  });
+
+  it('charges a short round trip the same costs as the mirror-image long', async () => {
+    // Long round trip: buy 100 @ 0.40, sell 100 @ 0.50.
+    const longOom = new BacktestOrderManager(1000);
+    await longOom.placeOrder({ tokenId: 't1', side: 'buy', price: 0.4, size: 100 });
+    await longOom.placeOrder({ tokenId: 't1', side: 'sell', price: 0.5, size: 100 });
+
+    // Short round trip: sell 100 @ 0.50, buy 100 @ 0.40 — the same edge, reversed.
+    const shortOom = new BacktestOrderManager(1000);
+    await shortOom.placeOrder({ tokenId: 't1', side: 'sell', price: 0.5, size: 100 });
+    await shortOom.placeOrder({ tokenId: 't1', side: 'buy', price: 0.4, size: 100 });
+
+    const [longClose] = longOom.getFillCosts();
+    const [shortClose] = shortOom.getFillCosts();
+
+    // Both legs of a short settle, exactly as a long's do.
+    expect(shortClose!.grossPnlUsd).toBe(longClose!.grossPnlUsd);
+    expect(shortClose!.gasUsd).toBe(longClose!.gasUsd);
+    // The short's taker fee prices the $40 buy-back, the long's the $50 exit.
+    expect(shortClose!.feeUsd).toBe(0.08);
+    expect(longClose!.feeUsd).toBe(0.1);
+    expect(shortClose!.netPnlUsd).toBe(9.82);
+    expect(shortOom.getCurrentEquity()).toBeCloseTo(1009.82, 10);
+  });
 });
 
 describe('fee-honest metrics', () => {

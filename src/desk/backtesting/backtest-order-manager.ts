@@ -17,15 +17,19 @@ export interface FillCostDetail {
   netPnlUsd: number;
 }
 
+/** One open position: positive size is long, negative size is short. */
+interface OpenPosition {
+  size: number;
+  avgPrice: number;
+  entryFills: number;
+}
+
 export class BacktestOrderManager implements OrderManager {
   trades: BacktestTrade[] = [];
   equityCurve: Array<{ timestamp: string; equity: number }> = [];
   private capital: number;
   private currentEquity: number;
-  private positions = new Map<
-    string,
-    { size: number; avgPrice: number; entryFills: number }
-  >();
+  private positions = new Map<string, OpenPosition>();
   private fillCosts: FillCostDetail[] = [];
 
   constructor(capital: number) {
@@ -107,53 +111,71 @@ export class BacktestOrderManager implements OrderManager {
     size: number,
   ): { pnl: number; fillCost: FillCostDetail } | null {
     const existing = this.positions.get(tokenId);
-    if (side === 'BUY') {
-      // Opening or adding to position; every buy fill pays its own gas when it settles.
-      if (existing) {
-        const newSize = existing.size + size;
-        const newAvgPrice =
-          (existing.avgPrice * existing.size + price * size) / newSize;
-        this.positions.set(tokenId, {
-          size: newSize,
-          avgPrice: newAvgPrice,
-          entryFills: existing.entryFills + 1,
-        });
-      } else {
-        this.positions.set(tokenId, { size, avgPrice: price, entryFills: 1 });
-      }
-      return null; // Unrealized until sold
-    } else {
-      // SELL — closing or reducing
-      if (!existing || existing.size <= 0) {
-        // Short entry or no position — treat as opening short
-        this.positions.set(tokenId, { size: -size, avgPrice: price, entryFills: 1 });
-        return null;
-      }
-      const closeSize = Math.min(size, existing.size);
-      const grossPnlUsd = closeSize * (price - existing.avgPrice);
-      const remaining = existing.size - closeSize;
-      // Entry-fill gas is settled once, on the sell that closes the position out.
-      const chargeEntryGas = remaining <= 0;
-      const entryFills = existing.entryFills;
-      if (remaining <= 0) {
-        this.positions.delete(tokenId);
-      } else {
-        this.positions.set(tokenId, { size: remaining, avgPrice: existing.avgPrice, entryFills });
-      }
+    const direction = side === 'BUY' ? 1 : -1;
+    const closesPosition = existing !== undefined && existing.size * direction < 0;
 
-      // The ledger only credits realized PnL that survives venue costs.
-      const gasFills = 1 + (chargeEntryGas ? entryFills : 0);
-      const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd }, gasFills);
-      return {
-        pnl: costs.netPnl,
-        fillCost: {
-          grossPnlUsd: roundUsd(grossPnlUsd),
-          feeUsd: costs.feeUsd,
-          gasUsd: costs.gasUsd,
-          netPnlUsd: costs.netPnl,
-        },
-      };
+    if (existing && closesPosition) {
+      return this.settleClose(tokenId, existing, price, size);
     }
+
+    if (existing) {
+      // Opening or extending in this fill's direction: the volume-weighted entry
+      // is recomputed over the position's absolute size, so extending a long and
+      // extending a short average by the same rule. Every entry fill pays its own
+      // gas when it settles.
+      const openSize = Math.abs(existing.size) + size;
+      this.positions.set(tokenId, {
+        size: openSize * direction,
+        avgPrice: (existing.avgPrice * Math.abs(existing.size) + price * size) / openSize,
+        entryFills: existing.entryFills + 1,
+      });
+    } else {
+      this.positions.set(tokenId, { size: size * direction, avgPrice: price, entryFills: 1 });
+    }
+    return null; // Unrealized until closed
+  }
+
+  /**
+   * Reduce or close out a position the fill is opposing, settle the venue costs
+   * on the closed portion, and return the net realized PnL.
+   *
+   * A short reversal is priced by the same rules as a long exit, with the
+   * position's sign supplying the only difference: a short profits when the
+   * buy-back is cheaper. Entry-fill gas is settled once, on the fill that closes
+   * the position out.
+   */
+  private settleClose(
+    tokenId: string,
+    existing: OpenPosition,
+    price: number,
+    size: number,
+  ): { pnl: number; fillCost: FillCostDetail } {
+    const positionSign = existing.size > 0 ? 1 : -1;
+    const openSize = existing.size * positionSign;
+    const closeSize = Math.min(size, openSize);
+    const grossPnlUsd = closeSize * (price - existing.avgPrice) * positionSign;
+    const remaining = openSize - closeSize;
+    const chargeEntryGas = remaining <= 0;
+    const entryFills = existing.entryFills;
+
+    if (remaining <= 0) {
+      this.positions.delete(tokenId);
+    } else {
+      this.positions.set(tokenId, { size: remaining * positionSign, avgPrice: existing.avgPrice, entryFills });
+    }
+
+    // The ledger only credits realized PnL that survives venue costs.
+    const gasFills = 1 + (chargeEntryGas ? entryFills : 0);
+    const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd }, gasFills);
+    return {
+      pnl: costs.netPnl,
+      fillCost: {
+        grossPnlUsd: roundUsd(grossPnlUsd),
+        feeUsd: costs.feeUsd,
+        gasUsd: costs.gasUsd,
+        netPnlUsd: costs.netPnl,
+      },
+    };
   }
 }
 
