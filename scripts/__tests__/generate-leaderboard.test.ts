@@ -67,15 +67,15 @@ describe('generate-leaderboard', () => {
     const before = render();
 
     const csv = readFileSync(SANDBOX_CSV, 'utf-8');
-    const edited = csv.replace('bollinger-squeeze,19.5200', 'bollinger-squeeze,55.5500');
+    const edited = csv.replace('vwap-deviation-sniper,-11.9300,0.00,-0.81', 'vwap-deviation-sniper,-11.9300,0.00,-9.99');
     expect(edited).not.toBe(csv);
     writeFileSync(SANDBOX_CSV, edited, 'utf-8');
 
     const after = render();
 
     expect(after).not.toBe(before);
-    expect(after).toContain('55.55');
-    expect(before).not.toContain('55.55');
+    expect(after).toContain('-9.99');
+    expect(before).not.toContain('-9.99');
 
     copyFileSync(REAL_CSV, SANDBOX_CSV);
   });
@@ -125,7 +125,7 @@ describe('check-leaderboard-drift guard', () => {
 
     // Mutate the CSV, do NOT regenerate — the guard must catch the drift.
     const csv = readFileSync(SANDBOX_CSV, 'utf-8');
-    writeFileSync(SANDBOX_CSV, csv.replace('bollinger-squeeze,19.5200', 'bollinger-squeeze,77.7700'), 'utf-8');
+    writeFileSync(SANDBOX_CSV, csv.replace('vwap-deviation-sniper,-11.9300,0.00,-0.81', 'vwap-deviation-sniper,-11.9300,0.00,-3.33'), 'utf-8');
 
     const stale = runInSandbox(GUARD);
     expect(stale.status).toBe(1);
