@@ -29,7 +29,7 @@ zero-trade strategies, changing the fee parameters (user decision), the
 - **D2** — `grep -c Infinity reports/backtest-results.csv` → 0; file regenerated 2026-11-06, 30 OK rows.
 - **D3** — `src/desk/execution/__tests__/polymarket-live-fail-closed.test.ts` (7 tests) asserts `buildPolymarketAdapter` throws, naming each missing credential, with no silent paper fallback.
 - **D4** — `tests/unit/desk/backtesting/backtest-order-manager.test.ts` 45/45. Full repo: 26 failed / 17256 passed / 12 skipped across 5 files, identical in set and count to the pre-change baseline; all 5 are unrelated modules. `tsc --noEmit` exit 0; `build:fast` exit 0.
-- **D5** — see PR.
+- **D5** — branch `fix/backtest-fee-honesty-and-live-fail-closed`, two commits, PR #233 against `fix/signal-routes-tenant-isolation` (16 files, +734/−88). CI does not run on this branch: the workflows trigger only on `main`.
 
 
 Constraints: no `:any`, no `console.log`, kebab-case, split files over 200 LOC,
@@ -65,6 +65,9 @@ conventional commits with attribution, never commit secrets, reports in Vietname
 | `tests/unit/desk/backtesting/backtest-order-manager.test.ts` | gross assertions restated as net |
 | `reports/backtest-results.csv` | regenerated |
 | `docs/backtest-leaderboard.md` | updated with net-of-fee results |
+| `src/desk/polymarket/live-trading-paper-fill-recorder.ts` (new) | task-2 prerequisite: persist paper fills |
+| `src/desk/polymarket/live-trading-orchestrator.ts` | route paper orders through the recorder |
+| `src/desk/polymarket/__tests__/live-trading-paper-fill-recording.test.ts` (new) | recorder tests |
 
 ## Risks
 
