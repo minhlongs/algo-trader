@@ -165,10 +165,11 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 'token-equity', side: 'buy', price: '0.50', size: '100' });
       expect(manager.getCurrentEquity()).toBe(10000);
 
-      // SELL to close long position - should realize PnL
+      // SELL to close long position - should realize PnL net of venue costs.
       await manager.placeOrder({ tokenId: 'token-equity', side: 'sell', price: '0.60', size: '100' });
-      // PnL = 100 * (0.60 - 0.50) = 10
-      expect(manager.getCurrentEquity()).toBe(10010);
+      // Gross PnL = 100 * (0.60 - 0.50) = 10; costs = 2 legs taker (100 * 0.60 * 0.001 * 2 = 0.12)
+      // + gas ($0.05 * 2 = 0.10) = 0.22 → net 9.78
+      expect(manager.getCurrentEquity()).toBe(10009.78);
     });
 
     it('returns null pnl from BUY even when closing short (implementation behavior)', async () => {
@@ -207,8 +208,9 @@ describe('BacktestOrderManager', () => {
 
       const trades = manager.getTrades();
       expect(trades[0].pnl).toBeNull();
-      expect(trades[1].pnl).toBeCloseTo(10, 10);
-      expect(manager.getCurrentEquity()).toBeCloseTo(10010, 10);
+      // gross 10 minus 0.12 taker (both legs on $60 exit notional) minus 0.10 gas = 9.78
+      expect(trades[1].pnl).toBeCloseTo(9.78, 10);
+      expect(manager.getCurrentEquity()).toBeCloseTo(10009.78, 10);
     });
 
     it('computes PnL when partially closing long position via SELL', async () => {
@@ -216,8 +218,8 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 'token-partial', side: 'sell', price: '0.60', size: '100' });
 
       const trades = manager.getTrades();
-      expect(trades[1].pnl).toBeCloseTo(10, 10);
-      expect(manager.getCurrentEquity()).toBeCloseTo(10010, 10);
+      expect(trades[1].pnl).toBeCloseTo(9.78, 10);
+      expect(manager.getCurrentEquity()).toBeCloseTo(10009.78, 10);
 
       // Position should still have 100 remaining
       const positions = (manager as any).positions;
@@ -250,21 +252,22 @@ describe('BacktestOrderManager', () => {
     it('computes PnL on SELL when closing long with loss', async () => {
       await manager.placeOrder({ tokenId: 'token-loss', side: 'buy', price: '0.60', size: '100' });
       await manager.placeOrder({ tokenId: 'token-loss', side: 'sell', price: '0.50', size: '100' });
-      // PnL = 100 * (0.50 - 0.60) = -10
-      expect(manager.getTrades()[1].pnl).toBeCloseTo(-10, 10);
-      expect(manager.getCurrentEquity()).toBeCloseTo(9990, 10);
+      // gross = 100 * (0.50 - 0.60) = -10; costs = 0.10 taker (exit notional $50) + 0.10 gas
+      expect(manager.getTrades()[1].pnl).toBeCloseTo(-10.2, 10);
+      expect(manager.getCurrentEquity()).toBeCloseTo(9989.8, 10);
     });
 
     it('handles SELL larger than long position (closes long, extra ignored)', async () => {
       // Buy 100 @ 0.50
       await manager.placeOrder({ tokenId: 'token-over', side: 'buy', price: '0.50', size: '100' });
-      // Sell 200 @ 0.60 -> closes 100 long (pnl=10), remaining 100 is ignored (no short opened)
+      // Sell 200 @ 0.60 -> closes only the 100 long; the extra 100 is ignored (no short opened).
+      // Only the closed 100 is charged: 100 * 0.60 * 0.001 * 2 = 0.12 taker, 0.10 gas
       await manager.placeOrder({ tokenId: 'token-over', side: 'sell', price: '0.60', size: '200' });
 
       const trades = manager.getTrades();
       expect(trades[0].pnl).toBeNull();
-      expect(trades[1].pnl).toBeCloseTo(10, 10);
-      expect(manager.getCurrentEquity()).toBeCloseTo(10010, 10);
+      expect(trades[1].pnl).toBeCloseTo(9.78, 10);
+      expect(manager.getCurrentEquity()).toBeCloseTo(10009.78, 10);
 
       // Position is fully closed (remaining = 100 - 100 = 0, position deleted)
       const positions = (manager as any).positions;
@@ -279,14 +282,16 @@ describe('BacktestOrderManager', () => {
       const positions = (manager as any).positions;
       expect(positions.has('token-a')).toBe(false);
       expect(positions.get('token-b')).toEqual({ size: 200, avgPrice: 0.6 });
-      expect(manager.getCurrentEquity()).toBe(10005);
+      // gross 5 minus 0.11 taker ($55 exit notional, both legs) minus 0.10 gas = 4.79
+      expect(manager.getCurrentEquity()).toBe(10004.79);
     });
 
     it('computes PnL zero when sell price equals avg price', async () => {
       await manager.placeOrder({ tokenId: 'token-even', side: 'buy', price: '0.50', size: '100' });
       await manager.placeOrder({ tokenId: 'token-even', side: 'sell', price: '0.50', size: '100' });
-      expect(manager.getTrades()[1].pnl).toBe(0);
-      expect(manager.getCurrentEquity()).toBe(10000);
+      // gross 0, but the round trip still costs 0.10 taker + 0.10 gas
+      expect(manager.getTrades()[1].pnl).toBe(-0.2);
+      expect(manager.getCurrentEquity()).toBe(9999.8);
     });
   });
 
@@ -369,7 +374,8 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 't1', side: 'buy', price: '0.5', size: '100' });
       expect(manager.getCurrentEquity()).toBe(10000); // No PnL yet (open position)
       await manager.placeOrder({ tokenId: 't1', side: 'sell', price: '0.6', size: '100' });
-      expect(manager.getCurrentEquity()).toBe(10010);
+      // net of 0.12 taker + 0.10 gas
+      expect(manager.getCurrentEquity()).toBe(10009.78);
     });
 
     it('does not change equity for opening BUY', async () => {
@@ -394,10 +400,9 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 'cycle', side: 'sell', price: '0.65', size: '200' });
 
       expect(manager.getTrades().length).toBe(4);
-      // Cycle 1 PnL: 100 * 0.10 = 10
-      // Cycle 2 PnL: 200 * 0.10 = 20
-      // Total: 30
-      expect(manager.getCurrentEquity()).toBe(10030);
+      // Cycle 1: gross 10 − 0.12 taker ($60 notional) − 0.10 gas = 9.78
+      // Cycle 2: gross 20 − 0.26 taker ($130 notional) − 0.10 gas = 19.64
+      expect(manager.getCurrentEquity()).toBe(10029.42);
     });
 
     it('tracks equity with multiple independent positions', async () => {
@@ -413,8 +418,10 @@ describe('BacktestOrderManager', () => {
       await manager.placeOrder({ tokenId: 'C', side: 'sell', price: '0.70', size: '100' });
       await manager.placeOrder({ tokenId: 'C', side: 'buy', price: '0.75', size: '100' });
 
-      // A: +10, B: +30, C: +0 (BUY doesn't compute PnL)
-      expect(manager.getCurrentEquity()).toBe(10040);
+      // A: gross 10 − 0.12 taker − 0.10 gas = +9.78
+      // B: gross 30 − 0.22 taker ($110 notional) − 0.10 gas = +29.68
+      // C: +0 (BUY doesn't compute PnL)
+      expect(manager.getCurrentEquity()).toBeCloseTo(10039.46, 6);
     });
   });
 });

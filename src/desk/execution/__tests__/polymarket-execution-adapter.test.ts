@@ -64,26 +64,20 @@ describe('buildPolymarketAdapter', () => {
     expect(result.paperTrading).toBe(false);
   });
 
-  it('falls back to paper when paperTrading is false and POLYMARKET_PRIVATE_KEY is missing', () => {
+  it('throws when paperTrading is false and POLYMARKET_PRIVATE_KEY is missing', () => {
     delete process.env.POLYMARKET_PRIVATE_KEY;
-    const result = buildPolymarketAdapter({ paperTrading: false });
-    expect(result.adapter).toBeNull();
-    expect(result.paperTrading).toBe(true);
+    expect(() => buildPolymarketAdapter({ paperTrading: false })).toThrow(/POLYMARKET_PRIVATE_KEY/);
   });
 
-  it('falls back to paper when paperTrading is false and POLYMARKET_API_KEY is missing', () => {
+  it('throws when paperTrading is false and POLYMARKET_API_KEY is missing', () => {
     delete process.env.POLYMARKET_API_KEY;
-    const result = buildPolymarketAdapter({ paperTrading: false });
-    expect(result.adapter).toBeNull();
-    expect(result.paperTrading).toBe(true);
+    expect(() => buildPolymarketAdapter({ paperTrading: false })).toThrow(/POLYMARKET_API_KEY/);
   });
 
-  it('falls back to paper when paperTrading is false and multiple env vars are missing', () => {
+  it('throws when paperTrading is false and multiple env vars are missing', () => {
     delete process.env.POLYMARKET_API_KEY;
     delete process.env.POLYMARKET_API_SECRET;
-    const result = buildPolymarketAdapter({ paperTrading: false });
-    expect(result.adapter).toBeNull();
-    expect(result.paperTrading).toBe(true);
+    expect(() => buildPolymarketAdapter({ paperTrading: false })).toThrow(/requires all/);
   });
 
   it('does not check env vars in PAPER mode', () => {
@@ -100,12 +94,10 @@ describe('buildPolymarketAdapter', () => {
     expect(result.paperTrading).toBe(false);
   });
 
-  it('falls back to paper when POLYMARKET_TRADING_MODE=live but credentials missing', () => {
+  it('throws when POLYMARKET_TRADING_MODE=live but credentials missing', () => {
     process.env.POLYMARKET_TRADING_MODE = 'live';
     delete process.env.POLYMARKET_API_KEY;
-    const result = buildPolymarketAdapter({});
-    expect(result.adapter).toBeNull();
-    expect(result.paperTrading).toBe(true);
+    expect(() => buildPolymarketAdapter({})).toThrow(/POLYMARKET_API_KEY/);
   });
 
   it('config.paperTrading=false takes priority over env var', () => {

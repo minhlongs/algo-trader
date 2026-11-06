@@ -121,7 +121,9 @@ export function runBacktest(trades: BacktestTrade[], config: Partial<BacktestCon
   const totalReturn = cfg.initialCapitalUsd > 0 ? totalPnlUsd / cfg.initialCapitalUsd : 0;
   const totalTrades = sorted.length;
   const winRate = totalTrades > 0 ? winningTrades / totalTrades : 0;
-  const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : 0);
+  // Cap at 100.0 with no losing trades, matching the desk metrics convention:
+  // an unbounded ratio is not a number a caller can compare or serialize.
+  const profitFactor = grossLoss > 0 ? Math.min(grossProfit / grossLoss, 100) : (grossProfit > 0 ? 100 : 0);
   const avgWinUsd = winningTrades > 0 ? grossProfit / winningTrades : 0;
   const avgLossUsd = losingTrades > 0 ? grossLoss / losingTrades : 0;
 

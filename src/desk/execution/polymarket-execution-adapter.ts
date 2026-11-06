@@ -89,17 +89,20 @@ function hasAllCredentials(): boolean {
  *
  * LIVE mode:
  *   Validates all 4 env vars, creates PolymarketSigner + PolymarketAdapter.
- *   If credentials missing → warns and falls back to paper (safe default).
+ *   If credentials missing → throws. A caller that asked for live money must
+ *   never silently receive paper execution instead.
  *
  * @example
  *   // Paper (default)
  *   const exec = buildPolymarketAdapter({ paperTrading: true });
  *
- *   // Live via config flag
+ *   // Live via config flag — throws if any live credential is missing
  *   const exec = buildPolymarketAdapter({ paperTrading: false });
  *
  *   // Live via env var (POLYMARKET_TRADING_MODE=live, config.paperTrading unset)
  *   const exec = buildPolymarketAdapter({});
+ *
+ * @throws when live mode is requested but a required credential is absent
  */
 export function buildPolymarketAdapter(
   config: PolymarketExecutionConfig = {},
@@ -113,7 +116,8 @@ export function buildPolymarketAdapter(
     return { adapter: null, signer: null, paperTrading: true };
   }
 
-  // Unified LIVE gate: refuse live signer/adapter unless LIVE_TRADING_ENABLED=true
+  // Unified LIVE gate: refuse live signer/adapter unless LIVE_TRADING_ENABLED=true.
+  // Paper is the correct answer here because no live execution was ever armed.
   if (!isLiveEnabled()) {
     logger.warn(
       '[PolymarketAdapter] LIVE adapter requested but LIVE_TRADING_ENABLED !== "true" — falling back to PAPER',
@@ -121,13 +125,17 @@ export function buildPolymarketAdapter(
     return { adapter: null, signer: null, paperTrading: true };
   }
 
-  // LIVE mode — validate all env vars
+  // LIVE mode — validate all env vars. Fail closed: an operator who asked for
+  // live money gets an error naming the missing credentials, not a paper run
+  // that looks like a live one afterward.
   if (!hasAllCredentials()) {
     const missing = missingLiveEnvVars();
-    logger.warn(
-      `[PolymarketAdapter] POLYMARKET_TRADING_MODE=live but missing: ${missing.join(', ')} — falling back to PAPER`,
+    logger.error(
+      `[PolymarketAdapter] LIVE mode requested but missing: ${missing.join(', ')}`,
     );
-    return { adapter: null, signer: null, paperTrading: true };
+    throw new Error(
+      `LIVE mode requires all Polymarket credentials. Missing: ${missing.join(', ')}`,
+    );
   }
 
   const privateKey = resolvePrivateKey();

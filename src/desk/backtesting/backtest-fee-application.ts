@@ -1,0 +1,77 @@
+/**
+ * Backtest Fee Application
+ *
+ * Single seam where venue trading costs enter the backtest ledger.
+ *
+ * A backtest that omits fees cannot distinguish "this strategy has an edge" from
+ * "this strategy has not paid for its own trades yet". Every closed fill passes
+ * through `applyVenueCosts` so the reported PnL is net of what the venue charges.
+ *
+ * Venue parameters live in `../sor/fee-gas-model` — they are not duplicated here,
+ * so a fee change is a one-line change at the venue profile and every backtest
+ * picks it up on the next run.
+ */
+
+import { DEFAULT_FEE_GAS_PROFILES } from '../sor/fee-gas-model';
+
+/** Venue the backtest ledger prices against. */
+export const BACKTEST_VENUE = 'polymarket_clob';
+
+export interface VenueCostInput {
+  /** Fill price per share. */
+  price: number;
+  /** Shares filled. */
+  size: number;
+  /** Gross PnL for this close, before any venue cost. */
+  grossPnl: number;
+}
+
+export interface VenueCostBreakdown {
+  /** Trading fee charged on this close. */
+  feeUsd: number;
+  /** Fixed gas charged on this close. */
+  gasUsd: number;
+  /** feeUsd + gasUsd. */
+  totalCostUsd: number;
+  /** grossPnl - totalCostUsd. */
+  netPnl: number;
+}
+
+/**
+ * Subtract taker fees and gas from one closing fill.
+ *
+ * Both legs of the round trip carry a taker fee (entry and exit) and each fill
+ * pays gas, so a close pays 2x the per-leg amounts. Charging the entry leg on
+ * close rather than on entry keeps the ledger balanced: an unclosed position has
+ * no realized PnL yet, and its entry cost is charged when the round trip closes.
+ *
+ * A loss deep enough that costs push PnL below zero stays negative — costs are
+ * never netted into a profit, and a fill whose gross PnL is exactly its cost is
+ * reported as break-even at 0.
+ */
+export function applyVenueCosts({ price, size, grossPnl }: VenueCostInput): VenueCostBreakdown {
+  const profile = DEFAULT_FEE_GAS_PROFILES[BACKTEST_VENUE];
+  const notionalUsd = price * size;
+
+  const feePerLegUsd = notionalUsd * (profile.takerFeeBps / 10000);
+  const feeUsd = feePerLegUsd * 2;
+
+  const gasUsd = profile.gasCostUsd * 2;
+  const totalCostUsd = feeUsd + gasUsd;
+
+  const netPnl = grossPnl - totalCostUsd;
+
+  return {
+    feeUsd: roundUsd(feeUsd),
+    gasUsd: roundUsd(gasUsd),
+    totalCostUsd: roundUsd(totalCostUsd),
+    netPnl: roundUsd(netPnl),
+  };
+}
+
+/**
+ * Round to the cent so the ledger cannot accumulate sub-cent drift across a run.
+ */
+function roundUsd(value: number): number {
+  return Math.round(value * 100) / 100;
+}

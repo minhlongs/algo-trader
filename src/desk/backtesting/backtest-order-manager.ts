@@ -7,6 +7,15 @@
 
 import type { OrderManager } from '../polymarket/order-manager';
 import type { BacktestTrade } from './types';
+import { applyVenueCosts } from './backtest-fee-application';
+
+/** Fill cost detail per closed trade, retained so a run can be audited. */
+export interface FillCostDetail {
+  grossPnlUsd: number;
+  feeUsd: number;
+  gasUsd: number;
+  netPnlUsd: number;
+}
 
 export class BacktestOrderManager implements OrderManager {
   trades: BacktestTrade[] = [];
@@ -14,6 +23,7 @@ export class BacktestOrderManager implements OrderManager {
   private capital: number;
   private currentEquity: number;
   private positions = new Map<string, { size: number; avgPrice: number }>();
+  private fillCosts: FillCostDetail[] = [];
 
   constructor(capital: number) {
     this.capital = capital;
@@ -31,7 +41,7 @@ export class BacktestOrderManager implements OrderManager {
     const side = params.side === 'buy' ? 'BUY' : 'SELL';
     const price = parseFloat(String(params.price));
     const size = parseFloat(String(params.size));
-    const pnl = this.computePnl(params.tokenId, side, price, size);
+    const close = this.computeClose(params.tokenId, side, price, size);
 
     const trade: BacktestTrade = {
       timestamp: params.timestamp ?? new Date().toISOString(),
@@ -39,12 +49,13 @@ export class BacktestOrderManager implements OrderManager {
       side,
       price,
       size,
-      pnl,
+      pnl: close?.pnl ?? null,
     };
     this.trades.push(trade);
 
-    if (pnl !== null) {
-      this.currentEquity += pnl;
+    if (close) {
+      this.fillCosts.push(close.fillCost);
+      this.currentEquity += close.pnl;
     }
 
     return { id: `backtest-${this.trades.length}` };
@@ -66,6 +77,11 @@ export class BacktestOrderManager implements OrderManager {
     return [...this.trades];
   }
 
+  /** Per-close cost audit trail, parallel to `trades` closed rows. */
+  getFillCosts(): FillCostDetail[] {
+    return [...this.fillCosts];
+  }
+
   getEquityCurve(): Array<{ timestamp: string; equity: number }> {
     return [...this.equityCurve];
   }
@@ -74,12 +90,19 @@ export class BacktestOrderManager implements OrderManager {
     return this.currentEquity;
   }
 
-  private computePnl(
+  /**
+   * Apply one fill to the position ledger and, when it closes a position,
+   * return net-of-venue-costs PnL plus the cost breakdown behind it.
+   *
+   * Returns null for fills that only open or extend a position: no round trip
+   * has closed, so there is no realized PnL to report yet.
+   */
+  private computeClose(
     tokenId: string,
     side: 'BUY' | 'SELL',
     price: number,
     size: number,
-  ): number | null {
+  ): { pnl: number; fillCost: FillCostDetail } | null {
     const existing = this.positions.get(tokenId);
     if (side === 'BUY') {
       // Opening or adding to position
@@ -100,14 +123,33 @@ export class BacktestOrderManager implements OrderManager {
         return null;
       }
       const closeSize = Math.min(size, existing.size);
-      const pnl = closeSize * (price - existing.avgPrice);
+      const grossPnlUsd = closeSize * (price - existing.avgPrice);
       const remaining = existing.size - closeSize;
       if (remaining <= 0) {
         this.positions.delete(tokenId);
       } else {
         this.positions.set(tokenId, { size: remaining, avgPrice: existing.avgPrice });
       }
-      return pnl;
+
+      // The ledger only credits realized PnL that survives venue costs.
+      const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd });
+      return {
+        pnl: costs.netPnl,
+        fillCost: {
+          grossPnlUsd: roundUsd(grossPnlUsd),
+          feeUsd: costs.feeUsd,
+          gasUsd: costs.gasUsd,
+          netPnlUsd: costs.netPnl,
+        },
+      };
     }
   }
+}
+
+/**
+ * Round to the cent so a retained gross figure cannot drift from the net figure
+ * it was derived from.
+ */
+function roundUsd(value: number): number {
+  return Math.round(value * 100) / 100;
 }
