@@ -114,8 +114,31 @@ npm run check:leaderboard      # fail if the committed doc has drifted
 
 ## 5. Strategy marketplace / Chợ chiến lược
 
-Nộp chiến lược qua `src/platform/marketplace/` — đó là nơi quản lý danh sách, đăng ký và đánh giá
-chiến lược của nền tảng (không phải `src/desk/strategies/marketplace.ts`, một kho lưu trong bộ nhớ).
+
+Regenerate with `pnpm exec tsx scripts/run-all-backtests.ts` (30 days, `capitalUsdc: 5000`, paper mode). Every reported PnL is net of Polymarket CLOB costs — 10 bps taker on both entry and exit legs plus $0.05 gas per fill — applied in `backtest-fee-application.ts` and charged by `BacktestOrderManager` at close. Without that charge the ledger cannot distinguish a real edge from an unpaid trade.
+
+The synthetic order book is derived from the tick index rather than sampled, so the same snapshots produce the same numbers run to run. The market set itself still comes from the live Gamma API, so a re-run months later can differ in which markets were available; numbers are comparable within a snapshot, not across time.
+
+Tạo lại bằng `pnpm exec tsx scripts/run-all-backtests.ts` (30 ngày, `capitalUsdc: 5000`, chế độ paper). Mọi lợi nhuận báo cáo đã trừ chi phí Polymarket CLOB — phí taker 10 bps cho cả lệnh vào và lệnh ra, cộng $0.05 gas mỗi lần khớp — được áp trong `backtest-fee-application.ts` và tính bởi `BacktestOrderManager` khi đóng vị thế. Nếu không trừ, bảng số không phân biệt được lợi thế thật với giao dịch chưa trả tiền.
+
+Sổ lệnh mô phỏng được sinh từ chỉ số tick chứ không lấy mẫu ngẫu nhiên, nên cùng một bộ dữ liệu cho ra cùng số. Tập hợp thị trường vẫn lấy từ Gamma API thật, nên chạy lại sau vài tháng có thể khác ở chỗ có những thị trường nào; các số chỉ so sánh được trong cùng một bộ dữ liệu, không so sánh được qua các mốc thời gian.
+
+**Last run / Lần chạy gần nhất: 2026-11-06 — 30 strategies, 30 OK, 0 with positive net PnL.**
+
+| Strategy | Sharpe | Win Rate | Net PnL (USD) | Profit Factor | Trades |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| vwap-deviation-sniper | -11.93 | 0.00% | -0.81 | 0.00 | 4 |
+| regime-adaptive-momentum | -27.71 | 0.00% | -10.80 | 0.00 | 15 |
+| 28 other strategies | — | — | 0.00 | 0.00 | 0 |
+
+**Reading this table / Cách đọc bảng:** 28 of 30 strategies produced no closed round trip at all, and both strategies that traded lost money after costs. Profit factor is capped at 100 rather than reported as `Infinity`, so a zero-loss run stays comparable and serializable. A zero-trade row is a data-coverage result, not a pass: it says the strategy never closed a trade on the snapshots it was given. Positions still open at the end of a run appear in `getTrades()` as fills with `pnl: null`; `getFillCosts()` carries the per-fill cost breakdown for closed fills only.
+
+**Kết luận:** 28 trong 30 chiến lược không có bất kỳ vòng giao dịch đóng nào, và cả 2 chiến lược có giao dịch đều lỗ sau khi trừ phí. Profit factor bị chặn trần ở 100 thay vì báo `Infinity`, nên một chuỗi không lỗ vẫn có thể so sánh và ghi ra dạng số. Dòng "0 lệnh" là kết quả về dữ liệu, không phải điểm đạt: nó nói chiến lược không đóng được lệnh nào trên bộ dữ liệu được cấp. Vị thế còn mở cuối chạy thấy trong `getTrades()` dưới dạng lệnh có `pnl: null`; `getFillCosts()` chỉ chứa phân tích phí cho các lệnh đã đóng.
+
+**Implication for real money / Hệ quả với tiền thật:** on this evidence no strategy qualifies for a live tranche. The next step is a longer paper run with recorded fills, not a guarded $100 live bet.
+
+**Hệ quả:** dựa trên bằng chứng này, chưa có chiến lược nào đủ điều kiện nhận vốn thật. Bước tiếp theo là chạy paper dài hơn với dấu vết lệnh được ghi lại, chứ không phải thử $100 tiền thật có bảo vệ.
+fb7934ee (refactor(backtesting): settle entry gas once on the closing fill)
 
 Submit strategies through `src/platform/marketplace/` — that is where the platform's listings,
 subscriptions, and reviews live (not `src/desk/strategies/marketplace.ts`, an in-memory store).

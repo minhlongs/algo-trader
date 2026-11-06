@@ -102,9 +102,44 @@ describe('BacktestOrderManager venue costs', () => {
 
     const [close] = om.getFillCosts();
     // closed 40 of 100 shares: gross 40 * 0.10 = $4.00;
-    // fee 40 * 0.50 * 0.001 * 2 = $0.04; gas $0.10; net $3.86
-    expect(close!.netPnlUsd).toBe(3.86);
+    // fee 40 * 0.50 * 0.001 * 2 = $0.04; gas $0.05 for this fill alone, since
+    // the entry fill's gas settles on the sell that closes the position out.
+    expect(close!.netPnlUsd).toBe(3.91);
     expect(close!.grossPnlUsd).toBe(4);
+  });
+
+  it('settles entry gas once when a position is scaled out over several sells', async () => {
+    const om = new BacktestOrderManager(1000);
+    await om.placeOrder({ tokenId: 't1', side: 'buy', price: 0.5, size: 100 });
+    await om.placeOrder({ tokenId: 't1', side: 'sell', price: 0.6, size: 40 });
+    await om.placeOrder({ tokenId: 't1', side: 'sell', price: 0.6, size: 60 });
+
+    // Three real fills on chain: one entry, two exits, so gas is 3 * $0.05.
+    const totalGas = om.getFillCosts().reduce((sum, c) => sum + c.gasUsd, 0);
+    expect(totalGas).toBeCloseTo(0.15, 6);
+
+    // First sell is a partial close: it pays its own gas but not the entry's.
+    expect(om.getFillCosts()[0]!.gasUsd).toBe(0.05);
+    // The final sell settles the entry fill's gas as well.
+    expect(om.getFillCosts()[1]!.gasUsd).toBe(0.1);
+
+    // First close: gross 4.00 - fee 0.05 (rounded 0.048) - gas 0.05 = 3.90
+    // Second close: gross 6.00 - fee 0.07 (rounded 0.072) - gas 0.10 = 5.83
+    const realized = om.getTrades().filter((t) => t.pnl !== null);
+    expect(realized[0]!.pnl).toBe(3.9);
+    expect(realized[1]!.pnl).toBe(5.83);
+    expect(om.getCurrentEquity()).toBeCloseTo(1009.73, 10);
+  });
+
+  it('settles one gas charge per entry fill when a position is built then closed', async () => {
+    const om = new BacktestOrderManager(1000);
+    await om.placeOrder({ tokenId: 't1', side: 'buy', price: 0.4, size: 100 });
+    await om.placeOrder({ tokenId: 't1', side: 'buy', price: 0.5, size: 100 });
+    await om.placeOrder({ tokenId: 't1', side: 'sell', price: 0.6, size: 200 });
+
+    // Three fills on chain: two buys and one sell.
+    const [close] = om.getFillCosts();
+    expect(close!.gasUsd).toBe(0.15);
   });
 });
 

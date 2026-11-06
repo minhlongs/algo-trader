@@ -22,7 +22,10 @@ export class BacktestOrderManager implements OrderManager {
   equityCurve: Array<{ timestamp: string; equity: number }> = [];
   private capital: number;
   private currentEquity: number;
-  private positions = new Map<string, { size: number; avgPrice: number }>();
+  private positions = new Map<
+    string,
+    { size: number; avgPrice: number; entryFills: number }
+  >();
   private fillCosts: FillCostDetail[] = [];
 
   constructor(capital: number) {
@@ -105,34 +108,42 @@ export class BacktestOrderManager implements OrderManager {
   ): { pnl: number; fillCost: FillCostDetail } | null {
     const existing = this.positions.get(tokenId);
     if (side === 'BUY') {
-      // Opening or adding to position
+      // Opening or adding to position; every buy fill pays its own gas when it settles.
       if (existing) {
         const newSize = existing.size + size;
         const newAvgPrice =
           (existing.avgPrice * existing.size + price * size) / newSize;
-        this.positions.set(tokenId, { size: newSize, avgPrice: newAvgPrice });
+        this.positions.set(tokenId, {
+          size: newSize,
+          avgPrice: newAvgPrice,
+          entryFills: existing.entryFills + 1,
+        });
       } else {
-        this.positions.set(tokenId, { size, avgPrice: price });
+        this.positions.set(tokenId, { size, avgPrice: price, entryFills: 1 });
       }
       return null; // Unrealized until sold
     } else {
       // SELL — closing or reducing
       if (!existing || existing.size <= 0) {
         // Short entry or no position — treat as opening short
-        this.positions.set(tokenId, { size: -size, avgPrice: price });
+        this.positions.set(tokenId, { size: -size, avgPrice: price, entryFills: 1 });
         return null;
       }
       const closeSize = Math.min(size, existing.size);
       const grossPnlUsd = closeSize * (price - existing.avgPrice);
       const remaining = existing.size - closeSize;
+      // Entry-fill gas is settled once, on the sell that closes the position out.
+      const chargeEntryGas = remaining <= 0;
+      const entryFills = existing.entryFills;
       if (remaining <= 0) {
         this.positions.delete(tokenId);
       } else {
-        this.positions.set(tokenId, { size: remaining, avgPrice: existing.avgPrice });
+        this.positions.set(tokenId, { size: remaining, avgPrice: existing.avgPrice, entryFills });
       }
 
       // The ledger only credits realized PnL that survives venue costs.
-      const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd });
+      const gasFills = 1 + (chargeEntryGas ? entryFills : 0);
+      const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd }, gasFills);
       return {
         pnl: costs.netPnl,
         fillCost: {

@@ -40,23 +40,28 @@ export interface VenueCostBreakdown {
 /**
  * Subtract taker fees and gas from one closing fill.
  *
- * Both legs of the round trip carry a taker fee (entry and exit) and each fill
- * pays gas, so a close pays 2x the per-leg amounts. Charging the entry leg on
- * close rather than on entry keeps the ledger balanced: an unclosed position has
- * no realized PnL yet, and its entry cost is charged when the round trip closes.
+ * Both legs carry a taker fee, charged on this close's notional. Gas is fixed
+ * per on-chain fill, and the entry fills are settled on the close that
+ * finishes them, so the caller passes how many entry fills this close settles:
+ * 1 for the exit fill itself plus one per entry fill when the position is fully
+ * closed out. A position scaled out over several sells therefore pays entry gas
+ * once, on its final sell, not once per sell.
  *
  * A loss deep enough that costs push PnL below zero stays negative — costs are
  * never netted into a profit, and a fill whose gross PnL is exactly its cost is
  * reported as break-even at 0.
  */
-export function applyVenueCosts({ price, size, grossPnl }: VenueCostInput): VenueCostBreakdown {
+export function applyVenueCosts(
+  { price, size, grossPnl }: VenueCostInput,
+  gasFills = 2,
+): VenueCostBreakdown {
   const profile = DEFAULT_FEE_GAS_PROFILES[BACKTEST_VENUE];
   const notionalUsd = price * size;
 
   const feePerLegUsd = notionalUsd * (profile.takerFeeBps / 10000);
   const feeUsd = feePerLegUsd * 2;
 
-  const gasUsd = profile.gasCostUsd * 2;
+  const gasUsd = profile.gasCostUsd * gasFills;
   const totalCostUsd = feeUsd + gasUsd;
 
   const netPnl = grossPnl - totalCostUsd;
