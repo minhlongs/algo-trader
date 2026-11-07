@@ -27,6 +27,7 @@ export class TriModeDispatcher {
   public getMode(): TriMode { return this.mode; }
   public getLiveApiCallsCount(): number { return this.liveApiCallsCount; }
   public getVirtualFillsCount(): number { return this.virtualFillsCount; }
+  public getLiveGuard(): LiveExecutionGuard | undefined { return this.liveGuard; }
 
   public dispatch(
     intent: UnifiedTradeIntent,
@@ -37,7 +38,7 @@ export class TriModeDispatcher {
     const arrivalPrice = priceOverride ?? intent.price ?? 65000;
     const startMs = Date.now();
 
-    if (executedQty === 0) {
+    if (executedQty <= 0) {
       return {
         orderId: `ord-rej-${Date.now()}`,
         intentId: intent.intentId,
@@ -51,6 +52,59 @@ export class TriModeDispatcher {
         latencyMs: 1,
         timestamp: startMs,
       };
+    }
+
+    if (this.mode === 'LIVE' && this.liveGuard) {
+      if (!this.liveGuard.getConfig().enabled) {
+        const reason = 'LiveExecutionGuard is not enabled (enabled=false); refusing LIVE dispatch';
+        logger.warn(`[TriModeDispatcher] LIVE order rejected by LiveExecutionGuard: ${reason}`, {
+          intentId: intent.intentId,
+        });
+        return {
+          orderId: `ord-rej-${Date.now()}`,
+          intentId: intent.intentId,
+          mode: this.mode,
+          venue: intent.venue,
+          status: 'REJECTED',
+          executedQuantity: 0,
+          averagePrice: arrivalPrice,
+          feeUsd: 0,
+          slippageBps: 0,
+          latencyMs: Math.max(1, Date.now() - startMs),
+          timestamp: Date.now(),
+          error: reason,
+        };
+      }
+      const guardVerdict = this.liveGuard.guardOrder({
+        tokenId: intent.symbol,
+        price: arrivalPrice,
+        size: executedQty,
+        side: intent.side,
+        expiration: intent.expiresAt,
+        nonce: intent.intentId,
+        feeRateBps: 0,
+        signatureType: 0,
+      });
+      if (!guardVerdict.approved) {
+        const reason = guardVerdict.reason ?? 'Rejected by LiveExecutionGuard';
+        logger.warn(`[TriModeDispatcher] LIVE order rejected by LiveExecutionGuard: ${reason}`, {
+          intentId: intent.intentId,
+        });
+        return {
+          orderId: `ord-rej-${Date.now()}`,
+          intentId: intent.intentId,
+          mode: this.mode,
+          venue: intent.venue,
+          status: 'REJECTED',
+          executedQuantity: 0,
+          averagePrice: arrivalPrice,
+          feeUsd: 0,
+          slippageBps: 0,
+          latencyMs: Math.max(1, Date.now() - startMs),
+          timestamp: Date.now(),
+          error: reason,
+        };
+      }
     }
 
     let realizedPrice = arrivalPrice;

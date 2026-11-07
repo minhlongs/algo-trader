@@ -1,8 +1,8 @@
 # Backtest Fee Honesty + Live Fail-Closed
 
-Status: in progress
+Status: completed
 Date: 2026-11-06
-Branch: `fix/backtest-fee-honesty-and-live-fail-closed` (PR #233 into `main`)
+Branch: `fix/backtest-fee-honesty-and-live-fail-closed` (PR #233 merged as `16e65180`; follow-up PR #235 merged as `faba2446`)
 Baseline: 0 failures on `origin/main` (17516 passed / 13 skipped, verified in a clean
 `origin/main` worktree). The earlier "26 pre-existing failures in 4 files" figure was an
 artifact of the unmerged base branch, not a property of `main`.
