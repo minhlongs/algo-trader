@@ -117,10 +117,7 @@ conventional commits with attribution, never commit secrets, reports in Vietname
 
 ## Unresolved questions
 
-None for this branch. Two latent items found while verifying, both out of scope
-and recorded for the caller: `BacktestOrderManager` never writes an `equityCurve`,
-so the fee-application metrics test has to supply a synthetic one; and a `SELL`
-larger than an open long still silently drops the remainder.
+None. The two follow-up ledger items surfaced during verification — (1) `BacktestOrderManager.getEquityCurve()` returning `[]` when used directly outside `replayStrategyTicks`, and (2) `BacktestTrade.size` recording the requested order size rather than `closeSize` when an opposing fill exceeds the open position — are resolved and covered by unit tests on `fix/backtest-equity-curve-and-partial-reversal`.
 
 ## Review findings considered and rejected
 

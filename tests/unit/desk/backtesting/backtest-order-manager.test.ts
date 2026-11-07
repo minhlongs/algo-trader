@@ -273,12 +273,25 @@ describe('BacktestOrderManager', () => {
 
       const trades = manager.getTrades();
       expect(trades[0].pnl).toBeNull();
+      expect(trades[1].size).toBe(100);
       expect(trades[1].pnl).toBeCloseTo(9.78, 10);
       expect(manager.getCurrentEquity()).toBeCloseTo(10009.78, 10);
 
       // Position is fully closed (remaining = 100 - 100 = 0, position deleted)
       const positions = (manager as any).positions;
       expect(positions.has('token-over')).toBe(false);
+    });
+
+    it('handles BUY larger than short position (closes short, records closed size)', async () => {
+      await manager.placeOrder({ tokenId: 'short-over', side: 'sell', price: '0.60', size: '100' });
+      await manager.placeOrder({ tokenId: 'short-over', side: 'buy', price: '0.50', size: '250' });
+
+      const trades = manager.getTrades();
+      expect(trades[0]!.pnl).toBeNull();
+      expect(trades[1]!.size).toBe(100);
+      expect(trades[1]!.pnl).toBeCloseTo(9.8, 10);
+      expect(manager.getCurrentEquity()).toBeCloseTo(10009.8, 10);
+      expect((manager as any).positions.has('short-over')).toBe(false);
     });
 
     it('handles multiple tokens independently', async () => {
@@ -470,6 +483,28 @@ describe('BacktestOrderManager', () => {
 
     it('returns empty array initially', () => {
       expect(manager.getEquityCurve()).toEqual([]);
+    });
+
+    it('records initial capital and realized equity on each closing fill when used directly', async () => {
+      await manager.placeOrder({ tokenId: 't1', side: 'buy', price: '0.50', size: '100', timestamp: '2026-01-01T00:00:00Z' });
+      expect(manager.getEquityCurve()).toEqual([]);
+
+      await manager.placeOrder({ tokenId: 't1', side: 'sell', price: '0.60', size: '100', timestamp: '2026-01-01T00:01:00Z' });
+      expect(manager.getEquityCurve()).toEqual([
+        { timestamp: '2026-01-01T00:00:00Z', equity: 10000 },
+        { timestamp: '2026-01-01T00:01:00Z', equity: 10009.78 },
+      ]);
+    });
+
+    it('prefers tick-level equityCurve when populated by the runner', async () => {
+      await manager.placeOrder({ tokenId: 't1', side: 'buy', price: '0.50', size: '100', timestamp: '2026-01-01T00:00:00Z' });
+      await manager.placeOrder({ tokenId: 't1', side: 'sell', price: '0.60', size: '100', timestamp: '2026-01-01T00:01:00Z' });
+      manager.equityCurve.push(
+        { timestamp: '2026-01-01T00:00:00Z', equity: 10000 },
+        { timestamp: '2026-01-01T00:00:30Z', equity: 10000 },
+        { timestamp: '2026-01-01T00:01:00Z', equity: 10009.78 },
+      );
+      expect(manager.getEquityCurve()).toHaveLength(3);
     });
   });
 

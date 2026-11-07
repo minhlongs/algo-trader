@@ -170,9 +170,10 @@ describe('fee-honest metrics', () => {
       await om.placeOrder({ tokenId: `t${price}`, side: 'sell', price: price + 0.1, size: 100 });
     }
 
-    const metrics = computeMetrics(om.getTrades(), om.getEquityCurve().length > 0
-      ? om.getEquityCurve()
-      : [{ timestamp: 'x', equity: 1000 }]);
+    const curve = om.getEquityCurve();
+    expect(curve.map((p) => p.equity)).toEqual([1000, 1009.8, 1019.61]);
+
+    const metrics = computeMetrics(om.getTrades(), curve);
 
     expect(Number.isFinite(metrics.profitFactor)).toBe(true);
     expect(metrics.profitFactor).toBeLessThanOrEqual(100);
