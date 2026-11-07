@@ -145,6 +145,20 @@ describe('BacktestOrderManager venue costs', () => {
     expect(shortClose!.netPnlUsd).toBe(9.82);
     expect(shortOom.getCurrentEquity()).toBeCloseTo(1009.82, 10);
   });
+
+  it('settles entry gas and clears dust when fractional fills leave IEEE-754 residue', async () => {
+    const om = new BacktestOrderManager(1000);
+    // 0.1 + 0.2 === 0.30000000000000004 in IEEE-754; covering 0.3 must still
+    // treat the short as fully closed, settle both entry fills' gas ($0.15),
+    // and leave no dust to swallow the next order.
+    await om.placeOrder({ tokenId: 'frac', side: 'sell', price: 0.6, size: 0.1 });
+    await om.placeOrder({ tokenId: 'frac', side: 'sell', price: 0.6, size: 0.2 });
+    await om.placeOrder({ tokenId: 'frac', side: 'buy', price: 0.5, size: 0.3 });
+
+    expect(om.getFillCosts()[0]!.gasUsd).toBe(0.15);
+    await om.placeOrder({ tokenId: 'frac', side: 'buy', price: 0.5, size: 10 });
+    expect(om.getTrades()[3]!.pnl).toBeNull();
+  });
 });
 
 describe('fee-honest metrics', () => {

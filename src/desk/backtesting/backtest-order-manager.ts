@@ -24,6 +24,14 @@ interface OpenPosition {
   entryFills: number;
 }
 
+/**
+ * IEEE-754 residue tolerance when comparing position sizes. Scaling in or out
+ * over fractional fills (`0.1 + 0.2`, `1.0 - 0.7`) leaves a ~1e-16 residue;
+ * treating that as an open position both skips entry-gas settlement and leaves
+ * dust that swallows the next opposing fill.
+ */
+const POSITION_DUST_EPSILON = 1e-9;
+
 export class BacktestOrderManager implements OrderManager {
   trades: BacktestTrade[] = [];
   equityCurve: Array<{ timestamp: string; equity: number }> = [];
@@ -155,10 +163,10 @@ export class BacktestOrderManager implements OrderManager {
     const closeSize = Math.min(size, openSize);
     const grossPnlUsd = closeSize * (price - existing.avgPrice) * positionSign;
     const remaining = openSize - closeSize;
-    const chargeEntryGas = remaining <= 0;
+    const chargeEntryGas = remaining <= POSITION_DUST_EPSILON;
     const entryFills = existing.entryFills;
 
-    if (remaining <= 0) {
+    if (chargeEntryGas) {
       this.positions.delete(tokenId);
     } else {
       this.positions.set(tokenId, { size: remaining * positionSign, avgPrice: existing.avgPrice, entryFills });

@@ -184,8 +184,9 @@ describe('BacktestOrderManager', () => {
       expect(trades[1].pnl).toBeCloseTo(9.8, 10);
       expect(manager.getCurrentEquity()).toBeCloseTo(10009.8, 10);
 
-      const positions = (manager as any).positions;
-      expect(positions.has('token-x')).toBe(false);
+      // A follow-up BUY opens a fresh long rather than closing a leftover short.
+      await manager.placeOrder({ tokenId: 'token-x', side: 'buy', price: '0.50', size: '10' });
+      expect(manager.getTrades()[2].pnl).toBeNull();
     });
   });
 
@@ -361,8 +362,9 @@ describe('BacktestOrderManager', () => {
       expect(totalGas).toBeCloseTo(0.15, 6);
       expect(manager.getCurrentEquity()).toBeCloseTo(10000 - 4.1 - 3.17, 10);
 
-      const positions = (manager as any).positions;
-      expect(positions.has('s3')).toBe(false);
+      // Position is cleared: a follow-up BUY opens a long, so its pnl is null.
+      await manager.placeOrder({ tokenId: 's3', side: 'buy', price: '0.50', size: '10' });
+      expect(manager.getTrades()[3]!.pnl).toBeNull();
     });
 
     it('settles one gas charge per entry fill when a short is built then covered', async () => {

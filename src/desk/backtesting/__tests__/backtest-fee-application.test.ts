@@ -45,4 +45,15 @@ describe('applyVenueCosts', () => {
     expect(costs.netPnl).toBeLessThan(-5);
     expect(costs.netPnl).toBeCloseTo(-5.2, 10);
   });
+
+  it('preserves netPnl === grossPnl - totalCostUsd on a half-cent fee boundary', () => {
+    // Notional 5 * 0.50 = $2.50 -> raw fee 0.005 rounds to $0.01; gas $0.10 ->
+    // totalCostUsd $0.11. Subtracting after rounding keeps netPnl at $0.89
+    // instead of rounding raw 0.895 up to $0.90.
+    const costs = applyVenueCosts({ price: 0.5, size: 5, grossPnl: 1 });
+    expect(costs.feeUsd).toBe(0.01);
+    expect(costs.gasUsd).toBe(0.1);
+    expect(costs.totalCostUsd).toBe(0.11);
+    expect(costs.netPnl).toBe(0.89);
+  });
 });

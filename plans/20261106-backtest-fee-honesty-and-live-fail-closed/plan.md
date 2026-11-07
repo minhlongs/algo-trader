@@ -27,11 +27,11 @@ zero-trade strategies, changing the fee parameters (user decision), the
 
 ## Verification results
 
-- **D1** — `src/desk/backtesting/__tests__/backtest-fee-application.test.ts` (14 tests) asserts net PnL = gross − (both-leg taker + gas) per fill, plus a break-even trip, a losing trip, and gas settled exactly once per entry fill. Also updated the 10 pre-existing assertions in `tests/unit/desk/backtesting/backtest-order-manager.test.ts` from gross to net values (45/45 pass); they previously encoded the fee-blind contract.
+- **D1** — `src/desk/backtesting/__tests__/backtest-fee-application.test.ts` (6 tests) and `src/desk/backtesting/__tests__/backtest-order-manager-venue-costs.test.ts` (12 tests) assert net PnL = gross − (both-leg taker + gas) per fill, plus a break-even trip, a losing trip, a half-cent fee boundary, short symmetry, fractional-fill dust clearing, and gas settled exactly once per entry fill. Also updated the pre-existing assertions in `tests/unit/desk/backtesting/backtest-order-manager.test.ts` from gross to net values (51/51 pass); they previously encoded the fee-blind contract.
 - **D2** — `grep -c Infinity reports/backtest-results.csv` → 0; file regenerated 2026-11-06, 30 OK rows. Both rows with `total_trades > 0` carry non-zero net P&L (`vwap-deviation-sniper` 4 trades / −$0.81; `regime-adaptive-momentum` 15 trades / −$10.80).
-- **D3** — `src/desk/execution/__tests__/polymarket-live-fail-closed.test.ts` (7 tests) asserts `buildPolymarketAdapter` throws, naming each missing credential, with no silent paper fallback.
-- **D4** — `tests/unit/desk/backtesting/backtest-order-manager.test.ts` 45/45. Full repo with changes: 17558 passed / 1 failed / 13 skipped. Branch `src/desk`: 2216 passed / 11 skipped, 0 fail. `tsc --noEmit` exit 0; `build:fast` exit 0.
-- **D5** — branch `fix/backtest-fee-honesty-and-live-fail-closed`, 12 commits pushed, PR #233 against `main` (17 files, +993/−160). CI runs for real: 14 gates SUCCESS, 1 skipped (`Gate 5` is post-merge only). See "False alarms" below for the four local failures that are environment, not branch, defects.
+- **D3** — `src/desk/execution/__tests__/polymarket-live-fail-closed.test.ts` (8 tests) asserts `buildPolymarketAdapter` throws, naming each missing credential, with no silent paper fallback.
+- **D4** — `tests/unit/desk/backtesting/backtest-order-manager.test.ts` 51/51. Full repo with changes: 17560 passed / 1 failed / 13 skipped. Branch `src/desk`: 2218 passed / 11 skipped, 0 fail. `tsc --noEmit` exit 0; `build:fast` exit 0.
+- **D5** — branch `fix/backtest-fee-honesty-and-live-fail-closed`, PR #233 against `main`. CI runs for real: 12 gates SUCCESS, 4 skipped (path-filtered or post-merge only). See "False alarms" below for the four local failures that are environment, not branch, defects.
 
 ## False alarms (environment, not branch defects)
 
@@ -76,21 +76,19 @@ conventional commits with attribution, never commit secrets, reports in Vietname
 
 | File | Change |
 |------|--------|
-| `src/desk/backtesting/backtest-order-manager.ts` | apply taker fee + gas in `computePnl`; track entry-fill count |
-| `src/desk/backtesting/backtest-fee-application.ts` (new) | single fee math seam |
+| `src/desk/backtesting/backtest-order-manager.ts` | apply taker fee + gas in `computeClose`/`settleClose` across long and short; track entry-fill count; clear dust residue |
+| `src/desk/backtesting/backtest-fee-application.ts` (new) | single fee math seam with dependency-ordered rounding |
 | `src/desk/backtesting/backtest-mock-factory.ts` | deterministic order-book depth (level index, not random) |
-| `src/desk/backtesting/__tests__/backtest-fee-application.test.ts` (new) | D1 tests |
+| `src/desk/backtesting/__tests__/backtest-fee-application.test.ts` (new) | D1 seam arithmetic tests |
+| `src/desk/backtesting/__tests__/backtest-order-manager-venue-costs.test.ts` (new) | D1 ledger-level tests (long, short, scale-out, dust) |
 | `src/shared/backtesting/backtest-runner-engine.ts` | cap profit factor at 100 |
 | `src/shared/backtesting/__tests__/backtest-runner.test.ts` | assert 100, not `Infinity` |
 | `src/desk/execution/polymarket-execution-adapter.ts` | fail closed on LIVE without credentials |
 | `src/desk/execution/__tests__/polymarket-live-fail-closed.test.ts` (new) | D3 tests |
 | `src/desk/execution/__tests__/polymarket-execution-adapter.test.ts` | paper-fallback tests now expect throws |
-| `tests/unit/desk/backtesting/backtest-order-manager.test.ts` | gross assertions restated as net |
+| `tests/unit/desk/backtesting/backtest-order-manager.test.ts` | gross assertions restated as net; short-position coverage |
 | `reports/backtest-results.csv` | regenerated |
 | `docs/backtest-leaderboard.md` | updated with net-of-fee results |
-| `src/desk/polymarket/live-trading-paper-fill-recorder.ts` (new) | task-2 prerequisite: persist paper fills |
-| `src/desk/polymarket/live-trading-orchestrator.ts` | route paper orders through the recorder |
-| `src/desk/polymarket/__tests__/live-trading-paper-fill-recording.test.ts` (new) | recorder tests |
 
 ## Risks
 

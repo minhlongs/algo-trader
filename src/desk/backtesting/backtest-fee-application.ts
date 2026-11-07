@@ -62,15 +62,21 @@ export function applyVenueCosts(
   const feeUsd = feePerLegUsd * 2;
 
   const gasUsd = profile.gasCostUsd * gasFills;
-  const totalCostUsd = feeUsd + gasUsd;
 
-  const netPnl = grossPnl - totalCostUsd;
+  // Round in dependency order, not field by field. Rounding each reported field
+  // independently lets a half-cent cost round up in `totalCostUsd` and again in
+  // `netPnl`, which breaks the invariant the audit trail depends on:
+  // netPnl === grossPnl - (feeUsd + gasUsd) to the cent.
+  const feeUsdRounded = roundUsd(feeUsd);
+  const gasUsdRounded = roundUsd(gasUsd);
+  const totalCostUsd = roundUsd(feeUsdRounded + gasUsdRounded);
+  const netPnl = roundUsd(roundUsd(grossPnl) - totalCostUsd);
 
   return {
-    feeUsd: roundUsd(feeUsd),
-    gasUsd: roundUsd(gasUsd),
-    totalCostUsd: roundUsd(totalCostUsd),
-    netPnl: roundUsd(netPnl),
+    feeUsd: feeUsdRounded,
+    gasUsd: gasUsdRounded,
+    totalCostUsd,
+    netPnl,
   };
 }
 
