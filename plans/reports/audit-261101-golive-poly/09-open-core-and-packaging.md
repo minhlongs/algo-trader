@@ -13,3 +13,4 @@
   - `filesOverMaxLines <= 0` (`0` actual)
   - `bannedImports == 0` (`0` actual)
   - `eslintDisables <= 0` (`0` actual)
+- Backtest Leaderboard Integrity (`npm run check:leaderboard`) verifies that `docs/backtest-leaderboard.md` is 100% synchronized with `reports/backtest-results.csv` (`30/30` strategies `OK`, `total_trades > 0` under the net-of-fee ledger, `0` `Infinity`/`NaN`).

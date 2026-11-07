@@ -23,7 +23,6 @@ import type { OhlcvCandle } from '../data/ohlcv-store';
 export type StrategyConstructor = new (
   deps: StrategyDeps,
   config: Record<string, unknown>,
-  name: string,
 ) => BasePolymarketStrategy;
 
 export async function loadBacktestSnapshots(
@@ -85,7 +84,6 @@ export function instantiateBacktestStrategy(
   const strategy = new (entry.ctor as unknown as StrategyConstructor)(
     deps,
     (config.strategyConfig ?? entry.defaultConfig) as Record<string, unknown>,
-    config.strategy as StrategyName,
   );
 
   return { strategy, orderManager, tickState };
@@ -98,23 +96,58 @@ export async function replayStrategyTicks(
   tickState: TickState,
   orderManager: BacktestOrderManager,
 ): Promise<void> {
-  for (let tickIdx = 0; tickIdx < snapshots.length; tickIdx++) {
-    const snapshot = snapshots[tickIdx];
-    tickState.setCurrent(snapshot);
+  const realDateNow = Date.now;
+  const baseNow = realDateNow();
+  let simNow = baseNow;
 
-    try {
-      await strategy.execute();
-    } catch (err) {
-      logger.warn('Backtest tick error', 'BacktestRunner', {
-        strategy: strategyName,
+  try {
+    Date.now = () => simNow;
+
+    for (let tickIdx = 0; tickIdx < snapshots.length; tickIdx++) {
+      const snapshot = snapshots[tickIdx];
+      // Step 60_000ms (1 minute) per tick so StrategyPriceCache (>5_000ms) refreshes
+      // every tick while intraday confirmation/whale windows (60_000ms-300_000ms)
+      // and maxHoldMs (8-20 minutes) span realistic multi-tick horizons.
+      simNow = baseNow + tickIdx * 60_000;
+
+      tickState.setCurrent(snapshot, tickIdx);
+
+      try {
+        await strategy.execute();
+      } catch (err) {
+        logger.warn('Backtest tick error', 'BacktestRunner', {
+          strategy: strategyName,
+          timestamp: snapshot.timestamp,
+          err: String(err),
+        });
+      }
+
+      orderManager.equityCurve.push({
         timestamp: snapshot.timestamp,
-        err: String(err),
+        equity: orderManager.getCurrentEquity(),
       });
     }
 
-    orderManager.equityCurve.push({
-      timestamp: snapshot.timestamp,
-      equity: orderManager.getCurrentEquity(),
-    });
+    // Close out any still-open positions at the end of the replay window so all
+    // entered positions settle as complete round-trips under the net-of-fee ledger.
+    if (snapshots.length > 0) {
+      simNow += 86_400_000;
+      const checkExitsFn = (strategy as unknown as { checkExits?: (now?: number) => Promise<void> }).checkExits;
+      if (typeof checkExitsFn === 'function') {
+        try {
+          await checkExitsFn.call(strategy, simNow);
+        } catch {
+          // Non-fatal if strategy already closed all positions
+        }
+      }
+      if (orderManager.equityCurve.length > 0) {
+        orderManager.equityCurve[orderManager.equityCurve.length - 1] = {
+          timestamp: snapshots[snapshots.length - 1].timestamp,
+          equity: orderManager.getCurrentEquity(),
+        };
+      }
+    }
+  } finally {
+    Date.now = realDateNow;
   }
 }

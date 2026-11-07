@@ -90,15 +90,15 @@ export class ClusterBreakoutStrategy extends BasePolymarketStrategy {
         const ba = this.bestBidAsk(book);
         if (ba.mid <= 0 || ba.mid >= 1) continue;
 
+        const priorPrices = [...(this.priceHistory.get(market.yesTokenId) ?? [])];
         this.recordPrice(market.yesTokenId, ba.mid);
-        const prices = this.priceHistory.get(market.yesTokenId) ?? [];
-        if (prices.length < this.cfg.numBins) continue;
+        if (priorPrices.length < this.cfg.numBins) continue;
 
-        const { counts, binLow, binWidth } = buildPriceBins(prices, this.cfg.numBins);
+        const { counts, binLow, binWidth } = buildPriceBins(priorPrices, this.cfg.numBins);
         if (binWidth === 0) continue;
 
         const { startBin, endBin, totalCount } = findDensestCluster(counts);
-        if (totalCount / prices.length <= this.cfg.minClusterPct) continue;
+        if (totalCount / priorPrices.length <= this.cfg.minClusterPct) continue;
 
         const { low, high } = calcClusterBounds(startBin, endBin, binLow, binWidth);
         const breakout = detectClusterBreakout(ba.mid, low, high);
