@@ -165,6 +165,12 @@ ${insufficientTable}
    so khớp byte-by-byte với file đã commit. Nếu CSV đổi mà tài liệu không, CI fail.
 3. **Generated artifact / Tài liệu được sinh ra:** đừng sửa tay file này. Sửa CSV (hoặc cách trình đọc
    diễn giải) rồi chạy lại generator.
+4. **Reported numbers are net of venue costs / Mọi số báo cáo đã trừ chi phí sàn:** mọi lợi nhuận trong
+   bảng đã trừ phí taker 10 bps cho cả lệnh vào và lệnh ra, cộng \$0.05 gas mỗi lần khớp, theo hồ sơ
+   \`polymarket_clob\` trong \`src/desk/sor/fee-gas-model.ts\`. Nếu không trừ, bảng số không phân biệt
+   được lợi thế thật với giao dịch chưa trả tiền. Sổ lệnh mô phỏng sinh theo chỉ số tick nên cùng dữ
+   liệu cho ra cùng số; tập thị trường lấy từ Gamma API thật nên các số chỉ so sánh được trong cùng
+   một bộ dữ liệu.
 
 Reproduce / Tái tạo:
 

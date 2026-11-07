@@ -80,13 +80,17 @@ export function createMockClob(tickState: TickState): ClobClient {
 
       for (let i = 0; i < levels; i++) {
         const offset = (i + 1) * spread;
+        // Depth derived from the level index rather than sampled at random, so
+        // the same snapshots always yield the same order book and a backtest
+        // run is reproducible.
+        const depth = 100 + i * 100;
         bids.push({
           price: Math.max(0.001, price - offset).toFixed(4),
-          size: String((Math.random() * 500 + 100).toFixed(0)),
+          size: String(depth),
         });
         asks.push({
           price: Math.min(0.999, price + offset).toFixed(4),
-          size: String((Math.random() * 500 + 100).toFixed(0)),
+          size: String(depth),
         });
       }
 

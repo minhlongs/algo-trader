@@ -64,7 +64,8 @@ describe('BacktestRunner', () => {
       ];
       const result = BacktestRunner.run(wins);
       expect(result.winRate).toBe(1.0);
-      expect(result.profitFactor).toBe(Infinity);
+      // Capped, not Infinity: an unbounded ratio is not comparable or serializable.
+      expect(result.profitFactor).toBe(100);
     });
 
     it('handles all-losing trades', () => {

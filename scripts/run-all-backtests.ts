@@ -95,7 +95,7 @@ async function main(): Promise<void> {
         m.sharpeRatio.toFixed(4),
         (m.winRate * 100).toFixed(2),
         m.totalPnl.toFixed(2),
-        m.profitFactor === Infinity ? 'Infinity' : m.profitFactor.toFixed(4),
+        m.profitFactor.toFixed(4),
         (Math.abs(m.maxDrawdown) * 100).toFixed(2),
         m.totalTrades,
         m.winningTrades,
