@@ -14,6 +14,7 @@ import {
   saveReconcilerState,
   restoreReconcilerState,
   appendG2ShadowTelemetry,
+  resolveGitTelemetryIdentity,
 } from './g2-shadow-telemetry';
 import { logger } from '../../shared/utils/logger';
 
@@ -35,6 +36,8 @@ export interface StateContext {
 export interface RestoreStateOptions {
   /** When true (e.g. LIVE mode), rethrows restoration failures so startup fails closed. */
   failClosed?: boolean;
+  /** Allow PAPER cohort continuation across >15m probe gaps when drift === 0. */
+  allowCohortContinuation?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,16 +130,50 @@ export async function restoreOrchestratorState(
     }
 
     if (reconciler) {
-      const restoredRec = restoreReconcilerState(reconciler);
+      const restoredRec = restoreReconcilerState(reconciler, {
+        allowCohortContinuation: Boolean(options.allowCohortContinuation && (mode ?? 'PAPER') === 'PAPER'),
+      });
       startedAtMs = restoredRec.startedAtMs;
       onStartedAtMs?.(startedAtMs);
+      const posSummary = positionTracker.getSummary();
+      const recSummary = reconciler.reconcile();
+      const effectiveDecay = restoredRec.leg2DecayStats ?? leg2DecayStats;
+      const currentIdentity = resolveGitTelemetryIdentity();
+      const prevSha = restoredRec.previousCommitSha;
+      const prevTree = restoredRec.previousSrcTreeHash;
+      const versionChanged =
+        restoredRec.restored &&
+        Boolean(prevSha && prevSha !== 'unknown') &&
+        (prevSha !== currentIdentity.sourceCommitSha ||
+          (Boolean(prevTree) && prevTree !== currentIdentity.srcTreeHash));
+      if (
+        versionChanged &&
+        Math.abs(recSummary.unexplainedDriftUsdc) <= 1e-6 &&
+        recSummary.unknownOrderCount === 0
+      ) {
+        appendG2ShadowTelemetry({
+          loopStartedAtMs: startedAtMs,
+          mode: mode ?? 'PAPER',
+          event: 'version_transition',
+          positionSummary: posSummary,
+          reconciliationSummary: recSummary,
+          leg2DecayStats: effectiveDecay,
+          versionTransition: {
+            previousCommitSha: prevSha ?? 'unknown',
+            currentCommitSha: currentIdentity.sourceCommitSha,
+            previousSrcTreeHash: prevTree ?? 'unknown',
+            currentSrcTreeHash: currentIdentity.srcTreeHash,
+            reason: 'cohort_continuation_zero_drift',
+          },
+        });
+      }
       appendG2ShadowTelemetry({
         loopStartedAtMs: startedAtMs,
         mode: mode ?? 'PAPER',
         event: 'start',
-        positionSummary: positionTracker.getSummary(),
-        reconciliationSummary: reconciler.reconcile(),
-        leg2DecayStats: restoredRec.leg2DecayStats ?? leg2DecayStats,
+        positionSummary: posSummary,
+        reconciliationSummary: recSummary,
+        leg2DecayStats: effectiveDecay,
       });
     }
 

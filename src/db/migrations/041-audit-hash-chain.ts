@@ -61,20 +61,20 @@ export async function up(client: PoolClient): Promise<void> {
     ),
     payload AS (
       SELECT
-        id,
-        tenant_id,
-        sequence_number,
-        previous_hash,
+        al.id,
+        al.tenant_id,
+        with_prev_hash.sequence_number,
+        with_prev_hash.previous_hash,
         -- Compute hash: SHA-256(tenant_id || '|' || sequence_number || '|' || previous_hash || '|' || id || '|' || action || '|' || resource || '|' || result || '|' || metadata)
         encode(digest(
-          COALESCE(tenant_id, '__system__') || '|' ||
-          sequence_number::text || '|' ||
-          previous_hash || '|' ||
-          id || '|' ||
-          action || '|' ||
-          resource || '|' ||
-          result || '|' ||
-          metadata::text,
+          COALESCE(al.tenant_id, '__system__') || '|' ||
+          with_prev_hash.sequence_number::text || '|' ||
+          with_prev_hash.previous_hash || '|' ||
+          al.id || '|' ||
+          al.action || '|' ||
+          al.resource || '|' ||
+          al.result || '|' ||
+          COALESCE(al.metadata::text, '{}'),
           'sha256'
         ), 'hex') AS hash
       FROM with_prev_hash

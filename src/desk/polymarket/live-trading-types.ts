@@ -60,6 +60,8 @@ export interface LiveTradingConfig {
   chainId?: number;
   /** Custom API URL override. */
   apiUrl?: string;
+  /** Preserve PAPER shadow cohort T0_G2 across >15m probe gaps when drift === 0. */
+  allowCohortContinuation?: boolean;
 }
 
 // ---------------------------------------------------------------------------
