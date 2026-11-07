@@ -35,6 +35,7 @@ const POSITION_DUST_EPSILON = 1e-9;
 export class BacktestOrderManager implements OrderManager {
   trades: BacktestTrade[] = [];
   equityCurve: Array<{ timestamp: string; equity: number }> = [];
+  private fillEquityCurve: Array<{ timestamp: string; equity: number }> = [];
   private capital: number;
   private currentEquity: number;
   private positions = new Map<string, OpenPosition>();
@@ -63,14 +64,18 @@ export class BacktestOrderManager implements OrderManager {
       tokenId: params.tokenId,
       side,
       price,
-      size,
+      size: close?.closedSize ?? size,
       pnl: close?.pnl ?? null,
     };
     this.trades.push(trade);
 
     if (close) {
+      if (this.fillEquityCurve.length === 0) {
+        this.fillEquityCurve.push({ timestamp: this.trades[0]!.timestamp, equity: this.capital });
+      }
       this.fillCosts.push(close.fillCost);
-      this.currentEquity += close.pnl;
+      this.currentEquity = roundUsd(this.currentEquity + close.pnl);
+      this.fillEquityCurve.push({ timestamp: trade.timestamp, equity: this.currentEquity });
     }
 
     return { id: `backtest-${this.trades.length}` };
@@ -98,7 +103,7 @@ export class BacktestOrderManager implements OrderManager {
   }
 
   getEquityCurve(): Array<{ timestamp: string; equity: number }> {
-    return [...this.equityCurve];
+    return this.equityCurve.length > 0 ? [...this.equityCurve] : [...this.fillEquityCurve];
   }
 
   getCurrentEquity(): number {
@@ -107,17 +112,14 @@ export class BacktestOrderManager implements OrderManager {
 
   /**
    * Apply one fill to the position ledger and, when it closes a position,
-   * return net-of-venue-costs PnL plus the cost breakdown behind it.
-   *
-   * Returns null for fills that only open or extend a position: no round trip
-   * has closed, so there is no realized PnL to report yet.
+   * return net-of-venue-costs PnL, closed size, and the cost breakdown.
    */
   private computeClose(
     tokenId: string,
     side: 'BUY' | 'SELL',
     price: number,
     size: number,
-  ): { pnl: number; fillCost: FillCostDetail } | null {
+  ): { pnl: number; closedSize: number; fillCost: FillCostDetail } | null {
     const existing = this.positions.get(tokenId);
     const direction = side === 'BUY' ? 1 : -1;
     const closesPosition = existing !== undefined && existing.size * direction < 0;
@@ -127,10 +129,7 @@ export class BacktestOrderManager implements OrderManager {
     }
 
     if (existing) {
-      // Opening or extending in this fill's direction: the volume-weighted entry
-      // is recomputed over the position's absolute size, so extending a long and
-      // extending a short average by the same rule. Every entry fill pays its own
-      // gas when it settles.
+      // Volume-weighted entry over absolute size; every entry fill pays gas on settlement.
       const openSize = Math.abs(existing.size) + size;
       this.positions.set(tokenId, {
         size: openSize * direction,
@@ -144,20 +143,16 @@ export class BacktestOrderManager implements OrderManager {
   }
 
   /**
-   * Reduce or close out a position the fill is opposing, settle the venue costs
-   * on the closed portion, and return the net realized PnL.
-   *
-   * A short reversal is priced by the same rules as a long exit, with the
-   * position's sign supplying the only difference: a short profits when the
-   * buy-back is cheaper. Entry-fill gas is settled once, on the fill that closes
-   * the position out.
+   * Reduce or close out an opposing position, settle venue costs on the closed
+   * portion, and return the net realized PnL and closed size. Entry-fill gas is
+   * settled once, on the fill that closes the position out.
    */
   private settleClose(
     tokenId: string,
     existing: OpenPosition,
     price: number,
     size: number,
-  ): { pnl: number; fillCost: FillCostDetail } {
+  ): { pnl: number; closedSize: number; fillCost: FillCostDetail } {
     const positionSign = existing.size > 0 ? 1 : -1;
     const openSize = existing.size * positionSign;
     const closeSize = Math.min(size, openSize);
@@ -177,6 +172,7 @@ export class BacktestOrderManager implements OrderManager {
     const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd }, gasFills);
     return {
       pnl: costs.netPnl,
+      closedSize: closeSize,
       fillCost: {
         grossPnlUsd: roundUsd(grossPnlUsd),
         feeUsd: costs.feeUsd,
