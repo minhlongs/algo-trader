@@ -24,3 +24,13 @@
    - Under the stressed regime (wider spread + thin depth + `16%` Leg-2 failure), `naive_mid_arb` suffers heavy adverse selection (`-$4.4313`), whereas `executable_ask_fee_arb` rejects thin/unprofitable books and limits stressed drawdown to `-$0.1680`.
 2. **Why Live Capital (`G2/G3`) Remains `BLOCKED`:**
    - Under stressed Leg-2 failure (`16%` rejection), even `executable_ask_fee_arb` has slightly negative expectancy (`-$0.1680`) due to bid-ask crossing on Leg-1 unwind. Real-market 30-day shadow telemetry (`G2`) is mandatory to measure empirical Leg-2 fill rate and latency before any live capital (`G3`) can be considered.
+
+## 4. 30/30 Strategy Net-of-Fee Backtest Suite & Leaderboard (`Issue #238`)
+- **Reproduction & Verification Commands:**
+  ```bash
+  npx vitest run src/desk/backtesting/__tests__/backtest-runner-simulation.test.ts
+  npm run check:leaderboard
+  ```
+- **Summary (`reports/backtest-results.csv` & `docs/backtest-leaderboard.md`):**
+  - All **30/30** registered Polymarket strategies complete `168`-tick (`30`-day hourly) multi-regime simulation with `status = OK`, `total_trades > 0` (`6` to `398` closed round-trip trades per strategy, `5,131` total closed round-trip trades across the suite), `0` `Infinity`/`NaN` metrics, and full venue cost deduction (`10 bps` taker fee per leg + `$0.05` gas per transaction via `BacktestOrderManager.applyVenueCosts`).
+  - Top net-of-fee performers in the 30-strategy suite include `tail-risk-harvester` (`+$243.60` net PnL, `20` trades, Sharpe `34.42`), `recency-bias-exploiter` (`+$29.06` net PnL, `152` trades, Sharpe `11.85`), `time-weighted-mean-reversion` (`+$37.00` net PnL, `79` trades, Sharpe `9.67`), `vwap-deviation-sniper` (`+$32.57` net PnL, `73` trades, Sharpe `9.05`), and `orderbook-depth-ratio` (`+$114.64` net PnL, `124` trades, Sharpe `8.13`).

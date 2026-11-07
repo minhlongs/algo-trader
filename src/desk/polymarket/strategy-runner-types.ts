@@ -48,6 +48,19 @@ export const DEFAULT_RUNNER_CONFIG: Partial<StrategyRunnerConfig> = {
 
 // ── Gamma Client Implementation ────────────────────────────────────────────────
 
+function parseStringArray(val: unknown): string[] {
+  if (Array.isArray(val)) return val.map((item) => String(item));
+  if (typeof val === 'string' && val.trim().startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed.map((item) => String(item));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export class GammaClientImpl implements GammaClient {
   private baseUrl = 'https://gamma-api.polymarket.com';
 
@@ -91,14 +104,15 @@ export class GammaClientImpl implements GammaClient {
     });
     if (!resp.ok) return [];
     const events = await resp.json() as Array<Record<string, unknown>>;
-    return Promise.all(
-      events.map(async (e) => ({
-        id: e['id'] as string,
-        title: e['title'] as string,
-        slug: e['slug'] as string,
-        markets: [],
-      })),
-    );
+    return events.map((e) => {
+      const rawMarkets = Array.isArray(e['markets']) ? (e['markets'] as Array<Record<string, unknown>>) : [];
+      return {
+        id: String(e['id'] ?? ''),
+        title: String(e['title'] ?? ''),
+        slug: String(e['slug'] ?? ''),
+        markets: this.mapMarkets(rawMarkets),
+      };
+    });
   }
 
   private mapMarkets(data: Array<Record<string, unknown>>): GammaMarket[] {
@@ -106,30 +120,45 @@ export class GammaClientImpl implements GammaClient {
   }
 
   private mapMarket(m: Record<string, unknown>): GammaMarket {
-    const tokens = (m['tokens'] as Array<Record<string, unknown>>) ?? [];
-    const yesToken = tokens.find((t) => t['outcome'] === 'Yes');
-    const noToken = tokens.find((t) => t['outcome'] === 'No');
+    const rawTokens = Array.isArray(m['tokens']) ? (m['tokens'] as Array<Record<string, unknown>>) : [];
+    const outcomes = parseStringArray(m['outcomes']);
+    const outcomePrices = parseStringArray(m['outcomePrices']);
+    const clobTokenIds = parseStringArray(m['clobTokenIds']);
+    const yesToken = rawTokens.find((t) => t['outcome'] === 'Yes');
+    const noToken = rawTokens.find((t) => t['outcome'] === 'No');
+    const yesTokenId = (yesToken?.['token_id'] as string | undefined) ?? clobTokenIds[0] ?? '';
+    const noTokenId = (noToken?.['token_id'] as string | undefined) ?? clobTokenIds[1];
+    const yesPrice = Number(yesToken?.['price'] ?? outcomePrices[0]) || 0;
+    const noPrice = Number(noToken?.['price'] ?? outcomePrices[1]) || Math.max(0, 1 - yesPrice);
+    const synthesizedTokens = rawTokens.length > 0
+      ? rawTokens.map((t) => ({
+          token_id: String(t['token_id'] ?? ''),
+          outcome: String(t['outcome'] ?? ''),
+          price: Number(t['price']) || 0,
+        }))
+      : [
+          ...(yesTokenId ? [{ token_id: yesTokenId, outcome: outcomes[0] ?? 'Yes', price: yesPrice }] : []),
+          ...(noTokenId ? [{ token_id: noTokenId, outcome: outcomes[1] ?? 'No', price: noPrice }] : []),
+        ];
+    const rawVol24h = m['volume24hr'] ?? m['volume24h'];
 
     return {
       id: m['id'] as string,
       conditionId: m['conditionId'] as string,
       question: m['question'] as string,
       slug: m['slug'] as string,
-      outcomes: m['outcomes'] as string[],
-      outcomePrices: m['outcomePrices'] as string[],
+      outcomes: outcomes.length > 0 ? outcomes : (m['outcomes'] as string[]),
+      outcomePrices: outcomePrices.length > 0 ? outcomePrices : (m['outcomePrices'] as string[]),
       active: m['active'] as boolean,
       closed: m['closed'] as boolean,
-      volume: Number(m['volume']) || 0,
-      liquidity: Number(m['liquidity']) || 0,
-      endDate: m['end_date_iso'] as string,
-      tokens: tokens.map((t) => ({
-        token_id: t['token_id'] as string,
-        outcome: t['outcome'] as string,
-        price: Number(t['price']) || 0,
-      })),
-      yesTokenId: yesToken?.['token_id'] as string ?? '',
-      noTokenId: noToken?.['token_id'] as string,
-      yesPrice: Number(yesToken?.['price']) || 0,
+      volume: Number(m['volumeNum'] ?? m['volume']) || 0,
+      ...(rawVol24h !== undefined ? { volume24h: Number(rawVol24h) || 0 } : {}),
+      liquidity: Number(m['liquidityNum'] ?? m['liquidity']) || 0,
+      endDate: (m['end_date_iso'] ?? m['endDate']) as string,
+      tokens: synthesizedTokens,
+      yesTokenId,
+      noTokenId,
+      yesPrice,
     };
   }
 }

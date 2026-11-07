@@ -7,6 +7,7 @@
 
 import type { GammaMarket } from '../polymarket/gamma-client';
 import type { HistoricalSnapshot, HistoricalMarketData } from './types';
+import { parseJsonStringArray, simulateMarketRegimeTick } from './backtest-price-regimes';
 import { logger } from '../../shared/utils/logger';
 
 export class GammaHistoricalProvider {
@@ -51,7 +52,7 @@ export class GammaHistoricalProvider {
 
       snapshots.push({
         timestamp,
-        markets: markets.map((m, j) => this.simulatePriceEvolution(m, progress, j)),
+        markets: markets.map((m, j) => this.simulatePriceEvolution(m, i, maxTicks, j)),
       });
     }
 
@@ -74,32 +75,36 @@ export class GammaHistoricalProvider {
       const raw: Array<Record<string, unknown>> = await resp.json();
 
       return raw.map((r) => {
-        const conditionId = String(r.conditionId ?? '');
-        const outcomePrices: string[] = Array.isArray(r.outcomePrices)
-          ? (r.outcomePrices as string[])
-          : ['0.5', '0.5'];
-        const yesPrice = parseFloat(outcomePrices[0] ?? '0.5');
-        const noPrice = parseFloat(outcomePrices[1] ?? String(1 - yesPrice));
+        const conditionId = String(r.conditionId ?? r.id ?? '');
+        const parsedPrices = parseJsonStringArray(r.outcomePrices);
+        const outcomePrices = parsedPrices.length >= 2 ? parsedPrices : ['0.5', '0.5'];
+        const parsedOutcomes = parseJsonStringArray(r.outcomes);
+        const outcomes = parsedOutcomes.length >= 2 ? parsedOutcomes : ['Yes', 'No'];
+        const clobTokenIds = parseJsonStringArray(r.clobTokenIds);
+        const yesPrice = parseFloat(outcomePrices[0] ?? '0.5') || 0.5;
+        const noPrice = parseFloat(outcomePrices[1] ?? String(1 - yesPrice)) || 1 - yesPrice;
+        const yesTokenId = clobTokenIds[0] ?? `${conditionId}-yes`;
+        const noTokenId = clobTokenIds[1] ?? `${conditionId}-no`;
 
         return {
           id: String(r.id ?? conditionId),
           question: String(r.question ?? ''),
           conditionId,
           slug: String(r.slug ?? ''),
-          outcomes: Array.isArray(r.outcomes) ? (r.outcomes as string[]) : ['Yes', 'No'],
+          outcomes,
           outcomePrices,
-          volume: Number(r.volume ?? 0),
-          liquidity: Number(r.liquidity ?? 0),
-          endDate: String(r.endDate ?? ''),
+          volume: Number(r.volumeNum ?? r.volume ?? 0),
+          liquidity: Number(r.liquidityNum ?? r.liquidity ?? 0),
+          endDate: String(r.end_date_iso ?? r.endDate ?? ''),
           active: r.active !== false,
           closed: r.closed === true,
           resolved: r.resolved === true,
           tokens: [
-            { token_id: `${conditionId}-yes`, outcome: 'Yes', price: yesPrice },
-            { token_id: `${conditionId}-no`, outcome: 'No', price: noPrice },
+            { token_id: yesTokenId, outcome: outcomes[0] ?? 'Yes', price: yesPrice },
+            { token_id: noTokenId, outcome: outcomes[1] ?? 'No', price: noPrice },
           ],
-          yesTokenId: `${conditionId}-yes`,
-          noTokenId: `${conditionId}-no`,
+          yesTokenId,
+          noTokenId,
           yesPrice,
         };
       });
@@ -113,34 +118,10 @@ export class GammaHistoricalProvider {
 
   private simulatePriceEvolution(
     market: GammaMarket,
-    progress: number,
-    seed: number,
+    tickIdx: number,
+    totalTicks: number,
+    marketIdx: number,
   ): HistoricalMarketData {
-    const randomWalk = Math.sin(seed * 127.1 + progress * 12.9898) * 0.03 +
-      Math.sin(seed * 269.5 + progress * 7.8342) * 0.015;
-
-    const currentPrice = market.yesPrice;
-    const startPrice = clamp(currentPrice - randomWalk, 0.01, 0.99);
-    const price = startPrice + (currentPrice - startPrice) * progress;
-
-    return {
-      conditionId: market.conditionId,
-      question: market.question,
-      yesTokenId: market.yesTokenId,
-      noTokenId: market.noTokenId,
-      yesPrice: round4(price),
-      volume: Math.round(market.volume * (0.1 + 0.9 * progress)),
-      liquidity: Math.round(market.liquidity * (0.3 + 0.7 * progress)),
-      closed: market.closed,
-      endDate: market.endDate,
-    };
+    return simulateMarketRegimeTick(market, tickIdx, totalTicks, marketIdx);
   }
-}
-
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
-}
-
-function round4(n: number): number {
-  return Math.round(n * 10000) / 10000;
 }

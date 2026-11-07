@@ -72,11 +72,11 @@ export class OrderArrivalRateStrategy extends BasePolymarketStrategy {
         const currentBidLevels = extractPriceLevels(book.bids);
         const currentAskLevels = extractPriceLevels(book.asks);
         const history = this.getSnapshots(market.yesTokenId);
+        const prevSnapshot = history.length > 0 ? history[history.length - 1] : null;
 
         this.recordSnapshot(market.yesTokenId, currentBidLevels, currentAskLevels);
-        if (history.length < 1) continue;
+        if (!prevSnapshot) continue;
 
-        const prevSnapshot = history[history.length - 1];
         const newBids = countNewLevels(prevSnapshot.bidLevels, currentBidLevels);
         const newAsks = countNewLevels(prevSnapshot.askLevels, currentAskLevels);
         const totalNew = newBids + newAsks;
