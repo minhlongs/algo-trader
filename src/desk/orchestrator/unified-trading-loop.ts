@@ -8,6 +8,7 @@ import { ConflictResolver } from './conflict-resolver';
 import { InternalCrossingEngine } from './internal-crossing-engine';
 import { SynchronizedRiskGate } from './synchronized-risk-gate';
 import type { RiskGateVerdict } from './risk-gate-types';
+import type { LiveExecutionGuard } from '../execution/live-execution-guard';
 import { TriModeDispatcher } from '../execution/tri-mode-dispatcher';
 import type { DispatchResult, TriMode } from '../execution/tri-mode-types';
 import { AutonomousLifecycleManager } from './autonomous-lifecycle-manager';
@@ -37,13 +38,14 @@ export class UnifiedTradingLoop {
   constructor(
     mode: TriMode = 'PAPER',
     initialNavUsd = 100000,
-    liquidCashUsd = 30000
+    liquidCashUsd = 30000,
+    liveGuard?: LiveExecutionGuard,
   ) {
     this.queue = new PrioritySignalQueue(50);
     this.conflictResolver = new ConflictResolver();
     this.crossingEngine = new InternalCrossingEngine();
-    this.riskGate = new SynchronizedRiskGate({ totalNavUsd: initialNavUsd, liquidCashUsd });
-    this.dispatcher = new TriModeDispatcher(mode);
+    this.riskGate = new SynchronizedRiskGate({ totalNavUsd: initialNavUsd, liquidCashUsd, liveGuard });
+    this.dispatcher = new TriModeDispatcher(mode, liveGuard);
     this.lifecycle = new AutonomousLifecycleManager();
     this.reconciler = new ClosedLoopReconciler(liquidCashUsd);
     this.eventBus = new TelemetryEventBus();

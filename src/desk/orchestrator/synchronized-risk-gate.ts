@@ -123,11 +123,51 @@ export class SynchronizedRiskGate {
 
     if (!res.approved) {
       logger.debug(`[SynchronizedRiskGate] Order rejected: ${res.reason}`, { intentId: intent.intentId });
+      return {
+        approved: false,
+        reason: res.reason,
+        scaledQuantity: res.scaledQty,
+        originalQuantity: intent.quantity,
+        allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
+        currentNavUsd: this.totalNavUsd,
+        cashBufferRatio: res.postCashRatio,
+        grossLeverage: res.grossLev,
+        circuitBreakerTier: this.currentTier,
+      };
+    }
+
+    if (this.liveGuard) {
+      const guardRes = this.liveGuard.guardOrder({
+        tokenId: intent.symbol,
+        price,
+        size: res.scaledQty,
+        side: intent.side,
+        expiration: intent.expiresAt,
+        nonce: intent.intentId,
+        feeRateBps: 0,
+        signatureType: 0,
+      });
+      if (!guardRes.approved) {
+        const reason = guardRes.reason ?? 'Rejected by LiveExecutionGuard';
+        logger.debug(`[SynchronizedRiskGate] Order rejected by LiveExecutionGuard: ${reason}`, {
+          intentId: intent.intentId,
+        });
+        return {
+          approved: false,
+          reason,
+          scaledQuantity: res.scaledQty,
+          originalQuantity: intent.quantity,
+          allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
+          currentNavUsd: this.totalNavUsd,
+          cashBufferRatio: res.postCashRatio,
+          grossLeverage: res.grossLev,
+          circuitBreakerTier: this.currentTier,
+        };
+      }
     }
 
     return {
-      approved: res.approved,
-      ...(res.approved ? {} : { reason: res.reason }),
+      approved: true,
       scaledQuantity: res.scaledQty,
       originalQuantity: intent.quantity,
       allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
