@@ -2,8 +2,10 @@
 
 Status: in progress
 Date: 2026-11-06
-Branch: `fix/backtest-fee-honesty-and-live-fail-closed` (PR #233 into `fix/signal-routes-tenant-isolation`)
-Baseline: 26 pre-existing full-repo test failures in 4 files (verified at HEAD by stashing the working tree, 2026-11-06)
+Branch: `fix/backtest-fee-honesty-and-live-fail-closed` (PR #233 into `main`)
+Baseline: 0 failures on `origin/main` (17516 passed / 13 skipped, verified in a clean
+`origin/main` worktree). The earlier "26 pre-existing failures in 4 files" figure was an
+artifact of the unmerged base branch, not a property of `main`.
 
 ## Objective
 
@@ -17,7 +19,7 @@ Done means:
 - D2: `grep -c Infinity reports/backtest-results.csv` returns 0; CSV regenerated today
 - D3: a test proves LIVE without credentials throws (no silent paper fallback)
 - D4: new tests pass; `src/desk` 0 fail; `tsc --noEmit` exit 0; build exit 0; repo baseline unchanged
-- D5: branch pushed, PR opened, isolated review clean
+- D5: branch pushed, PR opened against `main`, CI actually runs and is green, isolated review clean
 
 Out of scope: the 14–21 day paper run, all real-money trading, fixing the 28
 zero-trade strategies, changing the fee parameters (user decision), the
@@ -26,10 +28,28 @@ zero-trade strategies, changing the fee parameters (user decision), the
 ## Verification results
 
 - **D1** — `src/desk/backtesting/__tests__/backtest-fee-application.test.ts` (14 tests) asserts net PnL = gross − (both-leg taker + gas) per fill, plus a break-even trip, a losing trip, and gas settled exactly once per entry fill. Also updated the 10 pre-existing assertions in `tests/unit/desk/backtesting/backtest-order-manager.test.ts` from gross to net values (45/45 pass); they previously encoded the fee-blind contract.
-- **D2** — `grep -c Infinity reports/backtest-results.csv` → 0; file regenerated 2026-11-06, 30 OK rows.
+- **D2** — `grep -c Infinity reports/backtest-results.csv` → 0; file regenerated 2026-11-06, 30 OK rows. Both rows with `total_trades > 0` carry non-zero net P&L (`vwap-deviation-sniper` 4 trades / −$0.81; `regime-adaptive-momentum` 15 trades / −$10.80).
 - **D3** — `src/desk/execution/__tests__/polymarket-live-fail-closed.test.ts` (7 tests) asserts `buildPolymarketAdapter` throws, naming each missing credential, with no silent paper fallback.
-- **D4** — `tests/unit/desk/backtesting/backtest-order-manager.test.ts` 45/45. Full repo with changes: 26 failed / 17259 passed / 11 skipped across 4 files; identical set and count to the stashed-HEAD baseline (26 failed / 17257 passed across the same 4 files). All 4 are unrelated modules (signal-feed routes, signals payment handler, changelog monotonicity, tier-config sync). `src/desk`: 2197 passed / 11 skipped, 0 fail. `tsc --noEmit` exit 0; `build:fast` exit 0.
-- **D5** — branch `fix/backtest-fee-honesty-and-live-fail-closed`, four commits pushed, PR #233 against `fix/signal-routes-tenant-isolation` (18 files, +842/−137). CI does not run on this branch: the workflows trigger only on `main`.
+- **D4** — `tests/unit/desk/backtesting/backtest-order-manager.test.ts` 45/45. Full repo with changes: 17558 passed / 1 failed / 13 skipped. Branch `src/desk`: 2216 passed / 11 skipped, 0 fail. `tsc --noEmit` exit 0; `build:fast` exit 0.
+- **D5** — branch `fix/backtest-fee-honesty-and-live-fail-closed`, 12 commits pushed, PR #233 against `main` (17 files, +993/−160). CI runs for real: 14 gates SUCCESS, 1 skipped (`Gate 5` is post-merge only). See "False alarms" below for the four local failures that are environment, not branch, defects.
+
+## False alarms (environment, not branch defects)
+
+Four tests fail only in this machine's working tree. Each was attributed by re-running the
+identical command in a clean `origin/main` worktree with identical state, not by reasoning
+about it:
+
+1. **`better-auth` version skew (3 tests).** `pnpm-lock.yaml` pins `better-auth@1.7.7`, but
+   the local `node_modules` had drifted to 1.6.29, so `getLoadedBetterAuthVersion()` and the
+   exploit reproducer asserted against the wrong build. `pnpm install --frozen-lockfile`
+   restored 1.7.7 and all 3 pass. The lockfile was never wrong; only the installed tree was.
+2. **`usage_metrics` table missing (1 test).** `wave_316_opencore_saas_suite.test.ts` reaches
+   a live Postgres through `checkMcu`. The local DB's migration ledger stops at
+   `049-funding-rates` and has no `057-add-usage-metrics-table`, so `usage_metrics` does not
+   exist (`SELECT to_regclass('public.usage_metrics')` → null). Reproduced on a clean
+   `origin/main` worktree by supplying the same `.mekong/company.json`, so it is a property of
+   the local database, not of this branch. Note that the test is `it.skipIf(!hasCompanyConfig)`
+   and `.mekong/` is gitignored, so CI never runs it — meaning the local red is invisible in CI.
 
 
 Constraints: no `:any`, no `console.log`, kebab-case, split files over 200 LOC,
@@ -83,7 +103,23 @@ conventional commits with attribution, never commit secrets, reports in Vietname
   test setup; verified against `src/desk` suite before committing.
 - The synthetic order book was randomly sampled, so two runs on the same snapshots
   could produce different PnL. Now derived from the level index for reproducibility.
+- **Stale base branch.** The original PR targeted
+  `fix/signal-routes-tenant-isolation`, which was 15 behind and 71 ahead of
+  `main` and not an ancestor of it. That dragged ~65 unrelated commits and ~65
+  conflicting files in, and left the PR CONFLICTING with zero CI checks. Closed by
+  rebasing the six commits onto `origin/main`.
+- **CI trigger scope.** Every workflow fires only on `main`, so a feature-branch
+  PR gets checks only when its base is `main`. The retarget was a prerequisite for
+  verification, not a nicety.
+- **Ratchet file-size ceiling.** The fee test file initially grew past the 200-line
+  ceiling and tripped Gate 8 as a *new* oversized file. Split along its existing
+  seam (`applyVenueCosts` arithmetic vs ledger consequences) rather than by adding
+  a baseline entry — the baseline is a ratchet, and growing it needs a deliberate
+  decision.
 
 ## Unresolved questions
 
-None.
+None for this branch. Two latent items found while verifying, both out of scope
+and recorded for the caller: `BacktestOrderManager` never writes an `equityCurve`,
+so the fee-application metrics test has to supply a synthetic one; and a `SELL`
+larger than an open long still silently drops the remainder.
