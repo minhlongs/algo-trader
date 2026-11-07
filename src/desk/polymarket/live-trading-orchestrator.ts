@@ -89,7 +89,10 @@ export class LiveTradingOrchestrator extends EventEmitter {
       this.legDecayTracker = c.legDecayTracker;
       this.guard.attachTracker(this.positionTracker);
 
-      await this.restoreState({ failClosed: !this.config.paperTrading });
+      await this.restoreState({
+        failClosed: !this.config.paperTrading,
+        allowCohortContinuation: Boolean(this.config.paperTrading && this.config.allowCohortContinuation),
+      });
 
       buildStartComponents(this.config, c);
       this.adapter = c.adapter;
@@ -182,7 +185,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
       leg2DecayStats: this.legDecayTracker.getStats(),
     });
   }
-  private async restoreState(options: { failClosed?: boolean } = {}): Promise<void> {
+  private async restoreState(options: { failClosed?: boolean; allowCohortContinuation?: boolean } = {}): Promise<void> {
     await restoreOrchestratorState(
       {
         journal: this.journal, guard: this.guard, positionTracker: this.positionTracker,

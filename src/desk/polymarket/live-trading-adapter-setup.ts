@@ -51,6 +51,9 @@ export function normalizeConfig(raw: LiveTradingConfig): LiveTradingConfig {
     maxDailyDrawdown: raw.maxDailyDrawdown ?? 0.05,
     maxConcurrentPositions: raw.maxConcurrentPositions ?? 10,
     maxConsecutiveLosses: raw.maxConsecutiveLosses ?? 3,
+    chainId: raw.chainId,
+    apiUrl: raw.apiUrl,
+    allowCohortContinuation: raw.allowCohortContinuation ?? false,
   };
 }
 
