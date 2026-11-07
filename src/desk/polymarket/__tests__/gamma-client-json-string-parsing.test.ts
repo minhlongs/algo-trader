@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { GammaClientImpl } from '../strategy-runner-types';
+import { GammaClientImpl, createNoopEventBus, DEFAULT_RUNNER_CONFIG } from '../strategy-runner-types';
 
 describe('GammaClientImpl JSON-string payload parsing', () => {
   afterEach(() => {
@@ -54,7 +54,7 @@ describe('GammaClientImpl JSON-string payload parsing', () => {
     expect(m.tokens).toHaveLength(2);
   });
 
-  it('maps inline event markets in getEvents()', async () => {
+  it('maps inline event markets in getEvents() and handles non-ok responses', async () => {
     const mockEvents = [
       {
         id: 'evt-1',
@@ -66,9 +66,13 @@ describe('GammaClientImpl JSON-string payload parsing', () => {
             conditionId: '0xcond1',
             question: 'Cut in Q1?',
             slug: 'cut-q1',
-            outcomes: '["Yes", "No"]',
-            outcomePrices: '["0.45", "0.55"]',
-            clobTokenIds: '["tok-yes-1", "tok-no-1"]',
+            outcomes: ['Yes', 'No'],
+            outcomePrices: '[invalid-json',
+            clobTokenIds: 12345,
+            tokens: [
+              { token_id: 'tok-yes-1', outcome: 'Yes', price: 0.45 },
+              { token_id: 'tok-no-1', outcome: 'No', price: 0.55 },
+            ],
             active: true,
             closed: false,
             volume: 25000,
@@ -78,11 +82,16 @@ describe('GammaClientImpl JSON-string payload parsing', () => {
       },
     ];
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => mockEvents,
-    } as Response);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockEvents,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      } as Response);
 
     const client = new GammaClientImpl();
     const events = await client.getEvents(5);
@@ -92,5 +101,52 @@ describe('GammaClientImpl JSON-string payload parsing', () => {
     expect(events[0]?.markets[0]?.yesTokenId).toBe('tok-yes-1');
     expect(events[0]?.markets[0]?.noTokenId).toBe('tok-no-1');
     expect(events[0]?.markets[0]?.yesPrice).toBeCloseTo(0.45, 4);
+
+    const emptyEvents = await client.getEvents(5);
+    expect(emptyEvents).toEqual([]);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('covers getMarket, searchMarkets, getMarkets error, getMarketGroup, and noop eventBus', async () => {
+    const client = new GammaClientImpl();
+    await expect(client.getMarketGroup('g1')).rejects.toThrow('getMarketGroup not implemented');
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{
+          id: 'm-2',
+          conditionId: '0xcond2',
+          question: 'Q2?',
+          slug: 'q2',
+          outcomes: '["Yes","No"]',
+          outcomePrices: '["0.6","0.4"]',
+          clobTokenIds: '["y2","n2"]',
+          active: true,
+          closed: false,
+        }],
+      } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 404 } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 500 } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+
+    const m = await client.getMarket('0xcond2');
+    expect(m?.yesTokenId).toBe('y2');
+    expect(await client.getMarket('missing')).toBeNull();
+    expect(await client.searchMarkets('crypto')).toEqual([]);
+    expect(await client.searchMarkets('fail')).toEqual([]);
+    await expect(client.getMarkets()).rejects.toThrow('Gamma API error 500');
+
+    const bus = createNoopEventBus();
+    bus.emit('test', {});
+    bus.on('test', () => {});
+    bus.off('test', () => {});
+    expect(DEFAULT_RUNNER_CONFIG.tickIntervalMs).toBe(30_000);
   });
 });
