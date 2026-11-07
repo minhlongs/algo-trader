@@ -123,3 +123,28 @@ None for this branch. Two latent items found while verifying, both out of scope
 and recorded for the caller: `BacktestOrderManager` never writes an `equityCurve`,
 so the fee-application metrics test has to supply a synthetic one; and a `SELL`
 larger than an open long still silently drops the remainder.
+
+## Review findings considered and rejected
+
+One finding from the isolated review pass was checked against source and
+**rejected as not a defect**, with the verification source recorded here rather
+than the concern itself:
+
+- *Claimed defect*: `buildPolymarketAdapter` still silently returns a paper run
+  when live was requested — specifically when live is requested but
+  `LIVE_TRADING_ENABLED !== "true"`.
+- *Verification source*: `tests/unit/desk/execution/s4-s5-polymarket-hardening.test.ts:73`
+  asserts exactly this as the intended contract — `paperTrading: false` with
+  credentials present but the arm flag unset yields `{paperTrading: true,
+  adapter: null, signer: null}`. The comment in
+  `src/desk/execution/__tests__/polymarket-live-fail-closed.test.ts:55-61` states
+  the same boundary deliberately: without the arm flag the mode resolves to
+  READ_ONLY and the adapter returns early, which is a different contract from
+  the credential fail-closed one this branch adds.
+- *Why it is safe*: the path returns `adapter: null` and `signer: null`, so no
+  live-order-capable object reaches a caller — nothing can place a real order.
+  The CLI entry point (`src/desk/cli/cashclaw-trade-start-handler.ts:27-39`)
+  separately checks the four credentials and `process.exit(1)` before any
+  orchestrator is built, so a caller who typed `--mode live` cannot reach the
+  paper stub through it either. The silent fallback that this branch removed was
+  the one *after* live was armed, where a paper run would otherwise look live.
