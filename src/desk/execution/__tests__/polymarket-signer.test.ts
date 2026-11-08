@@ -26,6 +26,7 @@ vi.mock('ethers', () => ({
 
 import { ethers } from 'ethers';
 import {
+  CTF_EXCHANGE_ADDRESS,
   EXCHANGE_V3_ADDRESS,
   PUSD_COLLATERAL_ADDRESS,
   PolymarketSigner,
@@ -137,6 +138,27 @@ describe('PolymarketSigner.buildTypedData', () => {
     expect(typed.types.Order.map((f) => f.name)).toContain('positionId');
     expect(typed.message.positionId).toBe('42');
     expect(typed.message.signatureType).toBe(3);
+  });
+
+  it('refuses CLOB V2/V3 signing without a 32-byte hex positionId', () => {
+    for (const badPositionId of ['', 'not-an-id', 'abc', '0x1234', '42']) {
+      expect(() => signer.buildTypedData(
+        sampleOrder({ protocolVersion: '3', signatureType: 3, positionId: badPositionId }),
+      )).toThrow(/positionId/);
+      expect(() => signer.createOrderHash(
+        sampleOrder({ protocolVersion: '3', signatureType: 3, positionId: badPositionId }),
+      )).toThrow(/positionId/);
+    }
+    expect(() => signer.buildTypedData(
+      sampleOrder({ protocolVersion: '3', signatureType: 3 }),
+    )).toThrow(/positionId/);
+  });
+
+  it('keeps the V1 path free of positionId so legacy recorded hashes do not shift', () => {
+    const typed = signer.buildTypedData(sampleOrder());
+    expect(typed.domain.verifyingContract).toBe(CTF_EXCHANGE_ADDRESS);
+    expect(typed.types.Order.map((f) => f.name)).not.toContain('positionId');
+    expect((typed.message as Record<string, unknown>).positionId).toBeUndefined();
   });
 });
 

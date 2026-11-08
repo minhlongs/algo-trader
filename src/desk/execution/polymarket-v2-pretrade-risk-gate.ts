@@ -9,13 +9,14 @@
  *   4. Extreme tail probability cutoffs (`[$0.02, $0.98]` = `[20_000, 980_000]` micro-units)
  *   5. Allowed CLOB V2 tick grid (`10_000 | 5_000 | 2_500 | 1_000`) & exact divisibility
  *   6. Minimum limit order size (`>= 5_000_000` micro-shares = 5 shares)
- *   7. Market BUY (`FAK`/`FOK`) 2-decimal collateral floor (`floorMarketBuyNotionalMicro`, #59/#99)
+ *   7. Market order (buy or sell) 2-decimal collateral floor (`floorMarketBuyNotionalMicro`, #59/#99)
  *   8. 20% stale matched-order balance reserve (`effectiveFreeBalanceMicro`, #112/#36)
  *   9. Per-market exposure concentration cap (`marketExposureMicro <= maxMarketExposureMicro`)
  *  10. Two-sided liquidity reward depth rule (`computeEffectiveRewardDepthMicro`)
  */
 
 import { MICRO_PER_PUSD } from './integer-micro-unit-fifo-ledger';
+import { allOrderTermsFinite, failNonFiniteOrderTerms } from './polymarket-pretrade-finite-guard';
 
 export type AllowedTickSizeMicro = 10_000 | 5_000 | 2_500 | 1_000;
 
@@ -58,7 +59,8 @@ export type PreTradeRejectReasonV2 =
   | 'BELOW_MIN_LIMIT_SHARES'
   | 'MARKET_BUY_NOTIONAL_ZERO_AFTER_FLOOR'
   | 'INSUFFICIENT_RESERVED_BALANCE'
-  | 'MARKET_EXPOSURE_CAP_EXCEEDED';
+  | 'MARKET_EXPOSURE_CAP_EXCEEDED'
+  | 'NON_FINITE_ORDER_TERMS';
 
 export interface PreTradeOrderCandidateV2 {
   priceMicro: number;
@@ -122,14 +124,21 @@ export class PolymarketV2PreTradeRiskGate {
   }
 
   validateOrder(candidate: PreTradeOrderCandidateV2): PreTradeValidationResultV2 {
+    // Every numeric comparison below is a no-op against NaN, so NaN order terms
+    // would otherwise sail through the whole gate as a valid, notional-less order.
+    if (!allOrderTermsFinite(candidate)) {
+      return failNonFiniteOrderTerms();
+    }
     const reserveMultiplier = Math.max(0, 1 - this.cfg.staleBalanceReservePct);
     const effectiveFreeBalanceMicro = Math.floor(candidate.rawFreeBalanceMicro * reserveMultiplier);
     const rawNotionalMicro = Math.floor(
       (candidate.sharesMicro * candidate.priceMicro) / MICRO_PER_PUSD,
     );
-    const sanitizedNotionalMicro = candidate.isMarketBuyFakOrFok
-      ? floorMarketBuyNotionalMicro(rawNotionalMicro)
-      : rawNotionalMicro;
+    // Any market order settles against a pUSD collateral/proceeds amount, so the
+    // 2-decimal collateral floor applies to it, not only to FAK/FOK market buys.
+    const sanitizedNotionalMicro = candidate.isLimitOrder
+      ? rawNotionalMicro
+      : floorMarketBuyNotionalMicro(rawNotionalMicro);
 
     const fail = (reason: PreTradeRejectReasonV2): PreTradeValidationResultV2 => ({
       allowed: false,
@@ -163,7 +172,7 @@ export class PolymarketV2PreTradeRiskGate {
     if (candidate.isLimitOrder && candidate.sharesMicro < this.cfg.minLimitOrderSharesMicro) {
       return fail('BELOW_MIN_LIMIT_SHARES');
     }
-    if (candidate.isMarketBuyFakOrFok && sanitizedNotionalMicro <= 0) {
+    if (!candidate.isLimitOrder && sanitizedNotionalMicro <= 0) {
       return fail('MARKET_BUY_NOTIONAL_ZERO_AFTER_FLOOR');
     }
     if (sanitizedNotionalMicro > effectiveFreeBalanceMicro) {

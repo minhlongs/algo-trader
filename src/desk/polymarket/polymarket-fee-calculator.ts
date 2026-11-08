@@ -71,6 +71,9 @@ export function calcQuadraticTakerFeeRateV2(
   const { rCat } = CLOB_V2_QUADRATIC_RATES[category];
   if (rCat <= 0) return 0;
   const rawRate = rCat * p * (1 - p);
+  // The 10% cap is a spec safety net, not the active binding: rCat maxes at 0.07
+  // and p(1-p) maxes at 0.25, so the shipped rates peak at 175 bps. Keep the clamp
+  // so a future higher rCat cannot silently price a share above the cap.
   return Math.min(rawRate, CLOB_V2_MAX_BASE_FEE_BPS / 10_000);
 }
 

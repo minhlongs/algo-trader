@@ -13,6 +13,8 @@
 
 import { ethers } from 'ethers';
 
+import { assertPositionIdUsable } from './polymarket-v3-position-id-guard';
+
 /** Polymarket CLOB order (unsigned) */
 export interface PolymarketOrder {
   tokenId: string;
@@ -56,7 +58,7 @@ export interface OrderTypedData {
   message: Record<string, unknown>;
 }
 
-const CTF_EXCHANGE_ADDRESS = '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
+export const CTF_EXCHANGE_ADDRESS = '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
 /**
  * Neg-Risk CTF Exchange (`POLY-ALPHA-HUNTER-V4-SPEC-FULL` line 662): the multi-outcome
  * matching contract that settles against pUSD collateral. The spec never publishes a
@@ -131,6 +133,7 @@ export class PolymarketSigner {
   /** Build EIP-712 typed data for a CLOB order (V1 default, V2/V3 on request) */
   buildTypedData(order: PolymarketOrder): OrderTypedData {
     const isV3 = order.protocolVersion === '3';
+    if (isV3) assertPositionIdUsable(order);
     const types = isV3 ? ORDER_TYPES_V3 : ORDER_TYPES_V1;
 
     const message: Record<string, unknown> = {
@@ -144,10 +147,8 @@ export class PolymarketSigner {
       signatureType: order.signatureType,
     };
     if (isV3) {
-      const positionId = order.positionId ?? order.tokenId;
-      message.positionId = ethers.isHexString(positionId, 32)
-        ? BigInt(positionId).toString()
-        : ethers.keccak256(ethers.toUtf8Bytes(positionId));
+      // Guarded by assertPositionIdUsable above, so this is a strict hex→uint256 mapping.
+      message.positionId = BigInt(order.positionId as string).toString();
     }
 
     return {

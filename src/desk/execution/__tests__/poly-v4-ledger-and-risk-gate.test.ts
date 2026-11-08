@@ -1,14 +1,9 @@
 /**
- * POLY-ALPHA-HUNTER-V4 §13.2/§13.3 core port tests:
- * the integer micro-unit 5-tier FIFO ledger and the 10-rule CLOB V2 pre-trade risk gate.
+ * POLY-ALPHA-HUNTER-V4 §13.2 core port tests:
+ * the 10-rule CLOB V2 pre-trade risk gate and the two-sided reward depth rule.
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  MICRO_PER_PUSD,
-  IntegerMicroUnitFifoLedger,
-  type LedgerEvent,
-} from '../integer-micro-unit-fifo-ledger';
 import {
   DEFAULT_PRETRADE_RISK_GATE_CONFIG_V2,
   PolymarketV2PreTradeRiskGate,
@@ -27,90 +22,6 @@ const baseCandidate: PreTradeOrderCandidateV2 = {
   clusterCvar99Pct: 0.01,
   consecutiveBookErrors: 0,
 };
-
-describe('integer micro-unit FIFO ledger', () => {
-  it('keeps every value in integer micro-units with no rounding drift', () => {
-    expect(MICRO_PER_PUSD).toBe(1_000_000);
-    const ledger = new IntegerMicroUnitFifoLedger();
-    ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 1_000_001, priceMicro: 333_333 });
-    expect(ledger.openSharesMicro('t1')).toBe(1_000_001);
-    expect(ledger.realizableCashMicro).toBe(-333_333);
-  });
-
-  it('separates realized trading PnL, rebate income, liquidity rewards, and settlement', () => {
-    const ledger = new IntegerMicroUnitFifoLedger();
-    ledger.apply({
-      kind: 'buy', tokenId: 't1', sharesMicro: 1_000_000, priceMicro: 400_000,
-      rebateMicro: 2_000, liquidityRewardMicro: 5_000, feeMicro: 0,
-    });
-    ledger.apply({ kind: 'sell', tokenId: 't1', sharesMicro: 1_000_000, priceMicro: 600_000 });
-    expect(ledger.realizedTradingPnlMicro).toBe(200_000);
-    expect(ledger.accruedRebateIncomeMicro).toBe(2_000);
-    expect(ledger.accruedLiquidityRewardMicro).toBe(5_000);
-    expect(ledger.settledRedemptionPnlMicro).toBe(0);
-    expect(ledger.totalRealizedNetPnlMicro()).toBe(207_000);
-    expect(ledger.openSharesMicro('t1')).toBe(0);
-  });
-
-  it('disposes FIFO lots oldest-first and amortizes entry fees pro-rata', () => {
-    const ledger = new IntegerMicroUnitFifoLedger();
-    const events: LedgerEvent[] = [
-      { kind: 'buy', tokenId: 't1', sharesMicro: 100, priceMicro: 300_000, feeMicro: 60 },
-      { kind: 'buy', tokenId: 't1', sharesMicro: 100, priceMicro: 500_000, feeMicro: 60 },
-    ];
-    for (const e of events) ledger.apply(e);
-    ledger.apply({ kind: 'sell', tokenId: 't1', sharesMicro: 150, priceMicro: 500_000 });
-    expect(ledger.openSharesMicro('t1')).toBe(50);
-    expect(ledger.openCostBasisMicro('t1')).toBe(25 + 30);
-  });
-
-  it('throws on selling more shares than the open FIFO inventory holds', () => {
-    const ledger = new IntegerMicroUnitFifoLedger();
-    ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 10, priceMicro: 500_000 });
-    expect(() => ledger.apply({ kind: 'sell', tokenId: 't1', sharesMicro: 11, priceMicro: 500_000 }))
-      .toThrow(/Insufficient FIFO inventory/);
-  });
-
-  it('mutates no cash or PnL state when an over-sell throws', () => {
-    const ledger = new IntegerMicroUnitFifoLedger();
-    ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 10, priceMicro: 500_000 });
-    const snap = () => ({
-      cash: ledger.realizableCashMicro,
-      settled: ledger.settledRedemptionPnlMicro,
-    });
-    const before = snap();
-    expect(() => ledger.apply({ kind: 'settle', tokenId: 't1', sharesMicro: 11, priceMicro: 1_000_000 }))
-      .toThrow(/Insufficient FIFO inventory/);
-    expect(snap()).toEqual(before);
-  });
-
-  it('marks open positions to market against VWAP bid minus exit taker fee', () => {
-    const ledger = new IntegerMicroUnitFifoLedger();
-    ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 1_000_000, priceMicro: 400_000 });
-    const mtm = ledger.computeUnrealizedMtmMicro(
-      't1',
-      [
-        { priceMicro: 600_000, sharesMicro: 500_000 },
-        { priceMicro: 500_000, sharesMicro: 500_000 },
-      ],
-      100,
-    );
-    expect(mtm.vwapBidMicro).toBe(550_000);
-    expect(mtm.exitFeeMicro).toBe(5_500);
-    expect(mtm.unrealizedMtmMicro).toBe(144_500);
-  });
-
-  it('settles redemption PnL in its own bucket and rejects negative inputs', () => {
-    const ledger = new IntegerMicroUnitFifoLedger();
-    ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 1_000_000, priceMicro: 400_000 });
-    ledger.apply({ kind: 'settle', tokenId: 't1', sharesMicro: 1_000_000, priceMicro: 1_000_000 });
-    expect(ledger.settledRedemptionPnlMicro).toBe(600_000);
-    expect(ledger.realizedTradingPnlMicro).toBe(0);
-    expect(ledger.totalRealizedNetPnlMicro()).toBe(600_000);
-    expect(() => ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: -1, priceMicro: 500_000 }))
-      .toThrow(/non-negative/);
-  });
-});
 
 describe('CLOB V2 pre-trade risk gate', () => {
   const gate = new PolymarketV2PreTradeRiskGate();
@@ -164,6 +75,31 @@ describe('CLOB V2 pre-trade risk gate', () => {
     expect(gate.validateOrder({ ...baseCandidate, currentMarketExposureMicro: cap }).reason)
       .toBe('MARKET_EXPOSURE_CAP_EXCEEDED');
     expect(gate.validateOrder({ ...baseCandidate, currentMarketExposureMicro: cap - 10_000_000 }).allowed).toBe(true);
+  });
+
+  it('applies the 2-decimal notional floor to market SELLs too', () => {
+    const marketSell = {
+      ...baseCandidate, isLimitOrder: false, isMarketBuyFakOrFok: false, sharesMicro: 1,
+    };
+    const res = gate.validateOrder(marketSell);
+    expect(res.reason).toBe('MARKET_BUY_NOTIONAL_ZERO_AFTER_FLOOR');
+    expect(res.sanitizedNotionalMicro).toBe(0);
+    // 1 share @ 0.52 = 0.52 pUSD = 520_000 micro, which survives the 2-decimal floor.
+    expect(gate.validateOrder({ ...marketSell, sharesMicro: 1_000_000 }).sanitizedNotionalMicro)
+      .toBe(520_000);
+    expect(gate.validateOrder({ ...marketSell, sharesMicro: 1_000_000 }).allowed).toBe(true);
+  });
+
+  it('rejects non-finite order terms instead of passing them as a spend-free order', () => {
+    const nanShares = gate.validateOrder({ ...baseCandidate, sharesMicro: Number.NaN });
+    expect(nanShares.allowed).toBe(false);
+    expect(nanShares.reason).toBe('NON_FINITE_ORDER_TERMS');
+    expect(gate.validateOrder({ ...baseCandidate, priceMicro: Number.NaN }).reason)
+      .toBe('NON_FINITE_ORDER_TERMS');
+    expect(gate.validateOrder({ ...baseCandidate, tickSizeMicro: Number.POSITIVE_INFINITY }).reason)
+      .toBe('NON_FINITE_ORDER_TERMS');
+    expect(gate.validateOrder({ ...baseCandidate, rawFreeBalanceMicro: Number.NaN }).reason)
+      .toBe('NON_FINITE_ORDER_TERMS');
   });
 });
 

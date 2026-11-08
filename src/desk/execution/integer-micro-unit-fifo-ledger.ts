@@ -13,8 +13,15 @@
  *   5. unrealizedMtmMicro           — mark-to-market of open lots at VWAP Bid minus exit taker fee
  */
 
-/** 1 pUSD = 1_000_000 micro-units; 1 share = 1_000_000 micro-shares */
-export const MICRO_PER_PUSD = 1_000_000;
+import {
+  mulDivMicro,
+  priceOpenPositionToMarketMicro,
+  type BidLevelMicro,
+  type UnrealizedMtmResult,
+} from './integer-micro-unit-mtm';
+
+export { MICRO_PER_PUSD, mulDivMicro } from './integer-micro-unit-mtm';
+export type { BidLevelMicro, UnrealizedMtmResult } from './integer-micro-unit-mtm';
 
 export type LedgerEventKind = 'open' | 'buy' | 'sell' | 'settle';
 
@@ -39,21 +46,6 @@ export interface OpenLot {
   entryFeeMicro: number;
 }
 
-export interface BidLevelMicro {
-  priceMicro: number;
-  sharesMicro: number;
-}
-
-export interface UnrealizedMtmResult {
-  unrealizedMtmMicro: number;
-  exitFeeMicro: number;
-  vwapBidMicro: number;
-}
-
-function mulDivMicro(sharesMicro: number, priceMicro: number): number {
-  return Math.floor((sharesMicro * priceMicro) / MICRO_PER_PUSD);
-}
-
 export class IntegerMicroUnitFifoLedger {
   /** Per-token open FIFO lots, ordered oldest → newest */
   readonly openLots: Map<string, OpenLot[]> = new Map();
@@ -73,12 +65,9 @@ export class IntegerMicroUnitFifoLedger {
     const rebateMicro = event.rebateMicro ?? 0;
     const rewardMicro = event.liquidityRewardMicro ?? 0;
 
-    this.totalTakerFeesPaidMicro += feeMicro;
-    this.accruedRebateIncomeMicro += rebateMicro;
-    this.accruedLiquidityRewardMicro += rewardMicro;
-
     if (event.kind === 'buy' || event.kind === 'open') {
       const notionalMicro = mulDivMicro(event.sharesMicro, event.priceMicro);
+      this.accrueIncome(feeMicro, rebateMicro, rewardMicro);
       this.realizableCashMicro += rebateMicro + rewardMicro - notionalMicro - feeMicro;
       this.pushLot(event.tokenId, {
         sharesMicro: event.sharesMicro,
@@ -90,14 +79,25 @@ export class IntegerMicroUnitFifoLedger {
 
     if (event.kind === 'sell') {
       const grossProceedsMicro = mulDivMicro(event.sharesMicro, event.priceMicro);
-      // Dispose inventory first: the throw must leave no cash or lot state behind.
+      // Dispose inventory first: an over-sell throw must leave no cash, lot, or income state behind.
       const disposedCostMicro = this.disposeFifoCost(event.tokenId, event.sharesMicro);
+      this.accrueIncome(feeMicro, rebateMicro, rewardMicro);
       this.realizableCashMicro += grossProceedsMicro - feeMicro + rebateMicro + rewardMicro;
       this.realizedTradingPnlMicro += grossProceedsMicro - feeMicro - disposedCostMicro;
       return;
     }
 
     this.settle(event, feeMicro, rebateMicro, rewardMicro);
+  }
+
+  /**
+   * Fee/rebate/reward accruals, applied only once the leg's inventory disposal is
+   * known to succeed — a rejected event must not mint income.
+   */
+  private accrueIncome(feeMicro: number, rebateMicro: number, rewardMicro: number): void {
+    this.totalTakerFeesPaidMicro += feeMicro;
+    this.accruedRebateIncomeMicro += rebateMicro;
+    this.accruedLiquidityRewardMicro += rewardMicro;
   }
 
   private pushLot(tokenId: string, lot: OpenLot): void {
@@ -140,6 +140,7 @@ export class IntegerMicroUnitFifoLedger {
   ): void {
     const payoutMicro = mulDivMicro(event.sharesMicro, event.priceMicro);
     const disposedCostMicro = this.disposeFifoCost(event.tokenId, event.sharesMicro);
+    this.accrueIncome(feeMicro, rebateMicro, rewardMicro);
     this.realizableCashMicro += payoutMicro - feeMicro + rebateMicro + rewardMicro;
     this.settledRedemptionPnlMicro += payoutMicro - feeMicro - disposedCostMicro;
   }
@@ -169,32 +170,21 @@ export class IntegerMicroUnitFifoLedger {
   }
 
   /**
-   * Mark an open position to market using the VWAP the book would actually pay
-   * for the full remaining size, net of the exit taker fee.
+   * Mark an open position to market using the VWAP the bid book would actually pay
+   * for the size it can absorb, net of the exit taker fee, against FIFO cost basis.
+   * The result carries `unfilledSharesMicro` so a shallow book cannot be mistaken
+   * for a full liquidation.
    */
   computeUnrealizedMtmMicro(
     tokenId: string,
     bidLevelsMicro: BidLevelMicro[],
     exitFeeBps: number,
   ): UnrealizedMtmResult {
-    const sharesMicro = this.openSharesMicro(tokenId);
-    const costBasisMicro = this.openCostBasisMicro(tokenId);
-    if (sharesMicro === 0) return { unrealizedMtmMicro: 0, exitFeeMicro: 0, vwapBidMicro: 0 };
-
-    let remaining = sharesMicro;
-    let grossProceedsMicro = 0;
-    for (const level of bidLevelsMicro) {
-      if (remaining <= 0) break;
-      const take = Math.min(level.sharesMicro, remaining);
-      grossProceedsMicro += mulDivMicro(take, level.priceMicro);
-      remaining -= take;
-    }
-    const vwapBidMicro = Math.floor((grossProceedsMicro * MICRO_PER_PUSD) / sharesMicro);
-    const exitFeeMicro = Math.floor((grossProceedsMicro * exitFeeBps) / 10_000);
-    return {
-      unrealizedMtmMicro: grossProceedsMicro - exitFeeMicro - costBasisMicro,
-      exitFeeMicro,
-      vwapBidMicro,
-    };
+    return priceOpenPositionToMarketMicro(
+      this.openSharesMicro(tokenId),
+      this.openCostBasisMicro(tokenId),
+      bidLevelsMicro,
+      exitFeeBps,
+    );
   }
 }

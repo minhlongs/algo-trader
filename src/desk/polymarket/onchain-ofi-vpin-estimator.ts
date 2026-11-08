@@ -183,6 +183,9 @@ export function estimateRegimeFromOfiVpin(
   if (midProbability <= 0.08 || midProbability >= 0.92) {
     return { state: 4, label: 'Near-Resolution', description: 'Probability near boundary — enforce strict two-sided quoting or hold.', isToxicKillSwitchTriggered: false };
   }
+  // Escalation band: |OFI| >= 0.65, or VPIN reaching 75% of the kill-switch threshold
+  // (0.525 at the default 0.70). Below that — VPIN under 0.525 — two-sided quoting
+  // still pays, so `state: 1` is intentionally reachable up to VPIN 0.5.
   if (Math.abs(ofiNormalized) >= 0.65 || vpin >= killSwitchThreshold * 0.75) {
     return { state: 2, label: 'Pre-Catalyst/Elevated', description: 'Directional order-flow pressure — widen spreads and skew reservation price.', isToxicKillSwitchTriggered: false };
   }
