@@ -349,5 +349,13 @@ describe('Stage S5 — Polymarket Walk-Forward OOS & Stress Evaluation', () => {
     expect(run1.candidates['executable_ask_fee_arb'].stressedNetPnlUsdc).toBeGreaterThan(
       run1.candidates['naive_mid_arb'].stressedNetPnlUsdc,
     );
+    // The maker path is not a guaranteed win: filling a resting quote costs the
+    // taker fee on the unwind and marks the fill against realized adverse drift,
+    // so it books fees, loses some episodes, and still nets positive expectancy.
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosTrades).toBeGreaterThan(0);
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosFeesUsdc).toBeGreaterThan(0);
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosWinRate).toBeGreaterThan(0);
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosWinRate).toBeLessThan(1);
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosNetPnlUsdc).toBeGreaterThan(0);
   });
 });

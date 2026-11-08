@@ -80,3 +80,14 @@ Immediately halt the shadow cohort and trigger the corresponding kill switch if 
 3. **Accounting Drift (`L1/L2`):** $\Delta_{\text{KV-D1}} > 10^{-6}\text{ USD}$, $\text{closedTrades}_{\text{KV}} \neq \text{COUNT}(\text{paper\_trades\_v3})_{\text{D1}}$ persisting past 1 cron cycle (`60s`), or `unexplainedDriftUsdc !== 0`.
 4. **Unresolved `UNKNOWN` Order State or Leg-2 Unwind Failure (`L2` — `G2-Poly-Shadow`):** Any order remains in `UNKNOWN` state past 1 reconciliation cycle (triggering market lock), or compensatory IOC `exitPosition` fails to unwind an unhedged Leg-1 fill within 1 tick -> invoke `LiveTradingOrchestrator.stop()`.
 5. **Edge Worker Health Regression (`L3`):** HTTP `5xx` on `/health`, `/api/health`, or `/api/v1/paper-trading/status` -> execute `npx wrangler rollback --config wrangler.toml`.
+
+### 2.8. CLOB V2 Core Primitives (Verified in Code, Not Yet in the Live Order Path)
+
+The `POLY-ALPHA-HUNTER-V4` primitives landed on `feat/poly-v4-clob-v2-core-port` (`Issue #242`) are verified by unit tests but are **not** yet wired into the live order path. Until they are, the `G2-Poly-Shadow` reconciler must keep reporting against the existing fee and risk model:
+
+- **Fee model:** `polymarket-fee-calculator.ts` now carries the quadratic V2 curve (`calcQuadraticTakerFeeRateV2`, `calcQuadraticTakerFeeV2`, `calcMakerRebateV2`, `calcLiquidityRewardScoreV2`) alongside the legacy flat `calcTakerFee` / `calcMakerRebate`, which `G2-Poly-Shadow` still calls. Switching the shadow runtime to the quadratic curve requires a new cohort (`version_transition` marker) so Day-1..N fee history is not silently re-priced under a different model.
+- **Accounting:** `integer-micro-unit-fifo-ledger.ts` (`IntegerMicroUnitFifoLedger`, `MICRO_PER_PUSD = 1_000_000`) supersedes the float ledger math for new positions only. Existing `~/.cashclaw/live-reconciler-state.json` balances remain authoritative for the current cohort; migration requires a reconciliation cut-over with `unexplainedDriftUsdc === 0` on both sides before the ledger is swapped.
+- **Pre-trade risk:** `polymarket-v2-pretrade-risk-gate.ts` (`PolymarketV2PreTradeRiskGate`, `floorMarketBuyNotionalMicro`, `computeEffectiveRewardDepthMicro`) is available but unenforced on `OrderDispatcher` / `SynchronizedRiskGate`, so `G2-Poly-Shadow` order admission still uses the prior checks.
+- **Microstructure & market making:** `onchain-ofi-vpin-estimator.ts` (aggressor decode, 5-level OFI, VPIN, 4-state regime) and `log-odds-avellaneda-stoikov-mm.ts` (reservation price, half-spread, conservative queue simulator) are research/evaluation seams. No maker quoting is live, so they cannot affect the shadow cohort.
+
+Wire and verify these in `PAPER` mode before any Gate `G3` discussion; Gate `G3` remains **BLOCKED** (PR pending).
