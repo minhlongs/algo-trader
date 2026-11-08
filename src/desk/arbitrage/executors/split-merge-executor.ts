@@ -10,11 +10,16 @@ import type {
 } from '../types';
 import { executePaperSplitMerge } from '../split-merge-arb-executor';
 import {
+  classifyMarketCategory,
+  type PolymarketCategory,
+} from '../../polymarket/polymarket-fee-calculator';
+import {
   buildSplitMergeOpportunity,
   computeSplitMergePayout,
+  computeSplitMergePayoutV2,
   createFailedSplitMergeResult,
+  evaluateTakerBuyMergeParity,
   hasRequiredSplitMergeFields,
-  POLY_FEE,
 } from './split-merge-executor-helpers';
 
 export {
@@ -22,7 +27,10 @@ export {
   hasRequiredSplitMergeFields,
   buildSplitMergeOpportunity,
   computeSplitMergePayout,
+  computeSplitMergePayoutV2,
+  evaluateTakerBuyMergeParity,
   createFailedSplitMergeResult,
+  type TakerBuyMergeGuardDecision,
 } from './split-merge-executor-helpers';
 
 export class SplitMergeArbitrageExecutor implements StrategyExecutor {
@@ -39,6 +47,8 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
     minVolume: number;
     maxPositionSize: number;
     dryRun: boolean;
+    enforceClobV2MergeParity: boolean;
+    category?: PolymarketCategory;
   };
 
   constructor(
@@ -47,6 +57,8 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
       minVolume?: number;
       maxPositionSize?: number;
       dryRun?: boolean;
+      enforceClobV2MergeParity?: boolean;
+      category?: PolymarketCategory;
     } = {},
   ) {
     this.config = {
@@ -54,6 +66,8 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
       minVolume: config.minVolume ?? 5000,
       maxPositionSize: config.maxPositionSize ?? 1000,
       dryRun: config.dryRun ?? true,
+      enforceClobV2MergeParity: config.enforceClobV2MergeParity ?? false,
+      category: config.category,
     };
   }
 
@@ -76,12 +90,49 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
 
     try {
       const splitMergeOpp = buildSplitMergeOpportunity(opportunity);
+
+      if (this.config.enforceClobV2MergeParity) {
+        const category = this.config.category ?? classifyMarketCategory(opportunity.id);
+        const requestedPairs =
+          splitMergeOpp.totalCost > 0
+            ? this.config.maxPositionSize / splitMergeOpp.totalCost
+            : 0;
+        const yesLegShares = opportunity.legs[0]?.amount ?? requestedPairs;
+        const noLegShares = opportunity.legs[1]?.amount ?? requestedPairs;
+        const decision = evaluateTakerBuyMergeParity(
+          requestedPairs,
+          yesLegShares,
+          noLegShares,
+          splitMergeOpp.yesPrice,
+          splitMergeOpp.noPrice,
+          category,
+        );
+        if (!decision.allowed) {
+          this.metrics.errors++;
+          return createFailedSplitMergeResult(
+            opportunity.id,
+            `CLOB V2 merge parity guard refused (${decision.reason}): mergeablePairs=${decision.mergeablePairs.toFixed(4)} < requestedPairs=${decision.requestedPairs.toFixed(4)}; grossUp=(${decision.grossUpYesShares}, ${decision.grossUpNoShares})`,
+          );
+        }
+      }
+
       await executePaperSplitMerge(splitMergeOpp, this.config.maxPositionSize);
 
-      const { netProfit, totalFees, actualProfitPct } = computeSplitMergePayout(
-        splitMergeOpp.totalCost,
-        this.config.maxPositionSize,
-      );
+      const requestedPairs =
+        splitMergeOpp.totalCost > 0
+          ? this.config.maxPositionSize / splitMergeOpp.totalCost
+          : 0;
+      const payout = this.config.enforceClobV2MergeParity
+        ? computeSplitMergePayoutV2(
+            splitMergeOpp.yesPrice,
+            splitMergeOpp.noPrice,
+            this.config.maxPositionSize,
+            this.config.category ?? classifyMarketCategory(opportunity.id),
+            opportunity.legs[0]?.amount ?? requestedPairs,
+            opportunity.legs[1]?.amount ?? requestedPairs,
+          )
+        : computeSplitMergePayout(splitMergeOpp.totalCost, this.config.maxPositionSize);
+      const { netProfit, totalFees, actualProfitPct } = payout;
       const success = netProfit > 0;
 
       if (success) {

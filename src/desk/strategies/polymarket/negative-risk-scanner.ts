@@ -26,7 +26,7 @@ export { scanEntries } from './negative-risk-entry';
 // ── Internal imports for tick factory ────────────────────────────────────────
 import { logger } from '../../core/logger';
 import { STRATEGY_NAME, DEFAULT_CONFIG } from './negative-risk-types';
-import type { NegativeRiskScannerConfig, NegativeRiskScannerDeps } from './negative-risk-types';
+import type { ArbPosition, NegativeRiskScannerConfig, NegativeRiskScannerDeps } from './negative-risk-types';
 import { evaluateExits } from './negative-risk-exit';
 import { scanEntries } from './negative-risk-entry';
 
@@ -43,7 +43,7 @@ export function createNegativeRiskScannerTick(
 
   // Per-tick shared runtime context
   const runtime = {
-    positions: new Map<string, { conditionId: string; yesTokenId: string; noTokenId: string; yesEntryPrice: number; noEntryPrice: number; yesSizeUsdc: number; noSizeUsdc: number; yesOrderId: string; noOrderId: string; openedAt: number }>(),
+    positions: new Map<string, ArbPosition>(),
     cooldowns: new Map<string, number>(),
     cfg,
     clob,
