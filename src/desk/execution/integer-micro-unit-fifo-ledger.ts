@@ -90,8 +90,9 @@ export class IntegerMicroUnitFifoLedger {
 
     if (event.kind === 'sell') {
       const grossProceedsMicro = mulDivMicro(event.sharesMicro, event.priceMicro);
-      this.realizableCashMicro += grossProceedsMicro - feeMicro + rebateMicro + rewardMicro;
+      // Dispose inventory first: the throw must leave no cash or lot state behind.
       const disposedCostMicro = this.disposeFifoCost(event.tokenId, event.sharesMicro);
+      this.realizableCashMicro += grossProceedsMicro - feeMicro + rebateMicro + rewardMicro;
       this.realizedTradingPnlMicro += grossProceedsMicro - feeMicro - disposedCostMicro;
       return;
     }

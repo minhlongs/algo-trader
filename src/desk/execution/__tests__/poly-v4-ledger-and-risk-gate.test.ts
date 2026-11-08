@@ -71,6 +71,19 @@ describe('integer micro-unit FIFO ledger', () => {
       .toThrow(/Insufficient FIFO inventory/);
   });
 
+  it('mutates no cash or PnL state when an over-sell throws', () => {
+    const ledger = new IntegerMicroUnitFifoLedger();
+    ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 10, priceMicro: 500_000 });
+    const snap = () => ({
+      cash: ledger.realizableCashMicro,
+      settled: ledger.settledRedemptionPnlMicro,
+    });
+    const before = snap();
+    expect(() => ledger.apply({ kind: 'settle', tokenId: 't1', sharesMicro: 11, priceMicro: 1_000_000 }))
+      .toThrow(/Insufficient FIFO inventory/);
+    expect(snap()).toEqual(before);
+  });
+
   it('marks open positions to market against VWAP bid minus exit taker fee', () => {
     const ledger = new IntegerMicroUnitFifoLedger();
     ledger.apply({ kind: 'buy', tokenId: 't1', sharesMicro: 1_000_000, priceMicro: 400_000 });
