@@ -55,56 +55,43 @@ describe('scanEntries', () => {
     expect(mockLogger.debug).toHaveBeenCalledWith('Failed to fetch trending markets', 'negative-risk-scanner', expect.anything());
   });
 
-  it('skips markets missing yes/no token ids', async () => {
-    const runtime = makeRuntime([makeMarket({ yesTokenId: '' })]);
+  it('skips markets missing yes/no token ids, closed/resolved, or below min volume', async () => {
+    const runtime = makeRuntime([
+      makeMarket({ yesTokenId: '' }),
+      makeMarket({ closed: true }),
+      makeMarket({ resolved: true }),
+      makeMarket({ volume: 100 }),
+    ]);
     await scanEntries(runtime);
     expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
-  it('skips closed or resolved markets', async () => {
-    const runtime = makeRuntime([makeMarket({ closed: true }), makeMarket({ resolved: true })]);
-    await scanEntries(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
-  });
-
-  it('skips markets below the minimum volume', async () => {
-    const runtime = makeRuntime([makeMarket({ volume: 100 })]);
-    await scanEntries(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
-  });
-
-  it('skips markets that already have an arb position', async () => {
+  it('skips markets that already have an arb position or are on cooldown', async () => {
     const runtime = makeRuntime([makeMarket()], new Map([['m-1', {} as ArbPosition]]));
     await scanEntries(runtime);
     expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
-  });
 
-  it('skips markets on cooldown', async () => {
     mockIsOnCooldown.mockReturnValue(true);
-    const runtime = makeRuntime([makeMarket()]);
-    await scanEntries(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
+    const cooledRuntime = makeRuntime([makeMarket()]);
+    await scanEntries(cooledRuntime);
+    expect(cooledRuntime.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
-  it('skips markets with invalid ask prices', async () => {
-    const runtime = makeRuntime([makeMarket()]);
-    (runtime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ bids: [], asks: [{ price: '0', size: '100' }] });
-    await scanEntries(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
-  });
+  it('skips markets with invalid ask prices, cost >= threshold, or zero token size', async () => {
+    const invalidAsk = makeRuntime([makeMarket()]);
+    (invalidAsk.clob.getOrderBook as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ bids: [], asks: [{ price: '0', size: '100' }] });
+    await scanEntries(invalidAsk);
+    expect(invalidAsk.orderManager.placeOrder).not.toHaveBeenCalled();
 
-  it('skips when total cost meets or exceeds the threshold', async () => {
-    const runtime = makeRuntime([makeMarket()]);
-    (runtime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ bids: [], asks: [{ price: '0.90', size: '100' }] });
-    await scanEntries(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
-  });
+    const highCost = makeRuntime([makeMarket()]);
+    (highCost.clob.getOrderBook as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ bids: [], asks: [{ price: '0.90', size: '100' }] });
+    await scanEntries(highCost);
+    expect(highCost.orderManager.placeOrder).not.toHaveBeenCalled();
 
-  it('skips when computed token size is zero or negative', async () => {
-    const runtime = makeRuntime([makeMarket()]);
-    (runtime as unknown as { cfg: { maxOpportunitySizeUsdc: number } }).cfg.maxOpportunitySizeUsdc = 0;
-    await scanEntries(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
+    const zeroSize = makeRuntime([makeMarket()]);
+    (zeroSize as unknown as { cfg: { maxOpportunitySizeUsdc: number } }).cfg.maxOpportunitySizeUsdc = 0;
+    await scanEntries(zeroSize);
+    expect(zeroSize.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('places both legs, records the position, arms cooldown, logs and emits trade events', async () => {
@@ -153,8 +140,6 @@ describe('scanEntries', () => {
     (runtime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
       bids: [], asks: [{ price: '0.45', size: '100' }],
     }));
-    // Pre-fee profit on 22 paired tokens @ 0.90 is $2.20 (> 2.00), but crypto V2 share
-    // deduction cuts net profit to $1.81885 (<= 2.00), isolating the V2 fee deduction.
     (runtime as unknown as { cfg: { minNetEdgeUsdc: number } }).cfg.minNetEdgeUsdc = 2.0;
     await scanEntries(runtime);
     expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
@@ -169,29 +154,42 @@ describe('scanEntries', () => {
     expect(runtime.orderManager.placeOrder).toHaveBeenCalledTimes(2);
   });
 
-  it('emits real CLOB V2 taker fees on both trade events instead of a zero placeholder', async () => {
-    const runtime = makeRuntime([makeMarket({ question: 'Will Bitcoin close above $100k?' })]);
-    (runtime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+  it('emits real CLOB V2 taker fees on fee-bearing markets and zero on exempt markets', async () => {
+    const cryptoRuntime = makeRuntime([makeMarket({ question: 'Will Bitcoin close above $100k?' })]);
+    (cryptoRuntime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
       bids: [], asks: [{ price: '0.40', size: '100' }],
     }));
-    await scanEntries(runtime);
-    const emitted = (runtime.eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter((c) => c[0] === 'trade.executed');
-    expect(emitted).toHaveLength(2);
-    for (const [, payload] of emitted) {
-      expect(payload.trade.fees).toBe('0.168000');
-    }
-  });
+    await scanEntries(cryptoRuntime);
+    const cryptoEmitted = (cryptoRuntime.eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter((c) => c[0] === 'trade.executed');
+    expect(cryptoEmitted).toHaveLength(2);
+    for (const [, payload] of cryptoEmitted) expect(payload.trade.fees).toBe('0.168000');
 
-  it('emits zero fees for a fee-exempt category', async () => {
-    const runtime = makeRuntime([makeMarket({ question: 'Ukraine ceasefire by July' })]);
-    (runtime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+    const exemptRuntime = makeRuntime([makeMarket({ question: 'Ukraine ceasefire by July' })]);
+    (exemptRuntime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
       bids: [], asks: [{ price: '0.48', size: '100' }],
     }));
-    await scanEntries(runtime);
-    const emitted = (runtime.eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter((c) => c[0] === 'trade.executed');
-    expect(emitted).toHaveLength(2);
-    for (const [, payload] of emitted) {
-      expect(payload.trade.fees).toBe('0.000000');
-    }
+    await scanEntries(exemptRuntime);
+    const exemptEmitted = (exemptRuntime.eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter((c) => c[0] === 'trade.executed');
+    expect(exemptEmitted).toHaveLength(2);
+    for (const [, payload] of exemptEmitted) expect(payload.trade.fees).toBe('0.000000');
+  });
+
+  it('refuses un-grossed-up entry when requireFullRequestedPairMerge is enabled, and places grossed-up orders when grossUpForShareDeduction is enabled', async () => {
+    const blocked = makeRuntime([makeMarket({ question: 'Will Bitcoin close above $100k?' })]);
+    (blocked.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+      bids: [], asks: [{ price: '0.40', size: '100' }],
+    }));
+    Object.assign(blocked.cfg, { requireFullRequestedPairMerge: true });
+    await scanEntries(blocked);
+    expect(blocked.orderManager.placeOrder).not.toHaveBeenCalled();
+
+    const grossed = makeRuntime([makeMarket({ question: 'Will Bitcoin close above $100k?' })]);
+    (grossed.clob.getOrderBook as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+      bids: [], asks: [{ price: '0.40', size: '100' }],
+    }));
+    Object.assign(grossed.cfg, { requireFullRequestedPairMerge: true, grossUpForShareDeduction: true });
+    await scanEntries(grossed);
+    expect(grossed.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+    expect(grossed.orderManager.placeOrder).toHaveBeenCalledWith(expect.objectContaining({ size: '26' }));
   });
 });
