@@ -11,7 +11,7 @@ import type { PolymarketOrderBook } from '../execution/polymarket-adapter';
 import type { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
 import type { LivePositionTracker, FilledOrder } from '../execution/live-position-tracker';
 import type { LiveTradingJournal } from '../execution/live-trading-journal';
-import { calcTakerFee } from './polymarket-fee-calculator';
+import { calcQuadraticTakerFeeRateV2, type PolymarketCategory } from './polymarket-fee-calculator';
 
 export type PaperOrderBookProvider = (
   tokenId: string,
@@ -55,9 +55,10 @@ export function sweepOrderBookLevels(
   side: 'BUY' | 'SELL',
   requestedSize: number,
   limitPrice: number,
+  category: PolymarketCategory = 'politics',
 ): PaperSweepOutcome {
   if (!book) {
-    const feeUsdc = calcTakerFee('politics', limitPrice) * requestedSize * limitPrice;
+    const feeUsdc = calcQuadraticTakerFeeRateV2(category, limitPrice) * requestedSize * limitPrice;
     return {
       status: 'matched', lifecycleType: 'FILLED', requestedSize, limitPrice,
       filledSize: requestedSize, avgFillPrice: limitPrice, feeUsdc, partial: false,
@@ -93,7 +94,7 @@ export function sweepOrderBookLevels(
   }
 
   const avgFillPrice = totalNotional / filledSize;
-  const feeUsdc = calcTakerFee('politics', avgFillPrice) * filledSize * avgFillPrice;
+  const feeUsdc = calcQuadraticTakerFeeRateV2(category, avgFillPrice) * filledSize * avgFillPrice;
   const partial = filledSize < requestedSize - 1e-9;
 
   return {

@@ -14,7 +14,7 @@
  */
 
 import type { PolymarketCategory } from './polymarket-fee-calculator';
-import { calcMakerRebateV2, calcTakerFee } from './polymarket-fee-calculator';
+import { calcMakerRebateV2, calcQuadraticTakerFeeRateV2 } from './polymarket-fee-calculator';
 import {
   advanceConservativeMakerQueue,
   LogOddsAvellanedaStoikovMarketMaker,
@@ -63,7 +63,7 @@ export function simulateMakerEpisode(
   const filledLegs = Math.min(pairCount, queueSim.filledShares);
   const rebate = calcMakerRebateV2(category, yesMid, filledLegs * 2);
   const spreadCapture = filledLegs * (quote.askProbability - quote.bidProbability) * 0.35;
-  const feeRateYes = calcTakerFee(category, snap.yesAsk);
+  const feeRateYes = calcQuadraticTakerFeeRateV2(category, snap.yesAsk);
   // Slightly biased downward (0.48 rather than 0.50): a resting quote is
   // disproportionately hit by the informed side, so adverse selection costs more
   // than the drift it wins back.

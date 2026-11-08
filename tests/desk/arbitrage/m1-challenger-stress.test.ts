@@ -394,7 +394,8 @@ describe('Challenger M1-1: NetProfitabilityCalculator Empirical Stress Suite', (
     });
 
     it('3.5: maker rebate on Polymarket reduces total costs and enhances net profit', () => {
-      // In category 'finance', taker fee is 20 bps (0.0020), maker rebate is 50% = 10 bps (0.0010)
+      // CLOB V2 in category 'finance': rCat = 0.04 => taker fee at p=0.50 is 100 bps (0.0100),
+      // maker rebate pool is 25% = 25 bps (0.0025)
       const resultWithMaker = calculator.evaluate({
         buyLeg: {
           venue: 'polymarket',
@@ -414,15 +415,15 @@ describe('Challenger M1-1: NetProfitabilityCalculator Empirical Stress Suite', (
         slippageConfig: { cexBaseSlippageBps: 0, cexImpactFactorBps: 0, polyBaseSlippageBps: 0, polyImpactFactorBps: 0 },
       });
 
-      // Buy fee (maker rebate) = -$1.00 (-10 bps)
-      expect(resultWithMaker.estimatedBuyFeeUsd).toBeCloseTo(-1.00, 2);
+      // Buy fee (maker rebate) = -$2.50 (-25 bps)
+      expect(resultWithMaker.estimatedBuyFeeUsd).toBeCloseTo(-2.50, 2);
       // Sell fee (Binance 10 bps) = $1.004
       expect(resultWithMaker.estimatedSellFeeUsd).toBeCloseTo(1.004, 3);
-      // Net fee is only $0.004!
-      expect(resultWithMaker.totalCostUsd).toBeCloseTo(0.004, 2);
-      // Gross spread = $4.00. Net profit = $3.996 = ~39.96 bps >= 10 bps hurdle
+      // Net cost is -$1.496 (maker rebate exceeds CEX taker fee)
+      expect(resultWithMaker.totalCostUsd).toBeCloseTo(-1.496, 2);
+      // Gross spread = $4.00. Net profit = $5.496 = ~54.96 bps >= 10 bps hurdle
       expect(resultWithMaker.isProfitable).toBe(true);
-      expect(resultWithMaker.netProfitBps).toBeCloseTo(39.96, 1);
+      expect(resultWithMaker.netProfitBps).toBeCloseTo(54.96, 1);
     });
 
     it('3.6: category exemption on Polymarket (e.g. geopolitics) charges exactly 0 bps fee', () => {

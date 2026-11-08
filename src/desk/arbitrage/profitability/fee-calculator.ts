@@ -4,10 +4,9 @@
  */
 
 import {
-  calcTakerFee,
-  calcMakerRebate,
+  calcQuadraticTakerFeeRateV2,
   classifyMarketCategory,
-  FEE_SCHEDULES,
+  CLOB_V2_QUADRATIC_RATES,
   type PolymarketCategory,
 } from '../../polymarket/polymarket-fee-calculator';
 import type { VenueTradeLeg } from './profitability-types';
@@ -28,19 +27,21 @@ export function calculateLegFee(
       (leg.marketDescription ? classifyMarketCategory(leg.marketDescription) : 'crypto');
 
     const clampedP = Math.min(Math.max(leg.price, 0.001), 0.999);
-    const schedule = FEE_SCHEDULES[category];
+    const schedule = CLOB_V2_QUADRATIC_RATES[category];
 
-    if (schedule.exempt) {
+    if (schedule.rCat <= 0) {
       return { rate: 0, feeUsd: 0 };
     }
 
+    const takerRate = calcQuadraticTakerFeeRateV2(category, clampedP);
+
     if (leg.orderType === 'maker') {
-      const takerRate = calcTakerFee(category, clampedP);
+      // A passive maker pays no taker fee and earns back a share of the taker
+      // fees it causes, so the leg reports as a credit.
       const rebateRate = takerRate * schedule.makerRebatePct;
       return { rate: -rebateRate, feeUsd: -notionalUsd * rebateRate };
     }
 
-    const takerRate = calcTakerFee(category, clampedP);
     return { rate: takerRate, feeUsd: notionalUsd * takerRate };
   }
 
@@ -55,9 +56,9 @@ export function calculatePolymarketFee(
   notionalUsd: number
 ): { rate: number; feeUsd: number; rebateUsd: number } {
   const clampedP = Math.min(Math.max(probability, 0.001), 0.999);
-  const rate = calcTakerFee(category, clampedP);
+  const rate = calcQuadraticTakerFeeRateV2(category, clampedP);
   const feeUsd = notionalUsd * rate;
-  const rebateUsd = calcMakerRebate(category, feeUsd);
+  const rebateUsd = feeUsd * CLOB_V2_QUADRATIC_RATES[category].makerRebatePct;
 
   return {
     rate,
