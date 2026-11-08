@@ -57,7 +57,12 @@ export interface OrderTypedData {
 }
 
 const CTF_EXCHANGE_ADDRESS = '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
-/** CLOB V2/V3 exchange contract that settles against pUSD collateral. */
+/**
+ * Neg-Risk CTF Exchange (`POLY-ALPHA-HUNTER-V4-SPEC-FULL` line 662): the multi-outcome
+ * matching contract that settles against pUSD collateral. The spec never publishes a
+ * distinct non-Neg-Risk `ExchangeV3` address, so routes that need it must be added when
+ * the venue confirms it — do not guess one.
+ */
 export const EXCHANGE_V3_ADDRESS = '0xC5d563A36AE78145C45a50134d48A1215220f80a';
 /** pUSD ERC-20 collateral used as maker/taker asset on the V2/V3 exchange. */
 export const PUSD_COLLATERAL_ADDRESS = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
