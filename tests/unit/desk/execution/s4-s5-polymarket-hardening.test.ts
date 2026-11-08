@@ -349,5 +349,7 @@ describe('Stage S5 — Polymarket Walk-Forward OOS & Stress Evaluation', () => {
     expect(run1.candidates['executable_ask_fee_arb'].stressedNetPnlUsdc).toBeGreaterThan(
       run1.candidates['naive_mid_arb'].stressedNetPnlUsdc,
     );
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosFeesUsdc).toBe(0);
+    expect(run1.candidates['log_odds_maker_mm_v2'].oosNetPnlUsdc).toBeGreaterThan(0);
   });
 });

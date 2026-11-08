@@ -14,11 +14,23 @@ const { walletAddress, signTypedData, hashResult } = vi.hoisted(() => ({
 }));
 
 vi.mock('ethers', () => ({
-  ethers: { Wallet: vi.fn(), TypedDataEncoder: { hash: vi.fn(() => hashResult) } },
+  ethers: {
+    Wallet: vi.fn(),
+    TypedDataEncoder: { hash: vi.fn(() => hashResult) },
+    isHexString: (val: unknown, len?: number) =>
+      typeof val === 'string' && /^0x[0-9a-fA-F]+$/.test(val) && (!len || val.length === 2 + len * 2),
+    keccak256: () => '0x' + '11'.repeat(32),
+    toUtf8Bytes: (s: string) => new TextEncoder().encode(s),
+  },
 }));
 
 import { ethers } from 'ethers';
-import { PolymarketSigner, type PolymarketOrder } from '../polymarket-signer';
+import {
+  EXCHANGE_V3_ADDRESS,
+  PUSD_COLLATERAL_ADDRESS,
+  PolymarketSigner,
+  type PolymarketOrder,
+} from '../polymarket-signer';
 
 class FakeWallet {
   address = walletAddress;
@@ -113,6 +125,18 @@ describe('PolymarketSigner.buildTypedData', () => {
   it('maps a SELL order to side=1', () => {
     const typed = signer.buildTypedData(sampleOrder({ side: 'SELL' }));
     expect((typed.message as Record<string, unknown>).side).toBe(1);
+  });
+
+  it('builds CLOB V2/V3 EIP-712 domain and positionId when protocolVersion="3"', () => {
+    expect(PUSD_COLLATERAL_ADDRESS).toBe('0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB');
+    const typed = signer.buildTypedData(
+      sampleOrder({ protocolVersion: '3', signatureType: 3, positionId: '0x' + '00'.repeat(31) + '2a' }),
+    );
+    expect(typed.domain.name).toBe('Polymarket CTF Exchange V3');
+    expect(typed.domain.verifyingContract).toBe(EXCHANGE_V3_ADDRESS);
+    expect(typed.types.Order.map((f) => f.name)).toContain('positionId');
+    expect(typed.message.positionId).toBe('42');
+    expect(typed.message.signatureType).toBe(3);
   });
 });
 

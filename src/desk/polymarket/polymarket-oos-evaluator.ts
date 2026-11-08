@@ -1,12 +1,17 @@
 /**
- * Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator (Stage S5)
+ * Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator (Stage S5 + CLOB V2)
  *
  * Deterministic walk-forward protocol (70% in-sample, 30% out-of-sample + stressed regime)
  * incorporating executable ask spread, category-aware taker fees (`calcTakerFee`),
- * top-of-book ask depth constraints, and Leg-2 rejection unwind slippage risk.
+ * CLOB V2 maker rebate (`calcMakerRebateV2`), Log-Odds A-S quoting (`log_odds_maker_mm_v2`),
+ * top-of-book depth constraints, and Leg-2 rejection unwind slippage risk.
  */
 
-import { calcTakerFee, type PolymarketCategory } from './polymarket-fee-calculator';
+import { calcMakerRebateV2, calcTakerFee, type PolymarketCategory } from './polymarket-fee-calculator';
+import {
+  advanceConservativeMakerQueue,
+  LogOddsAvellanedaStoikovMarketMaker,
+} from './log-odds-avellaneda-stoikov-mm';
 
 export interface WalkForwardConfig {
   seed: number;
@@ -17,7 +22,11 @@ export interface WalkForwardConfig {
   category?: PolymarketCategory;
 }
 
-export type CandidateId = 'no_trade_baseline' | 'naive_mid_arb' | 'executable_ask_fee_arb';
+export type CandidateId =
+  | 'no_trade_baseline'
+  | 'naive_mid_arb'
+  | 'executable_ask_fee_arb'
+  | 'log_odds_maker_mm_v2';
 
 export interface CandidateEvaluationMetrics {
   candidateId: CandidateId;
@@ -51,6 +60,8 @@ interface SyntheticMarketSnapshot {
   leg2Reject: boolean;
 }
 
+const LOG_ODDS_MM = new LogOddsAvellanedaStoikovMarketMaker();
+
 function nextRand(state: { s: number }): number {
   state.s = (state.s * 1664525 + 1013904223) >>> 0;
   return state.s / 0x100000000;
@@ -83,11 +94,27 @@ function simulateEpisode(
   minNetSpread: number,
   category: PolymarketCategory,
 ): { traded: boolean; grossPnl: number; fees: number; unwindLoss: number; netPnl: number } {
-  if (candidateId === 'no_trade_baseline') {
-    return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-  }
+  if (candidateId === 'no_trade_baseline') return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
   const feeRateYes = calcTakerFee(category, snap.yesAsk);
   const feeRateNo = calcTakerFee(category, snap.noAsk);
+
+  if (candidateId === 'log_odds_maker_mm_v2') {
+    if (snap.yesAskTokens < pairCount || snap.noAskTokens < pairCount || snap.leg2Reject) {
+      return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
+    }
+    const yesMid = (snap.yesBid + snap.yesAsk) / 2;
+    const quote = LOG_ODDS_MM.quotePair({
+      midProbability: yesMid, yangZhangVarianceDaily: 0.04, inventoryShares: 0, ofiNormalized: 0.10, currentVpin: 0.25,
+    });
+    const queueSim = advanceConservativeMakerQueue(20, pairCount + 16, 20, 0.20);
+    if (!queueSim.queueClearedForOurFill || quote.halfSpreadProbability * 2 < minNetSpread) {
+      return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
+    }
+    const filled = Math.min(pairCount, queueSim.filledShares);
+    const rebate = calcMakerRebateV2(category, yesMid, filled * 2);
+    const grossPnl = filled * (quote.askProbability - quote.bidProbability) * 0.35 + rebate;
+    return { traded: true, grossPnl, fees: 0, unwindLoss: 0, netPnl: grossPnl };
+  }
 
   if (candidateId === 'naive_mid_arb') {
     const yesMid = (snap.yesBid + snap.yesAsk) / 2;
@@ -133,16 +160,14 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
   const category = cfg.category ?? 'politics';
   const rngNormal = { s: cfg.seed >>> 0 };
   const rngStress = { s: (cfg.seed ^ 0x9e3779b9) >>> 0 };
-
   const normalSnaps = Array.from({ length: cfg.episodes }, () => generateEpisode(rngNormal, false));
   const stressedSnaps = Array.from({ length: cfg.episodes }, () => generateEpisode(rngStress, true));
-  const ids: CandidateId[] = ['no_trade_baseline', 'naive_mid_arb', 'executable_ask_fee_arb'];
+  const ids: CandidateId[] = ['no_trade_baseline', 'naive_mid_arb', 'executable_ask_fee_arb', 'log_odds_maker_mm_v2'];
   const candidates = {} as Record<CandidateId, CandidateEvaluationMetrics>;
 
   for (const id of ids) {
     let inSampleTrades = 0, inSampleNetPnlUsdc = 0, oosTrades = 0, oosWins = 0;
     let oosGrossPnlUsdc = 0, oosFeesUsdc = 0, oosLegUnwindLossUsdc = 0, oosNetPnlUsdc = 0, stressedNetPnlUsdc = 0;
-
     for (let i = 0; i < cfg.episodes; i++) {
       const res = simulateEpisode(normalSnaps[i]!, id, legSizeUsdc, minNetSpread, category);
       if (i < inSampleCount) {
@@ -160,20 +185,13 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
         stressedNetPnlUsdc += simulateEpisode(stressedSnaps[i]!, id, legSizeUsdc, minNetSpread, category).netPnl;
       }
     }
-
+    const r4 = (x: number): number => Number(x.toFixed(4));
     candidates[id] = {
-      candidateId: id,
-      inSampleTrades,
-      inSampleNetPnlUsdc: Number(inSampleNetPnlUsdc.toFixed(4)),
-      oosTrades,
-      oosGrossPnlUsdc: Number(oosGrossPnlUsdc.toFixed(4)),
-      oosFeesUsdc: Number(oosFeesUsdc.toFixed(4)),
-      oosLegUnwindLossUsdc: Number(oosLegUnwindLossUsdc.toFixed(4)),
-      oosNetPnlUsdc: Number(oosNetPnlUsdc.toFixed(4)),
-      oosWinRate: oosTrades > 0 ? Number((oosWins / oosTrades).toFixed(4)) : 0,
-      stressedNetPnlUsdc: Number(stressedNetPnlUsdc.toFixed(4)),
+      candidateId: id, inSampleTrades, inSampleNetPnlUsdc: r4(inSampleNetPnlUsdc), oosTrades,
+      oosGrossPnlUsdc: r4(oosGrossPnlUsdc), oosFeesUsdc: r4(oosFeesUsdc),
+      oosLegUnwindLossUsdc: r4(oosLegUnwindLossUsdc), oosNetPnlUsdc: r4(oosNetPnlUsdc),
+      oosWinRate: oosTrades > 0 ? r4(oosWins / oosTrades) : 0, stressedNetPnlUsdc: r4(stressedNetPnlUsdc),
     };
   }
-
   return { seed: cfg.seed, episodes: cfg.episodes, inSampleCount, outOfSampleCount, category, candidates };
 }
