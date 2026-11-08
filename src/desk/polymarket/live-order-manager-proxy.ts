@@ -15,7 +15,7 @@
 
 import type { OrderManager, PlaceOrderResult } from '../polymarket/order-manager';
 import type { StrategyLiveBridge, TradeSignal } from './strategy-live-bridge';
-import { calcTakerFee } from './polymarket-fee-calculator';
+import { calcQuadraticTakerFeeRateV2, type PolymarketCategory } from './polymarket-fee-calculator';
 import { logger } from '../../shared/utils/logger';
 
 // ── Proxy ────────────────────────────────────────────────────────────────────────
@@ -39,6 +39,12 @@ export class LiveOrderManagerProxy implements OrderManager {
     price: string | number;
     size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
+    /**
+     * Market fee category used to price the fallback fee estimate. Callers that
+     * omit it keep the previous conservative behaviour of assuming the highest
+     * common non-exempt rate.
+     */
+    category?: PolymarketCategory;
   }): Promise<PlaceOrderResult> {
     this.orderCount++;
     const priceNum = parseFloat(String(params.price));
@@ -81,7 +87,8 @@ export class LiveOrderManagerProxy implements OrderManager {
       const feeUsdc =
         typeof result.response.feeUsdc === 'number'
           ? result.response.feeUsdc
-          : calcTakerFee('politics', fillPriceNum) * filledSizeNum * fillPriceNum;
+          : calcQuadraticTakerFeeRateV2(params.category ?? 'politics', fillPriceNum)
+            * filledSizeNum * fillPriceNum;
       return {
         id: orderId,
         filled: filledSizeNum > 0,

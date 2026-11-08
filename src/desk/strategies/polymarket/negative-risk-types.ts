@@ -29,6 +29,11 @@ export interface NegativeRiskScannerConfig {
   stopLossPct?: number;
   /** Maximum hold time before forced exit (ms) */
   maxHoldMs?: number;
+  /**
+   * Minimum net USDC profit per entry required after CLOB V2 fees and share
+   * deduction. Defaults to 0, so an entry only needs a positive net edge.
+   */
+  minNetEdgeUsdc?: number;
 }
 
 export const DEFAULT_CONFIG: NegativeRiskScannerConfig = {

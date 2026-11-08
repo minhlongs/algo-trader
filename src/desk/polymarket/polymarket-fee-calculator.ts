@@ -1,52 +1,23 @@
 // Polymarket dynamic fee calculator — March 30, 2026 & CLOB V2 Nov 2026 Quadratic Fee/Reward Engine
 // Legacy calcTakerFee kept for backwards-compatible backtests; V2 quadratic functions match CLOB V2.
+// Category tables and the keyword classifier live in ./polymarket-clob-v2-fee-categories and are
+// re-exported here so every existing import path stays source-compatible.
 
-export type PolymarketCategory =
-  | 'crypto' | 'politics' | 'finance' | 'tech'
-  | 'culture' | 'sports' | 'science' | 'pop_culture'
-  | 'geopolitics' | 'world_events';
+export {
+  classifyMarketCategory,
+  CLOB_V2_MAX_BASE_FEE_BPS,
+  CLOB_V2_QUADRATIC_RATES,
+  FEE_SCHEDULES,
+  type FeeSchedule,
+  type PolymarketCategory,
+} from './polymarket-clob-v2-fee-categories';
 
-export interface FeeSchedule {
-  /** Minimum taker fee (at probability near 50%), e.g. 0.0035 = 0.35% */
-  minTakerFee: number;
-  /** Maximum taker fee (at probability near 0% or 100%), e.g. 0.018 = 1.80% */
-  maxTakerFee: number;
-  /** Maker rebate as fraction of taker fees collected */
-  makerRebatePct: number;
-  /** True for exempt categories (no fees at all) */
-  exempt: boolean;
-}
-
-/** CLOB V2 statutory base fee cap in basis points (1000 bps = 10.00%) */
-export const CLOB_V2_MAX_BASE_FEE_BPS = 1000;
-
-/** CLOB V2 quadratic category rate r_cat: Fee = C * r_cat * p * (1 - p) */
-export const CLOB_V2_QUADRATIC_RATES: Record<PolymarketCategory, { rCat: number; makerRebatePct: number }> = {
-  crypto:       { rCat: 0.07, makerRebatePct: 0.20 },
-  sports:       { rCat: 0.05, makerRebatePct: 0.20 },
-  politics:     { rCat: 0.04, makerRebatePct: 0.25 },
-  finance:      { rCat: 0.04, makerRebatePct: 0.25 },
-  tech:         { rCat: 0.04, makerRebatePct: 0.20 },
-  culture:      { rCat: 0.04, makerRebatePct: 0.20 },
-  science:      { rCat: 0.04, makerRebatePct: 0.20 },
-  pop_culture:  { rCat: 0.04, makerRebatePct: 0.20 },
-  geopolitics:  { rCat: 0.00, makerRebatePct: 0.00 },
-  world_events: { rCat: 0.00, makerRebatePct: 0.00 },
-};
-
-/** Fee schedules per Polymarket category — effective March 30, 2026 */
-export const FEE_SCHEDULES: Record<PolymarketCategory, FeeSchedule> = {
-  crypto:       { minTakerFee: 0.0035, maxTakerFee: 0.018,  makerRebatePct: 0.20, exempt: false },
-  politics:     { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.25, exempt: false },
-  finance:      { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.50, exempt: false },
-  tech:         { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.20, exempt: false },
-  culture:      { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.20, exempt: false },
-  sports:       { minTakerFee: 0.0015, maxTakerFee: 0.0075, makerRebatePct: 0.20, exempt: false },
-  science:      { minTakerFee: 0.0015, maxTakerFee: 0.0075, makerRebatePct: 0.20, exempt: false },
-  pop_culture:  { minTakerFee: 0.0015, maxTakerFee: 0.0075, makerRebatePct: 0.20, exempt: false },
-  geopolitics:  { minTakerFee: 0,      maxTakerFee: 0,      makerRebatePct: 0,    exempt: true  },
-  world_events: { minTakerFee: 0,      maxTakerFee: 0,      makerRebatePct: 0,    exempt: true  },
-};
+import {
+  CLOB_V2_MAX_BASE_FEE_BPS,
+  CLOB_V2_QUADRATIC_RATES,
+  FEE_SCHEDULES,
+  type PolymarketCategory,
+} from './polymarket-clob-v2-fee-categories';
 
 /** Legacy linear fee estimator (kept for backwards-compatible backtest suite). */
 export function calcTakerFee(category: PolymarketCategory, probability: number): number {
@@ -71,8 +42,8 @@ export function calcQuadraticTakerFeeRateV2(
   const { rCat } = CLOB_V2_QUADRATIC_RATES[category];
   if (rCat <= 0) return 0;
   const rawRate = rCat * p * (1 - p);
-  // The 10% cap is a spec safety net, not the active binding: rCat maxes at 0.07
-  // and p(1-p) maxes at 0.25, so the shipped rates peak at 175 bps. Keep the clamp
+  // The 10% cap is a spec safety net, not the active binding: rCat maxes at 0.10
+  // and p(1-p) maxes at 0.25, so the shipped rates peak at 250 bps. Keep the clamp
   // so a future higher rCat cannot silently price a share above the cap.
   return Math.min(rawRate, CLOB_V2_MAX_BASE_FEE_BPS / 10_000);
 }
@@ -96,6 +67,53 @@ export function calcMakerRebateV2(
 ): number {
   const takerFee = calcQuadraticTakerFeeV2(category, probability, contracts, false);
   return takerFee * CLOB_V2_QUADRATIC_RATES[category].makerRebatePct;
+}
+
+/**
+ * Net outcome shares and mergeable pair count after CLOB V2 Taker-BUY share deduction.
+ * Buying `C` outcome shares as a taker deducts the fee directly in outcome tokens,
+ * delivering `C * (1 - feeRate)` net shares and breaking 1:1 YES/NO merge parity
+ * unless the order sizes are grossed up beforehand.
+ */
+export interface TakerBuyParityBreakdown {
+  requestedPairs: number;
+  yesFeeRate: number;
+  noFeeRate: number;
+  yesNetShares: number;
+  noNetShares: number;
+  mergeablePairs: number;
+  grossUpYesShares: number;
+  grossUpNoShares: number;
+  canMergeFullRequestedPairs: boolean;
+}
+
+export function computeTakerBuyNetSharesAndMergeablePairs(
+  requestedPairs: number,
+  yesAsk: number,
+  noAsk: number,
+  category: PolymarketCategory,
+): TakerBuyParityBreakdown {
+  const safePairs = Math.max(0, requestedPairs);
+  const yesFeeRate = calcQuadraticTakerFeeRateV2(category, yesAsk, false);
+  const noFeeRate = calcQuadraticTakerFeeRateV2(category, noAsk, false);
+  const yesNetShares = safePairs * (1 - yesFeeRate);
+  const noNetShares = safePairs * (1 - noFeeRate);
+  const mergeablePairs = Math.min(yesNetShares, noNetShares);
+  const grossUpYesShares = yesFeeRate < 1 ? Math.ceil(safePairs / (1 - yesFeeRate)) : Infinity;
+  const grossUpNoShares = noFeeRate < 1 ? Math.ceil(safePairs / (1 - noFeeRate)) : Infinity;
+  const canMergeFullRequestedPairs = mergeablePairs >= safePairs - 1e-9;
+
+  return {
+    requestedPairs: safePairs,
+    yesFeeRate,
+    noFeeRate,
+    yesNetShares,
+    noNetShares,
+    mergeablePairs,
+    grossUpYesShares,
+    grossUpNoShares,
+    canMergeFullRequestedPairs,
+  };
 }
 
 export interface LiquidityRewardScoreInput {
@@ -162,35 +180,4 @@ export function netProfitMaker(
 ): number {
   const feeRate = calcTakerFee(category, probability);
   return amount + estimatedTakerVolume * feeRate * FEE_SCHEDULES[category].makerRebatePct;
-}
-
-const CATEGORY_KEYWORDS: Record<PolymarketCategory, string[]> = {
-  crypto:       ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'token', 'defi', 'blockchain', 'solana', 'sol'],
-  politics:     ['president', 'election', 'congress', 'senate', 'democrat', 'republican', 'vote', 'governor', 'trump', 'biden'],
-  finance:      ['fed', 'interest rate', 'gdp', 'inflation', 'stock', 'sp500', 's&p', 'nasdaq', 'treasury', 'fomc'],
-  tech:         ['ai', 'openai', 'apple', 'google', 'microsoft', 'nvidia', 'spacex', 'launch', 'chip'],
-  culture:      ['oscar', 'grammy', 'album', 'movie', 'netflix', 'show', 'concert', 'festival'],
-  sports:       ['nba', 'nfl', 'mlb', 'champion', 'playoff', 'world cup', 'super bowl', 'finals', 'match'],
-  science:      ['climate', 'nasa', 'mars', 'vaccine', 'cdc', 'pandemic', 'research', 'study'],
-  pop_culture:  ['celebrity', 'kardashian', 'tiktok', 'instagram', 'viral', 'meme', 'influencer'],
-  geopolitics:  ['war', 'nato', 'sanctions', 'ukraine', 'china', 'taiwan', 'ceasefire', 'un security'],
-  world_events: ['earthquake', 'hurricane', 'tsunami', 'wildfire', 'disaster', 'famine'],
-};
-
-/** Classify a market description into a Polymarket fee category (defaults to 'politics'). */
-export function classifyMarketCategory(description: string): PolymarketCategory {
-  const lower = ` ${description.toLowerCase()} `;
-  let bestCategory: PolymarketCategory = 'politics';
-  let bestScore = 0;
-
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS) as [PolymarketCategory, string[]][]) {
-    const score = keywords.filter((kw) =>
-      kw.length <= 4 ? new RegExp(`\\b${kw}\\b`).test(lower) : lower.includes(kw),
-    ).length;
-    if (score > bestScore) {
-      bestScore = score;
-      bestCategory = cat;
-    }
-  }
-  return bestCategory;
 }

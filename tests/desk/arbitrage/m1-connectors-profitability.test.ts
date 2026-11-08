@@ -983,17 +983,17 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
     });
 
     it('3.2: evaluates Polymarket dynamic taker fee curve at probability p = 0.50', () => {
-      // At p = 0.50, distance = 0, rate = minTakerFee = 0.0035 (35 bps)
+      // CLOB V2 quadratic curve: crypto rCat = 0.07 => rate = 0.07 * 0.50 * 0.50 = 0.0175 (175 bps)
       const res = calculator.calculatePolymarketFee('crypto', 0.50, 1000);
-      expect(res.rate).toBeCloseTo(0.0035, 4);
-      expect(res.feeUsd).toBeCloseTo(3.50, 2);
+      expect(res.rate).toBeCloseTo(0.0175, 4);
+      expect(res.feeUsd).toBeCloseTo(17.50, 2);
     });
 
     it('3.3: evaluates Polymarket dynamic taker fee curve at extreme probability p = 0.95', () => {
-      // At p = 0.95, distance = 0.45, ratio = 0.9, rate = 0.0035 + (0.018 - 0.0035)*0.9 = 0.01655
+      // CLOB V2 quadratic curve: crypto rCat = 0.07 => rate = 0.07 * 0.95 * 0.05 = 0.003325 (33.25 bps)
       const res = calculator.calculatePolymarketFee('crypto', 0.95, 1000);
-      expect(res.rate).toBeCloseTo(0.01655, 4);
-      expect(res.feeUsd).toBeCloseTo(16.55, 2);
+      expect(res.rate).toBeCloseTo(0.003325, 6);
+      expect(res.feeUsd).toBeCloseTo(3.325, 3);
     });
 
     it('3.4: returns 0 fee for exempt Polymarket categories (geopolitics, world_events)', () => {
@@ -1020,7 +1020,7 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
         tradeAmount: 2000, // $1,000 notional
       });
 
-      // Finance maker rebate is 50% of taker fee (0.0020 * 0.50 = -0.0010 rebate)
+      // CLOB V2 finance maker rebate is 25% of the quadratic taker rate (0.0100 * 0.25 = -0.0025)
       expect(analysis.estimatedBuyFeeUsd).toBeLessThan(0);
     });
   });

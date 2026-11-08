@@ -40,7 +40,8 @@ export const VenueTradeLegSchema = z.object({
   polymarketCategory: z
     .enum([
       'crypto', 'politics', 'finance', 'tech', 'culture',
-      'sports', 'science', 'pop_culture', 'geopolitics', 'world_events',
+      'sports', 'science', 'pop_culture', 'nfl_college_football', 'table_tennis',
+      'geopolitics', 'world_events',
     ])
     .optional(),
   marketDescription: z.string().optional(),
