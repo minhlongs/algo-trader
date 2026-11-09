@@ -133,9 +133,6 @@ export class MarketMakerStrategy extends EventEmitter {
         const book = await this.clobClient.getOrderBook(state.info.yesTokenId);
         const ba = this.bestBidAsk(book);
 
-        const totalLiq = parseFloat(book.bids[0]?.size ?? '0') + parseFloat(book.asks[0]?.size ?? '0');
-        if (totalLiq < this.cfg.minLiquidity) continue;
-
         const resolved = resolveTickQuotesWithRegime({
           state,
           book,
@@ -151,6 +148,9 @@ export class MarketMakerStrategy extends EventEmitter {
           });
           continue;
         }
+
+        const totalLiq = parseFloat(book.bids[0]?.size ?? '0') + parseFloat(book.asks[0]?.size ?? '0');
+        if (totalLiq < this.cfg.minLiquidity) continue;
 
         const { bid, ask } = resolved;
         const category = state.category ?? classifyMarketCategory(key);

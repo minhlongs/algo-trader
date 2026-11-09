@@ -133,7 +133,8 @@ export class PolymarketOrderReconciler {
           order.avgFillPrice = (order.filledSize * order.avgFillPrice + deltaSize * fillPrice) / nextSize;
           order.filledSize = nextSize;
           order.feesPaidUsdc += fee;
-          const cashDelta = (order.side === 'BUY' ? -1 : 1) * deltaSize * fillPrice;
+          const rewardUsdc = (event.rebateUsdc ?? 0) + (event.liquidityRewardUsdc ?? 0);
+          const cashDelta = (order.side === 'BUY' ? -1 : 1) * deltaSize * fillPrice + rewardUsdc;
           this.cashUsdc += cashDelta - fee;
           this.netFillCashDeltaUsdc += cashDelta;
           this.totalFeesUsdc += fee;

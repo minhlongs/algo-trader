@@ -73,13 +73,9 @@ export function recordFillInFifoLedger(
   const availableMicro = ledger.openSharesMicro(order.tokenId);
   if (availableMicro < sharesMicro) {
     const shortfallMicro = sharesMicro - availableMicro;
-    ledger.apply({
-      kind: 'open',
-      tokenId: order.tokenId,
-      sharesMicro: shortfallMicro,
-      priceMicro,
-      feeMicro: 0,
-    });
+    const lots = ledger.openLots.get(order.tokenId) ?? [];
+    lots.push({ sharesMicro: shortfallMicro, priceMicro, entryFeeMicro: 0 });
+    ledger.openLots.set(order.tokenId, lots);
   }
   ledger.apply({
     kind: 'sell',

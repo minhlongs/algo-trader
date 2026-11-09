@@ -63,14 +63,26 @@ export function buildPreTradeCandidateFromIntent(
     !isLimitOrder && intent.side === 'BUY',
   );
 
-  const fallbackFreeMicro = Math.round((ctx.rawFreeBalanceUsd ?? 50_000) * MICRO_PER_PUSD);
-  const rawFreeBalanceMicro = readNumMeta(meta, 'rawFreeBalanceMicro', fallbackFreeMicro);
-  const fallbackExposureMicro = Math.round((ctx.currentMarketExposureUsd ?? 0) * MICRO_PER_PUSD);
-  const currentMarketExposureMicro = readNumMeta(
-    meta,
-    'currentMarketExposureMicro',
-    fallbackExposureMicro,
-  );
+  const ctxFreeMicro =
+    ctx.rawFreeBalanceUsd !== undefined && Number.isFinite(ctx.rawFreeBalanceUsd)
+      ? Math.round(ctx.rawFreeBalanceUsd * MICRO_PER_PUSD)
+      : undefined;
+  const metaFreeMicro = typeof meta?.rawFreeBalanceMicro === 'number' ? meta.rawFreeBalanceMicro : undefined;
+  const rawFreeBalanceMicro =
+    ctxFreeMicro !== undefined && metaFreeMicro !== undefined
+      ? Math.min(ctxFreeMicro, metaFreeMicro)
+      : (ctxFreeMicro ?? metaFreeMicro ?? 50_000 * MICRO_PER_PUSD);
+
+  const ctxExposureMicro =
+    ctx.currentMarketExposureUsd !== undefined && Number.isFinite(ctx.currentMarketExposureUsd)
+      ? Math.round(ctx.currentMarketExposureUsd * MICRO_PER_PUSD)
+      : undefined;
+  const metaExposureMicro =
+    typeof meta?.currentMarketExposureMicro === 'number' ? meta.currentMarketExposureMicro : undefined;
+  const currentMarketExposureMicro =
+    ctxExposureMicro !== undefined && metaExposureMicro !== undefined
+      ? Math.max(ctxExposureMicro, metaExposureMicro)
+      : (ctxExposureMicro ?? metaExposureMicro ?? 0);
 
   return {
     priceMicro,
