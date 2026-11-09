@@ -1,6 +1,6 @@
 /**
  * OrderBookStream — WebSocket handlers & heartbeat.
- * Extracted from orderbook-stream.ts. Bodies moved VERBATIM; zero behavior change.
+ * Extracted from orderbook-stream.ts.
  */
 
 import WebSocket from 'ws';
@@ -10,6 +10,8 @@ import {
   parseWsMessage,
   mergeAndBuildPricePayload,
   buildSubscribePayload,
+  buildChunkedSubscribePayloads,
+  resolveAuthoritativeTickSizeMicro,
 } from './orderbook-stream-parse';
 import { handleDisconnect, type OrderBookStreamReconnectCtx } from './orderbook-stream-reconnect';
 
@@ -19,6 +21,8 @@ export interface OrderBookStreamWsCtx {
   heartbeatTimer: ReturnType<typeof setInterval> | null;
   subscribedTokenIds: Set<string>;
   lastPrices: Map<string, { bestBid: number; bestAsk: number }>;
+  wsTickSizeMicroByToken: Map<string, number>;
+  tickSizeMicroByToken: Map<string, number>;
   eventBus: TradingEventBus;
   reconnectAttempts: number;
   closed: boolean;
@@ -31,7 +35,14 @@ export interface OrderBookStreamWsCtx {
   onMessage(raw: string): void;
   onError(err: Error): void;
   onClose(code: number, reason: Buffer): void;
-  processPriceEvent(event: { tokenId: string; bestBid: number; bestAsk: number; lastTradePrice?: number; volume24h?: number }): void;
+  processPriceEvent(event: {
+    tokenId: string;
+    bestBid: number;
+    bestAsk: number;
+    lastTradePrice?: number;
+    volume24h?: number;
+    tickSizeMicro?: number;
+  }): void;
   sendSubscribe(tokenId: string): void;
   startHeartbeat(): void;
 }
@@ -47,14 +58,17 @@ export function setupWebSocketHandlers(ctx: OrderBookStreamWsCtx): void {
   ctx.ws.on('close', (code, reason) => ctx.onClose(code, reason));
 }
 
-/** Handle WebSocket open: reset reconnect, start heartbeat, resubscribe. */
+/** Handle WebSocket open: reset reconnect, start heartbeat, and send chunked subscribe frames. */
 export function onOpen(ctx: OrderBookStreamWsCtx): void {
   logger.info('[OrderBookStream] Connected to Polymarket CLOB WebSocket');
   ctx.reconnectAttempts = 0;
   startHeartbeat(ctx);
 
-  for (const tokenId of ctx.subscribedTokenIds) {
-    sendSubscribe(ctx, tokenId);
+  if (ctx.ws && ctx.ws.readyState === WebSocket.OPEN && ctx.subscribedTokenIds.size > 0) {
+    const payloads = buildChunkedSubscribePayloads(ctx.subscribedTokenIds);
+    for (const payload of payloads) {
+      ctx.ws.send(payload);
+    }
   }
 
   ctx.emit('connected');
@@ -71,6 +85,18 @@ export function onMessage(ctx: OrderBookStreamWsCtx, raw: string): void {
     const events = parseWsMessage(raw);
     for (const event of events) {
       if (!ctx.subscribedTokenIds.has(event.tokenId)) continue;
+      if (event.tickSizeMicro !== undefined && event.tickSizeMicro > 0) {
+        const prevWs = ctx.wsTickSizeMicroByToken.get(event.tokenId);
+        const finerWs = prevWs !== undefined ? Math.min(prevWs, event.tickSizeMicro) : event.tickSizeMicro;
+        ctx.wsTickSizeMicroByToken.set(event.tokenId, finerWs);
+        const authoritative = resolveAuthoritativeTickSizeMicro(
+          finerWs,
+          ctx.tickSizeMicroByToken.get(event.tokenId),
+        );
+        ctx.tickSizeMicroByToken.set(event.tokenId, authoritative);
+        ctx.emit('tick_size_change', { tokenId: event.tokenId, tickSizeMicro: authoritative });
+        continue;
+      }
       processPriceEvent(ctx, event);
     }
   } catch (err) {
@@ -97,7 +123,7 @@ export function onClose(ctx: OrderBookStreamWsCtx, code: number, reason: Buffer)
 /** Process price event: merge with last known, emit updates. */
 export function processPriceEvent(
   ctx: OrderBookStreamWsCtx,
-  event: { tokenId: string; bestBid: number; bestAsk: number; lastTradePrice?: number; volume24h?: number }
+  event: { tokenId: string; bestBid: number; bestAsk: number; lastTradePrice?: number; volume24h?: number },
 ): void {
   const { tokenId, bestBid, bestAsk } = event;
   const merged = mergeAndBuildPricePayload(tokenId, bestBid, bestAsk, ctx.lastPrices.get(tokenId));
@@ -109,13 +135,12 @@ export function processPriceEvent(
   logger.debug('[OrderBookStream] PRICE_UPDATE', merged.payload);
 }
 
-/** Send subscribe message for a token. */
+/** Send subscribe message for a single token. */
 export function sendSubscribe(ctx: OrderBookStreamWsCtx, tokenId: string): void {
   if (!ctx.ws || ctx.ws.readyState !== WebSocket.OPEN) return;
   ctx.ws.send(buildSubscribePayload(tokenId));
   logger.debug('[OrderBookStream] Subscribed', { tokenId });
 }
-
 
 /** Start heartbeat ping interval. */
 export function startHeartbeat(ctx: OrderBookStreamWsCtx): void {
