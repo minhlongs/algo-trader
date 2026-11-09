@@ -9,11 +9,13 @@
  * and maintains an `IntegerMicroUnitFifoLedger` (`POLY-ALPHA-HUNTER-V4` §13.2).
  */
 
-import { IntegerMicroUnitFifoLedger } from './integer-micro-unit-fifo-ledger';
+import { IntegerMicroUnitFifoLedger, type UnrealizedMtmResult } from './integer-micro-unit-fifo-ledger';
 import {
   buildFifoSummary,
+  computeUnrealizedMtmFromFifoLedger,
   hydrateFifoLedger,
   recordFillInFifoLedger,
+  recordSettlementInFifoLedger,
   serializeFifoLedger,
   type FifoLedgerSnapshot,
   type ReconcilerFifoSummary,
@@ -24,57 +26,29 @@ export type ReconcilerOrderStatus = 'CREATED' | 'SUBMITTED' | 'ACKNOWLEDGED' | '
 export type OrderLifecycleEventType = 'SUBMITTED' | 'ACKNOWLEDGED' | 'PARTIALLY_FILLED' | 'FILLED' | 'CANCELLED' | 'REJECTED' | 'TIMEOUT_UNKNOWN';
 
 export interface CreateReconciledOrderInput {
-  intentId: string;
-  orderId: string;
-  marketId: string;
-  tokenId: string;
-  side: 'BUY' | 'SELL';
-  requestedSize: number;
-  limitPrice: number;
-  timestamp: number;
+  intentId: string; orderId: string; marketId: string; tokenId: string;
+  side: 'BUY' | 'SELL'; requestedSize: number; limitPrice: number; timestamp: number;
 }
 
 export interface ReconciledOrderRecord extends CreateReconciledOrderInput {
-  status: ReconcilerOrderStatus;
-  filledSize: number;
-  avgFillPrice: number;
-  feesPaidUsdc: number;
-  updatedAt: number;
+  status: ReconcilerOrderStatus; filledSize: number; avgFillPrice: number; feesPaidUsdc: number; updatedAt: number;
 }
 
 export interface OrderLifecycleEvent {
-  eventId: string;
-  orderId: string;
-  type: OrderLifecycleEventType;
-  fillSize?: number;
-  fillPrice?: number;
-  feeUsdc?: number;
-  rebateUsdc?: number;
-  liquidityRewardUsdc?: number;
-  timestamp: number;
+  eventId: string; orderId: string; type: OrderLifecycleEventType;
+  fillSize?: number; fillPrice?: number; feeUsdc?: number; rebateUsdc?: number; liquidityRewardUsdc?: number; timestamp: number;
 }
 
 export interface ReconciliationSummary {
-  initialCashUsdc: number;
-  cashUsdc: number;
-  totalFeesUsdc: number;
-  netCashFlowFromFillsUsdc: number;
-  unexplainedDriftUsdc: number;
-  unknownOrderCount: number;
-  positionsByToken: Record<string, number>;
+  initialCashUsdc: number; cashUsdc: number; totalFeesUsdc: number; netCashFlowFromFillsUsdc: number;
+  unexplainedDriftUsdc: number; unknownOrderCount: number; positionsByToken: Record<string, number>;
   fifoLedger?: ReconcilerFifoSummary;
 }
 
 export interface ReconcilerSnapshot {
-  initialCashUsdc: number;
-  cashUsdc: number;
-  totalFeesUsdc: number;
-  netFillCashDeltaUsdc: number;
-  orders: ReconciledOrderRecord[];
-  intents: string[];
-  processedEvents: string[];
-  positionsByToken: Record<string, number>;
-  fifoLedger?: FifoLedgerSnapshot;
+  initialCashUsdc: number; cashUsdc: number; totalFeesUsdc: number; netFillCashDeltaUsdc: number;
+  orders: ReconciledOrderRecord[]; intents: string[]; processedEvents: string[];
+  positionsByToken: Record<string, number>; fifoLedger?: FifoLedgerSnapshot;
 }
 
 export class PolymarketOrderReconciler {
@@ -150,6 +124,29 @@ export class PolymarketOrderReconciler {
     }
     order.updatedAt = Math.max(order.updatedAt, event.timestamp);
     return { ...order };
+  }
+
+  /** Settle an open position at binary market resolution (`$0` or `$1` per share) across reconciler cash & FIFO ledger (PnL tier 4). */
+  settleMarketRedemption(params: { marketId?: string; tokenId: string; payoutPerShareUsdc: 0 | 1 }): {
+    settledShares: number; payoutUsdc: number; settledRedemptionPnlMicro: number; settledRedemptionPnlUsdc: number;
+  } {
+    const hasUnknownToken = [...this.orders.values()].some((o) => o.tokenId === params.tokenId && o.status === 'UNKNOWN');
+    if ((params.marketId && this.hasUnknownOrderOnMarket(params.marketId)) || hasUnknownToken) {
+      throw new Error(`Market ${params.marketId ?? params.tokenId} blocked: has unresolved UNKNOWN order awaiting reconciliation`);
+    }
+    const settledShares = Math.max(0, this.positions.get(params.tokenId) ?? 0);
+    if (settledShares === 0) return { settledShares: 0, payoutUsdc: 0, settledRedemptionPnlMicro: 0, settledRedemptionPnlUsdc: 0 };
+    const payoutUsdc = settledShares * params.payoutPerShareUsdc;
+    const fifo = recordSettlementInFifoLedger(this.fifoLedger, params.tokenId, settledShares, params.payoutPerShareUsdc);
+    this.cashUsdc += payoutUsdc;
+    this.netFillCashDeltaUsdc += payoutUsdc;
+    this.positions.set(params.tokenId, 0);
+    return { settledShares, payoutUsdc, settledRedemptionPnlMicro: fifo.settledRedemptionPnlDeltaMicro, settledRedemptionPnlUsdc: fifo.settledRedemptionPnlUsdc };
+  }
+
+  /** Compute executable VWAP Bid mark-to-market net of exit fee for an open position (PnL tier 5). */
+  computeUnrealizedMtm(tokenId: string, bidLevels: Array<{ price: number; size: number }>, exitFeeBps = 0): UnrealizedMtmResult & { unrealizedMtmUsdc: number } {
+    return computeUnrealizedMtmFromFifoLedger(this.fifoLedger, tokenId, bidLevels, exitFeeBps);
   }
 
   reconcile(): ReconciliationSummary {
