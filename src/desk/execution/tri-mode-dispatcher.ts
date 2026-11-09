@@ -5,6 +5,8 @@
 
 import { logger } from '../../shared/utils/logger';
 import type { LiveExecutionGuard } from './live-execution-guard';
+import type { PolymarketV2PreTradeRiskGate } from './polymarket-v2-pretrade-risk-gate';
+import { validateIntentWithPolymarketV2Gate } from './polymarket-v2-pretrade-bridge';
 import type { UnifiedTradeIntent } from '../orchestrator/orchestrator-types';
 import type { DispatchResult, OrderSlice, TriMode } from './tri-mode-types';
 
@@ -13,10 +15,16 @@ export class TriModeDispatcher {
   private liveApiCallsCount = 0;
   private virtualFillsCount = 0;
   private readonly liveGuard?: LiveExecutionGuard;
+  private readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
 
-  constructor(initialMode: TriMode = 'PAPER', liveGuard?: LiveExecutionGuard) {
+  constructor(
+    initialMode: TriMode = 'PAPER',
+    liveGuard?: LiveExecutionGuard,
+    polymarketV2Gate?: PolymarketV2PreTradeRiskGate,
+  ) {
     this.mode = initialMode;
     this.liveGuard = liveGuard;
+    this.polymarketV2Gate = polymarketV2Gate;
   }
 
   public setMode(mode: TriMode): void {
@@ -28,6 +36,24 @@ export class TriModeDispatcher {
   public getLiveApiCallsCount(): number { return this.liveApiCallsCount; }
   public getVirtualFillsCount(): number { return this.virtualFillsCount; }
   public getLiveGuard(): LiveExecutionGuard | undefined { return this.liveGuard; }
+  public getPolymarketV2Gate(): PolymarketV2PreTradeRiskGate | undefined { return this.polymarketV2Gate; }
+
+  private rejectOrder(intent: UnifiedTradeIntent, arrivalPrice: number, startMs: number, error?: string): DispatchResult {
+    return {
+      orderId: `ord-rej-${Date.now()}`,
+      intentId: intent.intentId,
+      mode: this.mode,
+      venue: intent.venue,
+      status: 'REJECTED',
+      executedQuantity: 0,
+      averagePrice: arrivalPrice,
+      feeUsd: 0,
+      slippageBps: 0,
+      latencyMs: Math.max(1, Date.now() - startMs),
+      timestamp: error ? Date.now() : startMs,
+      ...(error ? { error } : {}),
+    };
+  }
 
   public dispatch(
     intent: UnifiedTradeIntent,
@@ -39,19 +65,18 @@ export class TriModeDispatcher {
     const startMs = Date.now();
 
     if (executedQty <= 0) {
-      return {
-        orderId: `ord-rej-${Date.now()}`,
-        intentId: intent.intentId,
-        mode: this.mode,
-        venue: intent.venue,
-        status: 'REJECTED',
-        executedQuantity: 0,
-        averagePrice: arrivalPrice,
-        feeUsd: 0,
-        slippageBps: 0,
-        latencyMs: 1,
-        timestamp: startMs,
-      };
+      return this.rejectOrder(intent, arrivalPrice, startMs);
+    }
+
+    if (this.polymarketV2Gate && intent.venue === 'polymarket_clob') {
+      const v2Verdict = validateIntentWithPolymarketV2Gate(this.polymarketV2Gate, intent, arrivalPrice, executedQty);
+      if (!v2Verdict.allowed) {
+        const reason = `PolymarketV2PreTradeRiskGate: ${v2Verdict.reason ?? 'REJECTED'}`;
+        logger.warn(`[TriModeDispatcher] Order rejected by PolymarketV2PreTradeRiskGate: ${reason}`, {
+          intentId: intent.intentId,
+        });
+        return this.rejectOrder(intent, arrivalPrice, startMs, reason);
+      }
     }
 
     if (this.mode === 'LIVE' && this.liveGuard) {
@@ -60,20 +85,7 @@ export class TriModeDispatcher {
         logger.warn(`[TriModeDispatcher] LIVE order rejected by LiveExecutionGuard: ${reason}`, {
           intentId: intent.intentId,
         });
-        return {
-          orderId: `ord-rej-${Date.now()}`,
-          intentId: intent.intentId,
-          mode: this.mode,
-          venue: intent.venue,
-          status: 'REJECTED',
-          executedQuantity: 0,
-          averagePrice: arrivalPrice,
-          feeUsd: 0,
-          slippageBps: 0,
-          latencyMs: Math.max(1, Date.now() - startMs),
-          timestamp: Date.now(),
-          error: reason,
-        };
+        return this.rejectOrder(intent, arrivalPrice, startMs, reason);
       }
       const guardVerdict = this.liveGuard.guardOrder({
         tokenId: intent.symbol,
@@ -90,20 +102,7 @@ export class TriModeDispatcher {
         logger.warn(`[TriModeDispatcher] LIVE order rejected by LiveExecutionGuard: ${reason}`, {
           intentId: intent.intentId,
         });
-        return {
-          orderId: `ord-rej-${Date.now()}`,
-          intentId: intent.intentId,
-          mode: this.mode,
-          venue: intent.venue,
-          status: 'REJECTED',
-          executedQuantity: 0,
-          averagePrice: arrivalPrice,
-          feeUsd: 0,
-          slippageBps: 0,
-          latencyMs: Math.max(1, Date.now() - startMs),
-          timestamp: Date.now(),
-          error: reason,
-        };
+        return this.rejectOrder(intent, arrivalPrice, startMs, reason);
       }
     }
 

@@ -8,6 +8,11 @@ import {
   calcQuadraticTakerFeeV2,
   type PolymarketCategory,
 } from '../../polymarket/polymarket-fee-calculator';
+import type {
+  LogOddsAsConfig,
+  MarketMakerV2Telemetry,
+  VolumeSynchronizedVpinEstimator,
+} from './market-maker-v2-quoting';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -24,6 +29,18 @@ export interface MarketMakerConfig {
   skewSpreadMultiplier: number;
   /** Minimum liquidity (USDC) to consider a market */
   minLiquidity: number;
+  /** Use Log-Odds Avellaneda-Stoikov pricing instead of linear spread */
+  useLogOddsAsQuoting?: boolean;
+  /** VPIN kill-switch threshold above which State 3 halts quoting (default 0.70) */
+  vpinKillSwitchThreshold?: number;
+  /** Volume bucket size in micro-units for VPIN (default 100_000_000 = $100) */
+  vpinBucketVolumeMicro?: number;
+  /** Rolling bucket window count for VPIN (default 50) */
+  vpinRollingWindowBuckets?: number;
+  /** Daily Yang-Zhang variance in logit space for Log-Odds AS model */
+  yangZhangVarianceDaily?: number;
+  /** Optional Log-Odds Avellaneda-Stoikov parameter overrides */
+  logOddsConfig?: Partial<LogOddsAsConfig>;
 }
 
 export const DEFAULT_CONFIG: MarketMakerConfig = {
@@ -33,6 +50,11 @@ export const DEFAULT_CONFIG: MarketMakerConfig = {
   maxInventorySkew: 3,
   skewSpreadMultiplier: 2.0,
   minLiquidity: 1000,
+  useLogOddsAsQuoting: false,
+  vpinKillSwitchThreshold: 0.70,
+  vpinBucketVolumeMicro: 100_000_000,
+  vpinRollingWindowBuckets: 50,
+  yangZhangVarianceDaily: 0.04,
 };
 
 // ── Per-market state ──────────────────────────────────────────────────────────
@@ -67,6 +89,11 @@ export interface MmMarketState {
   lastQuoteEconomics?: MakerQuoteEconomicsV2;
   cumulativeRebateUsdc?: number;
   cumulativeAvoidedTakerFeeUsdc?: number;
+  prevBook?: RawOrderBook;
+  vpinEstimator?: VolumeSynchronizedVpinEstimator;
+  vpinOverride?: number;
+  v2Telemetry?: MarketMakerV2Telemetry;
+  haltedByToxicRegime?: boolean;
 }
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────

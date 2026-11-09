@@ -18,6 +18,7 @@ import type { PolymarketOrder } from './polymarket-signer';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { LiveOrderManagerCtx } from './live-order-manager-types';
 import { SIGNAL_TTL_MS, RATE_LIMIT_ORDERS_PER_SEC } from './live-order-manager-types';
+import { validateSignalWithPolymarketV2Gate } from './polymarket-v2-pretrade-bridge';
 
 /**
  * Submit a TradeSignal through Hard Risk Circuit gates.
@@ -68,6 +69,19 @@ export async function runRiskGates(
     feeRateBps: 0,
     signatureType: 0,
   };
+
+  if (ctx.polymarketV2Gate) {
+    const v2Result = validateSignalWithPolymarketV2Gate(ctx.polymarketV2Gate, signal);
+    if (!v2Result.allowed) {
+      const reason = v2Result.reason ?? 'POLYMARKET_V2_GATE_REJECTED';
+      logger.warn('POLYMARKET_V2_RISK_GATE_REJECTED', 'LiveOrderManager', {
+        strategy: strategyName,
+        tokenId: signal.tokenId.slice(0, 12),
+        reason,
+      });
+      throw new Error(`RISK_GATE_REJECTED: ${reason}`);
+    }
+  }
 
   if (ctx.riskGateManager) {
     const { allowed, reason } = await ctx.riskGateManager.check(strategyName, {
