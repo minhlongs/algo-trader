@@ -4,6 +4,7 @@
 
 import type { PortfolioTelemetryHub } from '../telemetry/portfolio-telemetry-hub';
 import type { EngineId } from '../portfolio/types';
+import type { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
 
 export interface MarketResolutionEvent {
   conditionId: string;
@@ -50,6 +51,7 @@ export interface RealizedSettlement {
 export interface SettlementListenerConfig {
   portfolioHub?: PortfolioTelemetryHub;
   defaultEngineId?: EngineId;
+  reconciler?: PolymarketOrderReconciler;
 }
 
 export function buildMarketResolutionSettlement(

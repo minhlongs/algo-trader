@@ -2,7 +2,8 @@
  * Live Trading Orchestrator — Adapter & Component Factory
  *
  * Builds and wires the Polymarket adapter, position tracker, guard, journal,
- * risk manager, reconciler, and paper orderbook simulator from a LiveTradingConfig.
+ * risk manager, reconciler, microstructure tracker, and paper orderbook simulator
+ * from a LiveTradingConfig.
  */
 
 import { buildPolymarketAdapter } from '../execution/polymarket-execution-adapter';
@@ -21,6 +22,7 @@ import {
   extractPaperOrderParams, sweepOrderBookLevels, applyPaperOrderOutcome,
   PaperLegDecayTracker, type PaperOrderBookProvider,
 } from './paper-orderbook-simulator';
+import { PolymarketMicrostructureTracker } from './polymarket-microstructure-tracker';
 import { saveReconcilerState, appendG2ShadowTelemetry } from './g2-shadow-telemetry';
 import { logger } from '../../shared/utils/logger';
 import type { LiveTradingConfig } from './live-trading-types';
@@ -37,6 +39,7 @@ export interface OrchestratorComponents {
   reconciler: PolymarketOrderReconciler;
   legDecayTracker: PaperLegDecayTracker;
   polymarketV2Gate: PolymarketV2PreTradeRiskGate;
+  microstructureTracker: PolymarketMicrostructureTracker;
 }
 
 /** Normalize config with defaults and PAPER_MODE env fallback. */
@@ -81,11 +84,16 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
   const legDecayTracker = new PaperLegDecayTracker();
   const polymarketV2Gate = new PolymarketV2PreTradeRiskGate({
     maxMarketExposureMicro: Math.max(7_500_000_000, Math.round(config.capitalUsdc * 1_000_000)),
+    maxConsecutiveBookErrors: 3,
     ...config.preTradeRiskGateConfigV2,
   });
+  const microstructureTracker = new PolymarketMicrostructureTracker(
+    undefined,
+    config.preTradeRiskGateConfigV2?.maxVpinThreshold ?? 0.70,
+  );
   return {
     adapter: null, positionTracker, orderManager: null, guard, journal,
-    riskManager, strategyExecutor, reconciler, legDecayTracker, polymarketV2Gate,
+    riskManager, strategyExecutor, reconciler, legDecayTracker, polymarketV2Gate, microstructureTracker,
   };
 }
 
@@ -94,6 +102,7 @@ export async function executePaperOrderPlacement(params: {
   positionTracker: LivePositionTracker;
   journal: LiveTradingJournal;
   legDecayTracker: PaperLegDecayTracker;
+  microstructureTracker?: PolymarketMicrostructureTracker;
   orderBookProvider: PaperOrderBookProvider | null;
   startedAtMs: number;
   order: PolymarketOrder;
@@ -104,49 +113,37 @@ export async function executePaperOrderPlacement(params: {
   if (params.orderBookProvider) {
     try {
       book = await params.orderBookProvider(params.order.tokenId);
+      params.microstructureTracker?.recordOrderBookSnapshot(params.order.tokenId, book);
     } catch {
+      params.microstructureTracker?.recordBookError(params.order.tokenId);
       book = { bids: [], asks: [] };
     }
   }
   const outcome = sweepOrderBookLevels(book, side, requestedSize, limitPrice);
   params.legDecayTracker.recordOrderOutcome(params.order.tokenId, side, outcome);
   applyPaperOrderOutcome({
-    reconciler: params.reconciler,
-    positionTracker: params.positionTracker,
-    journal: params.journal,
-    order: params.order,
-    orderId: params.orderId,
-    side,
-    outcome,
+    reconciler: params.reconciler, positionTracker: params.positionTracker,
+    journal: params.journal, order: params.order, orderId: params.orderId, side, outcome,
   });
   const loopStartedAt = params.startedAtMs > 0 ? params.startedAtMs : Date.now();
   const decayStats = params.legDecayTracker.getStats();
   saveReconcilerState(params.reconciler, loopStartedAt, decayStats);
   appendG2ShadowTelemetry({
-    loopStartedAtMs: loopStartedAt,
-    mode: 'PAPER',
-    event: 'fill',
+    loopStartedAtMs: loopStartedAt, mode: 'PAPER', event: 'fill',
     positionSummary: params.positionTracker.getSummary(),
     reconciliationSummary: params.reconciler.reconcile(),
     leg2DecayStats: decayStats,
   });
   return {
-    orderID: params.orderId,
-    status: outcome.status,
-    filledSize: outcome.filledSize,
-    fillPrice: outcome.avgFillPrice,
-    feeUsdc: outcome.feeUsdc,
-    partial: outcome.partial,
+    orderID: params.orderId, status: outcome.status, filledSize: outcome.filledSize,
+    fillPrice: outcome.avgFillPrice, feeUsdc: outcome.feeUsdc, partial: outcome.partial,
   };
 }
 
 export function recordPaperOrderCancel(reconciler: PolymarketOrderReconciler, orderId: string): void {
   if (reconciler.getOrder(orderId)) {
     reconciler.applyEvent({
-      eventId: `${orderId}:cancel:${Date.now()}`,
-      orderId,
-      type: 'CANCELLED',
-      timestamp: Date.now(),
+      eventId: `${orderId}:cancel:${Date.now()}`, orderId, type: 'CANCELLED', timestamp: Date.now(),
     });
   }
 }
@@ -156,22 +153,17 @@ export function buildStartComponents(
   config: LiveTradingConfig,
   core: OrchestratorComponents,
   getTickSizeMicro?: (tokenId: string) => number,
+  getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number },
 ): void {
   const exec = buildPolymarketAdapter({
-    paperTrading: config.paperTrading,
-    chainId: config.chainId,
-    apiUrl: config.apiUrl,
+    paperTrading: config.paperTrading, chainId: config.chainId, apiUrl: config.apiUrl,
   });
   if (exec.adapter) {
     core.adapter = exec.adapter;
     core.guard.setEnabled(true);
     core.orderManager = new LiveOrderManager(
-      exec.adapter,
-      core.positionTracker,
-      undefined,
-      core.riskManager,
-      core.polymarketV2Gate,
-      getTickSizeMicro,
+      exec.adapter, core.positionTracker, undefined, core.riskManager,
+      core.polymarketV2Gate, getTickSizeMicro, getRiskContext,
     );
   }
 }

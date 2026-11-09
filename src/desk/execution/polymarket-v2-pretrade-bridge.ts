@@ -149,6 +149,7 @@ export function validateOrchestratorOrderV2(params: {
   journal: LiveTradingJournal;
   order: PolymarketOrder;
   getTickSizeMicro?: (tokenId: string) => number;
+  getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number };
 }): void {
   const raw = params.order as unknown as Record<string, unknown>;
   if (params.order.price === undefined && params.order.size === undefined && raw['makerAmount'] !== undefined) {
@@ -162,6 +163,7 @@ export function validateOrchestratorOrderV2(params: {
     });
     throw new Error(`RISK_GATE_REJECTED: ${reason}`);
   }
+  const riskCtx = params.getRiskContext?.(params.order.tokenId);
   const v2Result = validateSignalWithPolymarketV2Gate(
     params.polymarketV2Gate,
     {
@@ -180,6 +182,8 @@ export function validateOrchestratorOrderV2(params: {
         params.order.side,
         params.order.size,
       ),
+      currentVpin: riskCtx?.currentVpin,
+      consecutiveBookErrors: riskCtx?.consecutiveBookErrors,
     },
   );
   if (!v2Result.allowed) {

@@ -38,6 +38,7 @@ function assertPolymarketV2OrderAllowed(host: LiveOrderManagerCtx, order: Polyma
         )
       : false;
   const tickSizeMicro = host.getTickSizeMicro?.(order.tokenId);
+  const riskCtx = host.getRiskContext?.(order.tokenId);
 
   const v2Result = validateSignalWithPolymarketV2Gate(
     host.polymarketV2Gate,
@@ -53,6 +54,8 @@ function assertPolymarketV2OrderAllowed(host: LiveOrderManagerCtx, order: Polyma
       currentMarketExposureUsd,
       tickSizeMicro,
       isPositionReducing,
+      currentVpin: riskCtx?.currentVpin,
+      consecutiveBookErrors: riskCtx?.consecutiveBookErrors,
     },
   );
   if (!v2Result.allowed) {

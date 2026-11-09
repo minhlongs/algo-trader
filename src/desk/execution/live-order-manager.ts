@@ -53,6 +53,7 @@ export class LiveOrderManager extends EventEmitter {
     readonly riskGateManager?: RiskGateManager,
     readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate,
     readonly getTickSizeMicro?: (tokenId: string) => number,
+    readonly getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number },
   ) {
     super();
     this.adapter = adapter;

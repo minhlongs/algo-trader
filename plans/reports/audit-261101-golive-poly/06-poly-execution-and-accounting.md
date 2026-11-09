@@ -16,12 +16,13 @@ Every live order entrypoint now enforces `LIVE_TRADING_ENABLED === 'true'` and `
   - Duplicate `intentId` in `createOrder` throws `Duplicate order intent: <intentId>`.
   - Duplicate `eventId` in `applyEvent` is a deterministic no-op returning the current order record without double-counting fills or fees.
 - **Market Lock on `UNKNOWN`:** When an order transitions to `UNKNOWN` (via `TIMEOUT_UNKNOWN`), `hasUnknownOrderOnMarket(marketId)` blocks any new `createOrder` or `settleMarketRedemption` on that `marketId` until the `UNKNOWN` order is reconciled (`FILLED`, `CANCELLED`, or `REJECTED`).
-- **Zero-Drift Accounting & 5-Tier Micro-Unit FIFO Ledger (`polymarket-order-reconciler-ledger.ts`, `Issue #252` & `Issue #258`):** `reconcile()` verifies `cashUsdc === initialCashUsdc + netCashFlowFromFillsUsdc - totalFeesUsdc` (`unexplainedDriftUsdc === 0`) and exposes `fifoLedger` (`IntegerMicroUnitFifoLedger`, `MICRO_PER_PUSD = 1_000_000`), tracking:
+- **Zero-Drift Accounting & 5-Tier Micro-Unit FIFO Ledger (`polymarket-order-reconciler-ledger.ts`, `polymarket-microstructure-tracker.ts`, `Issue #252`, `PR #259` `Issue #258`, & `Issue #260`):** `reconcile()` verifies `cashUsdc === initialCashUsdc + netCashFlowFromFillsUsdc - totalFeesUsdc` (`unexplainedDriftUsdc === 0`), is wired into `LiveTradingOrchestrator.settleMarketRedemption` / `computeUnrealizedMtm` and `PolymarketSettlementListener`, and exposes `fifoLedger` (`IntegerMicroUnitFifoLedger`, `MICRO_PER_PUSD = 1_000_000`), tracking:
   1. `realizedTradingPnlMicro` (gross FIFO lot close PnL + `totalTakerFeesPaidMicro`),
   2. `accruedMakerRebateMicro` (`recordMakerRebate`),
   3. `accruedLiquidityRewardMicro` (`recordLiquidityReward`),
   4. `settledRedemptionPnlMicro` (`settleMarketRedemption` at binary `$0` or `$1` payout per share with zero cash drift), and
   5. `computeUnrealizedMtm(tokenId, bidLevels, exitFeeBps)` (VWAP bid-book mark-to-market net of exit fee).
+- **Dynamic Microstructure & Book-Error Pre-Trade Risk Context (`polymarket-microstructure-tracker.ts`, `Issue #260`):** `LiveTradingOrchestrator` tracks per-token 5-level OFI (`OfiSnapshotResult`), rolling VPIN (`VolumeSynchronizedVpinEstimator`), 4-state regime (`estimateRegimeFromOfiVpin`), and `consecutiveBookErrors`, and forwards `getRiskContext(tokenId)` (`{ currentVpin, consecutiveBookErrors }`) into `validateOrchestratorOrderV2` and `LiveOrderManager` (`runRiskGates`, `submitAndTrackOrder`, `submitOnlyOrder`).
 
 ## 3. Fee, Partial-Fill, Multi-Leg Arb & Backtest Net-of-Fee Accounting
 - `performEntry` records `actualNotionalUsdc = tokenQuantity * fillPrice` when `filledSize` or `fillPrice` is returned by the venue, stores `entryFeesUsdc` on `OpenPosition`, and emits `order.fees ?? '0'`.
