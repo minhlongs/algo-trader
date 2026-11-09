@@ -13,12 +13,12 @@ flowchart TD
 
   subgraph NodeDesk [Polymarket Desk & Execution Engine]
     ModeGate[execution-mode.ts: READ_ONLY / PAPER / LIVE]
-    ExecGuard[LiveExecutionGuard + SynchronizedRiskGate]
+    ExecGuard[LiveExecutionGuard + SynchronizedRiskGate + PolymarketV2PreTradeRiskGate]
     Builder[polymarket-execution-adapter.ts]
-    Orch[LiveTradingOrchestrator + StrategyRunner]
+    Orch[LiveTradingOrchestrator + StrategyRunner + StrategyLiveBridge]
     LOM[LiveOrderManager + live-order-submission.ts]
-    Reconciler[PolymarketOrderReconciler + g2-shadow-telemetry.ts]
-    Arb[PolymarketArbStrategy + 30 Backtest Strategies]
+    Reconciler[PolymarketOrderReconciler + IntegerMicroUnitFifoLedger + g2-shadow-telemetry.ts]
+    Arb[PolymarketArbStrategy + 30 Backtest Strategies + BacktestOrderManager V2 Fees]
   end
 
   Arb --> LOM

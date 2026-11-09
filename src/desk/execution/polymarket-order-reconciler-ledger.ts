@@ -10,6 +10,7 @@ import {
   IntegerMicroUnitFifoLedger,
   MICRO_PER_PUSD,
   type OpenLot,
+  type UnrealizedMtmResult,
 } from './integer-micro-unit-fifo-ledger';
 import type { OrderLifecycleEvent, ReconciledOrderRecord } from './polymarket-order-reconciler';
 
@@ -36,10 +37,7 @@ export interface ReconcilerFifoSummary {
 
 /**
  * Record a `PARTIALLY_FILLED` or `FILLED` lifecycle event into `IntegerMicroUnitFifoLedger`.
- *
- * If a `SELL` exceeds current tracked open FIFO lots (e.g. legacy position opened
- * before FIFO tracking or short-side paper test), any uncovered portion is seeded
- * via an `'open'` lot at the order's limit/fill price so the reconciler never throws.
+ * Any uncovered `SELL` shortfall is seeded via an open lot so legacy positions never throw.
  */
 export function recordFillInFifoLedger(
   ledger: IntegerMicroUnitFifoLedger,
@@ -58,34 +56,57 @@ export function recordFillInFifoLedger(
   const liquidityRewardMicro = Math.round((event.liquidityRewardUsdc ?? 0) * MICRO_PER_PUSD);
 
   if (order.side === 'BUY') {
-    ledger.apply({
-      kind: 'buy',
-      tokenId: order.tokenId,
-      sharesMicro,
-      priceMicro,
-      feeMicro,
-      rebateMicro,
-      liquidityRewardMicro,
-    });
+    ledger.apply({ kind: 'buy', tokenId: order.tokenId, sharesMicro, priceMicro, feeMicro, rebateMicro, liquidityRewardMicro });
     return;
   }
 
-  const availableMicro = ledger.openSharesMicro(order.tokenId);
-  if (availableMicro < sharesMicro) {
-    const shortfallMicro = sharesMicro - availableMicro;
-    const lots = ledger.openLots.get(order.tokenId) ?? [];
-    lots.push({ sharesMicro: shortfallMicro, priceMicro, entryFeeMicro: 0 });
-    ledger.openLots.set(order.tokenId, lots);
+  ensureSufficientLots(ledger, order.tokenId, sharesMicro, priceMicro);
+  ledger.apply({ kind: 'sell', tokenId: order.tokenId, sharesMicro, priceMicro, feeMicro, rebateMicro, liquidityRewardMicro });
+}
+
+function ensureSufficientLots(
+  ledger: IntegerMicroUnitFifoLedger,
+  tokenId: string,
+  requiredSharesMicro: number,
+  fallbackPriceMicro: number,
+): void {
+  const availableMicro = ledger.openSharesMicro(tokenId);
+  if (availableMicro < requiredSharesMicro) {
+    const lots = ledger.openLots.get(tokenId) ?? [];
+    lots.push({ sharesMicro: requiredSharesMicro - availableMicro, priceMicro: fallbackPriceMicro, entryFeeMicro: 0 });
+    ledger.openLots.set(tokenId, lots);
   }
-  ledger.apply({
-    kind: 'sell',
-    tokenId: order.tokenId,
-    sharesMicro,
-    priceMicro,
-    feeMicro,
-    rebateMicro,
-    liquidityRewardMicro,
-  });
+}
+
+/** Settle an open token position at binary market resolution (`$0.00` or `$1.00` per share) into `settledRedemptionPnlMicro`. */
+export function recordSettlementInFifoLedger(
+  ledger: IntegerMicroUnitFifoLedger,
+  tokenId: string,
+  shares: number,
+  payoutPerShareUsdc: 0 | 1,
+): { settledSharesMicro: number; settledRedemptionPnlDeltaMicro: number; settledRedemptionPnlUsdc: number } {
+  const sharesMicro = Math.round(shares * MICRO_PER_PUSD);
+  if (sharesMicro <= 0) return { settledSharesMicro: 0, settledRedemptionPnlDeltaMicro: 0, settledRedemptionPnlUsdc: 0 };
+  ensureSufficientLots(ledger, tokenId, sharesMicro, Math.round(0.5 * MICRO_PER_PUSD));
+  const beforeMicro = ledger.settledRedemptionPnlMicro;
+  ledger.apply({ kind: 'settle', tokenId, sharesMicro, priceMicro: payoutPerShareUsdc * MICRO_PER_PUSD });
+  const deltaMicro = ledger.settledRedemptionPnlMicro - beforeMicro;
+  return { settledSharesMicro: sharesMicro, settledRedemptionPnlDeltaMicro: deltaMicro, settledRedemptionPnlUsdc: deltaMicro / MICRO_PER_PUSD };
+}
+
+/** Mark an open token position to market against Bid book depth (PnL tier 5). */
+export function computeUnrealizedMtmFromFifoLedger(
+  ledger: IntegerMicroUnitFifoLedger,
+  tokenId: string,
+  bidLevels: Array<{ price: number; size: number }>,
+  exitFeeBps = 0,
+): UnrealizedMtmResult & { unrealizedMtmUsdc: number } {
+  const bidLevelsMicro = bidLevels.map((b) => ({
+    priceMicro: Math.round(b.price * MICRO_PER_PUSD),
+    sharesMicro: Math.round(b.size * MICRO_PER_PUSD),
+  }));
+  const res = ledger.computeUnrealizedMtmMicro(tokenId, bidLevelsMicro, exitFeeBps);
+  return { ...res, unrealizedMtmUsdc: res.unrealizedMtmMicro / MICRO_PER_PUSD };
 }
 
 export function buildFifoSummary(ledger: IntegerMicroUnitFifoLedger): ReconcilerFifoSummary {
@@ -138,17 +159,11 @@ export function hydrateFifoLedger(
     ledger.settledRedemptionPnlMicro = fifoSnapshot.settledRedemptionPnlMicro;
     ledger.totalTakerFeesPaidMicro = fifoSnapshot.totalTakerFeesPaidMicro;
     for (const [tokenId, lots] of Object.entries(fifoSnapshot.openLotsByToken ?? {})) {
-      if (lots.length > 0) {
-        ledger.openLots.set(
-          tokenId,
-          lots.map((l) => ({ ...l })),
-        );
-      }
+      if (lots.length > 0) ledger.openLots.set(tokenId, lots.map((l) => ({ ...l })));
     }
     return;
   }
 
-  // Legacy snapshot fallback: reconstruct open FIFO lots from positionsByToken & filled BUY orders
   ledger.realizableCashMicro = 0;
   ledger.realizedTradingPnlMicro = 0;
   ledger.accruedRebateIncomeMicro = 0;
@@ -161,11 +176,7 @@ export function hydrateFifoLedger(
     const matchingBuy = orders.find((o) => o.tokenId === tokenId && o.side === 'BUY' && o.filledSize > 0);
     const avgPrice = matchingBuy?.avgFillPrice ?? 0.5;
     ledger.openLots.set(tokenId, [
-      {
-        sharesMicro: Math.round(posShares * MICRO_PER_PUSD),
-        priceMicro: Math.round(avgPrice * MICRO_PER_PUSD),
-        entryFeeMicro: 0,
-      },
+      { sharesMicro: Math.round(posShares * MICRO_PER_PUSD), priceMicro: Math.round(avgPrice * MICRO_PER_PUSD), entryFeeMicro: 0 },
     ]);
   }
 }
