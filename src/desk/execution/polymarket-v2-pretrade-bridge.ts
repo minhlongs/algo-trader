@@ -28,27 +28,43 @@ export interface PolymarketV2RiskContext {
   readonly consecutiveBookErrors?: number;
 }
 
-function readNumMeta(
-  meta: Record<string, unknown> | undefined,
-  key: string,
-  fallback: number,
-): number {
+function readNumMeta(meta: Record<string, unknown> | undefined, key: string, fallback: number): number {
   const raw = meta?.[key];
   return typeof raw === 'number' ? raw : fallback;
 }
 
-function readBoolMeta(
-  meta: Record<string, unknown> | undefined,
-  key: string,
-  fallback: boolean,
-): boolean {
+function readBoolMeta(meta: Record<string, unknown> | undefined, key: string, fallback: boolean): boolean {
   const raw = meta?.[key];
   return typeof raw === 'boolean' ? raw : fallback;
 }
 
-/**
- * Convert a UnifiedTradeIntent targeting `polymarket_clob` into a `PreTradeOrderCandidateV2`.
- */
+function resolveBalanceAndExposureMicro(
+  ctx: PolymarketV2RiskContext,
+  overrideFreeMicro: number | undefined,
+  overrideExposureMicro: number | undefined,
+): { rawFreeBalanceMicro: number; currentMarketExposureMicro: number } {
+  const ctxFreeMicro =
+    ctx.rawFreeBalanceUsd !== undefined && Number.isFinite(ctx.rawFreeBalanceUsd)
+      ? Math.round(ctx.rawFreeBalanceUsd * MICRO_PER_PUSD)
+      : undefined;
+  const rawFreeBalanceMicro =
+    ctxFreeMicro !== undefined && overrideFreeMicro !== undefined
+      ? Math.min(ctxFreeMicro, overrideFreeMicro)
+      : (ctxFreeMicro ?? overrideFreeMicro ?? 50_000 * MICRO_PER_PUSD);
+
+  const ctxExposureMicro =
+    ctx.currentMarketExposureUsd !== undefined && Number.isFinite(ctx.currentMarketExposureUsd)
+      ? Math.round(ctx.currentMarketExposureUsd * MICRO_PER_PUSD)
+      : undefined;
+  const currentMarketExposureMicro =
+    ctxExposureMicro !== undefined && overrideExposureMicro !== undefined
+      ? Math.max(ctxExposureMicro, overrideExposureMicro)
+      : (ctxExposureMicro ?? overrideExposureMicro ?? 0);
+
+  return { rawFreeBalanceMicro, currentMarketExposureMicro };
+}
+
+/** Convert a UnifiedTradeIntent targeting `polymarket_clob` into a `PreTradeOrderCandidateV2`. */
 export function buildPreTradeCandidateFromIntent(
   intent: UnifiedTradeIntent,
   unitPrice: number,
@@ -56,61 +72,30 @@ export function buildPreTradeCandidateFromIntent(
   ctx: PolymarketV2RiskContext = {},
 ): PreTradeOrderCandidateV2 {
   const meta = intent.metadata;
-  const priceMicro = Math.round(unitPrice * MICRO_PER_PUSD);
-  const sharesMicro = Math.round(scaledQuantity * MICRO_PER_PUSD);
-  const tickSizeMicro = readNumMeta(meta, 'tickSizeMicro', ctx.tickSizeMicro ?? 1_000);
   const defaultIsLimit = intent.orderType === 'LIMIT' || intent.orderType === 'TWO_SIDED_QUOTE';
   const isLimitOrder = readBoolMeta(meta, 'isLimitOrder', defaultIsLimit);
-  const isMarketBuyFakOrFok = readBoolMeta(
-    meta,
-    'isMarketBuyFakOrFok',
-    !isLimitOrder && intent.side === 'BUY',
+  const { rawFreeBalanceMicro, currentMarketExposureMicro } = resolveBalanceAndExposureMicro(
+    ctx,
+    typeof meta?.rawFreeBalanceMicro === 'number' ? meta.rawFreeBalanceMicro : undefined,
+    typeof meta?.currentMarketExposureMicro === 'number' ? meta.currentMarketExposureMicro : undefined,
   );
 
-  const ctxFreeMicro =
-    ctx.rawFreeBalanceUsd !== undefined && Number.isFinite(ctx.rawFreeBalanceUsd)
-      ? Math.round(ctx.rawFreeBalanceUsd * MICRO_PER_PUSD)
-      : undefined;
-  const metaFreeMicro = typeof meta?.rawFreeBalanceMicro === 'number' ? meta.rawFreeBalanceMicro : undefined;
-  const rawFreeBalanceMicro =
-    ctxFreeMicro !== undefined && metaFreeMicro !== undefined
-      ? Math.min(ctxFreeMicro, metaFreeMicro)
-      : (ctxFreeMicro ?? metaFreeMicro ?? 50_000 * MICRO_PER_PUSD);
-
-  const ctxExposureMicro =
-    ctx.currentMarketExposureUsd !== undefined && Number.isFinite(ctx.currentMarketExposureUsd)
-      ? Math.round(ctx.currentMarketExposureUsd * MICRO_PER_PUSD)
-      : undefined;
-  const metaExposureMicro =
-    typeof meta?.currentMarketExposureMicro === 'number' ? meta.currentMarketExposureMicro : undefined;
-  const currentMarketExposureMicro =
-    ctxExposureMicro !== undefined && metaExposureMicro !== undefined
-      ? Math.max(ctxExposureMicro, metaExposureMicro)
-      : (ctxExposureMicro ?? metaExposureMicro ?? 0);
-
   return {
-    priceMicro,
-    sharesMicro,
-    tickSizeMicro,
+    priceMicro: Math.round(unitPrice * MICRO_PER_PUSD),
+    sharesMicro: Math.round(scaledQuantity * MICRO_PER_PUSD),
+    tickSizeMicro: readNumMeta(meta, 'tickSizeMicro', ctx.tickSizeMicro ?? 1_000),
     isLimitOrder,
-    isMarketBuyFakOrFok,
+    isMarketBuyFakOrFok: readBoolMeta(meta, 'isMarketBuyFakOrFok', !isLimitOrder && intent.side === 'BUY'),
     isPositionReducing: readBoolMeta(meta, 'isPositionReducing', Boolean(ctx.isPositionReducing)),
     rawFreeBalanceMicro,
     currentMarketExposureMicro,
     currentVpin: readNumMeta(meta, 'currentVpin', ctx.currentVpin ?? 0),
     clusterCvar99Pct: readNumMeta(meta, 'clusterCvar99Pct', ctx.clusterCvar99Pct ?? 0),
-    consecutiveBookErrors: readNumMeta(
-      meta,
-      'consecutiveBookErrors',
-      ctx.consecutiveBookErrors ?? 0,
-    ),
+    consecutiveBookErrors: readNumMeta(meta, 'consecutiveBookErrors', ctx.consecutiveBookErrors ?? 0),
   };
 }
 
-/**
- * Validate a `UnifiedTradeIntent` through `PolymarketV2PreTradeRiskGate` when
- * `intent.venue === 'polymarket_clob'`. Non-Polymarket venues are approved automatically.
- */
+/** Validate a `UnifiedTradeIntent` through `PolymarketV2PreTradeRiskGate` when `intent.venue === 'polymarket_clob'`. */
 export function validateIntentWithPolymarketV2Gate(
   gate: PolymarketV2PreTradeRiskGate,
   intent: UnifiedTradeIntent,
@@ -126,40 +111,38 @@ export function validateIntentWithPolymarketV2Gate(
       sanitizedNotionalMicro: 0,
     };
   }
-  const candidate = buildPreTradeCandidateFromIntent(intent, unitPrice, scaledQuantity, ctx);
-  return gate.validateOrder(candidate);
+  return gate.validateOrder(buildPreTradeCandidateFromIntent(intent, unitPrice, scaledQuantity, ctx));
 }
 
-/**
- * Validate a `TradeSignal` through `PolymarketV2PreTradeRiskGate` before CLOB submission.
- */
+/** Validate a `TradeSignal` through `PolymarketV2PreTradeRiskGate` before CLOB submission. */
 export function validateSignalWithPolymarketV2Gate(
   gate: PolymarketV2PreTradeRiskGate,
   signal: TradeSignal,
   ctx: PolymarketV2RiskContext = {},
 ): PreTradeValidationResultV2 {
-  const priceMicro = Math.round(signal.price * MICRO_PER_PUSD);
-  const sharesMicro = Math.round(signal.size * MICRO_PER_PUSD);
   const isLimitOrder = signal.isLimitOrder ?? true;
-  const fallbackFreeMicro = Math.round((ctx.rawFreeBalanceUsd ?? 50_000) * MICRO_PER_PUSD);
-  const fallbackExposureMicro = Math.round((ctx.currentMarketExposureUsd ?? 0) * MICRO_PER_PUSD);
+  const { rawFreeBalanceMicro, currentMarketExposureMicro } = resolveBalanceAndExposureMicro(
+    ctx,
+    signal.rawFreeBalanceMicro,
+    signal.currentMarketExposureMicro,
+  );
 
   return gate.validateOrder({
-    priceMicro,
-    sharesMicro,
+    priceMicro: Math.round(signal.price * MICRO_PER_PUSD),
+    sharesMicro: Math.round(signal.size * MICRO_PER_PUSD),
     tickSizeMicro: signal.tickSizeMicro ?? ctx.tickSizeMicro ?? 1_000,
     isLimitOrder,
     isMarketBuyFakOrFok: !isLimitOrder && signal.side === 'BUY',
     isPositionReducing: Boolean(ctx.isPositionReducing),
-    rawFreeBalanceMicro: signal.rawFreeBalanceMicro ?? fallbackFreeMicro,
-    currentMarketExposureMicro: signal.currentMarketExposureMicro ?? fallbackExposureMicro,
+    rawFreeBalanceMicro,
+    currentMarketExposureMicro,
     currentVpin: signal.currentVpin ?? ctx.currentVpin ?? 0,
     clusterCvar99Pct: signal.clusterCvar99Pct ?? ctx.clusterCvar99Pct ?? 0,
     consecutiveBookErrors: signal.consecutiveBookErrors ?? ctx.consecutiveBookErrors ?? 0,
   });
 }
 
-/** Validate a direct order against PolymarketV2PreTradeRiskGate when numeric price & size are present. */
+/** Validate a direct order against PolymarketV2PreTradeRiskGate; fail closed on non-finite terms. */
 export function validateOrchestratorOrderV2(params: {
   polymarketV2Gate: PolymarketV2PreTradeRiskGate;
   positionTracker: LivePositionTracker;
@@ -167,7 +150,18 @@ export function validateOrchestratorOrderV2(params: {
   order: PolymarketOrder;
   getTickSizeMicro?: (tokenId: string) => number;
 }): void {
-  if (typeof params.order.price !== 'number' || typeof params.order.size !== 'number') return;
+  const raw = params.order as unknown as Record<string, unknown>;
+  if (params.order.price === undefined && params.order.size === undefined && raw['makerAmount'] !== undefined) {
+    return;
+  }
+  if (!Number.isFinite(params.order.price) || !Number.isFinite(params.order.size)) {
+    const reason = 'NON_FINITE_ORDER_TERMS';
+    params.journal.recordEvent('v2_risk_gate_reject', {
+      tokenId: String(params.order.tokenId ?? '').slice(0, 12),
+      reason,
+    });
+    throw new Error(`RISK_GATE_REJECTED: ${reason}`);
+  }
   const v2Result = validateSignalWithPolymarketV2Gate(
     params.polymarketV2Gate,
     {

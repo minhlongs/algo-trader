@@ -5,7 +5,11 @@
 
 import type { PolymarketOrder } from './polymarket-signer';
 import type { PolymarketOrderResponse } from './polymarket-adapter';
-import type { OrderState, LiveOrderManagerCtx } from './live-order-manager-types';
+import {
+  computePendingRiskAdjustments,
+  type OrderState,
+  type LiveOrderManagerCtx,
+} from './live-order-manager-types';
 import { requireLiveEnabled } from './execution-mode';
 import { validateSignalWithPolymarketV2Gate } from './polymarket-v2-pretrade-bridge';
 
@@ -16,17 +20,22 @@ export interface SubmissionHost extends LiveOrderManagerCtx {
 
 function assertPolymarketV2OrderAllowed(host: LiveOrderManagerCtx, order: PolymarketOrder): void {
   if (!host.polymarketV2Gate) return;
+  const pending = computePendingRiskAdjustments(host.activeOrders, order.tokenId, order.side);
   const rawFreeBalanceUsd =
     typeof host.positionTracker?.getFreeBalanceUsd === 'function'
-      ? host.positionTracker.getFreeBalanceUsd()
+      ? Math.max(0, host.positionTracker.getFreeBalanceUsd() - pending.pendingFreeNotionalUsd)
       : undefined;
   const currentMarketExposureUsd =
     typeof host.positionTracker?.getTokenExposureUsd === 'function'
-      ? host.positionTracker.getTokenExposureUsd(order.tokenId)
+      ? host.positionTracker.getTokenExposureUsd(order.tokenId) + pending.pendingSameSideUsd
       : undefined;
   const isPositionReducing =
     typeof host.positionTracker?.isPositionReducingOrder === 'function'
-      ? host.positionTracker.isPositionReducingOrder(order.tokenId, order.side, order.size)
+      ? host.positionTracker.isPositionReducingOrder(
+          order.tokenId,
+          order.side,
+          order.size + pending.pendingOppositeShares,
+        )
       : false;
   const tickSizeMicro = host.getTickSizeMicro?.(order.tokenId);
 

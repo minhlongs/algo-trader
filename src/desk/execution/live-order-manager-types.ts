@@ -103,3 +103,27 @@ export interface LiveOrderManagerCtx {
 // ── Forward declaration for structural interface ────────────────────────────────
 
 import { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
+
+/** Compute pending order commitments from `activeOrders` for pre-trade risk evaluation. */
+export function computePendingRiskAdjustments(
+  activeOrders: Map<string, OrderState> | undefined,
+  tokenId: string,
+  side: 'BUY' | 'SELL',
+): { pendingFreeNotionalUsd: number; pendingSameSideUsd: number; pendingOppositeShares: number } {
+  let pendingFreeNotionalUsd = 0;
+  let pendingSameSideUsd = 0;
+  let pendingOppositeShares = 0;
+  if (!activeOrders) {
+    return { pendingFreeNotionalUsd, pendingSameSideUsd, pendingOppositeShares };
+  }
+  for (const st of activeOrders.values()) {
+    if (st.status !== 'pending' && st.status !== 'delayed') continue;
+    const notional = st.size * st.price;
+    pendingFreeNotionalUsd += notional;
+    if (st.tokenId === tokenId) {
+      if (st.side === side) pendingSameSideUsd += notional;
+      else pendingOppositeShares += st.size;
+    }
+  }
+  return { pendingFreeNotionalUsd, pendingSameSideUsd, pendingOppositeShares };
+}

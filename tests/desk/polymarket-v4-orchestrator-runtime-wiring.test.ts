@@ -243,6 +243,31 @@ describe('Polymarket V4 Orchestrator & OrderManager End-to-End Runtime Wiring', 
           signatureType: 0,
         });
         expect(placedOrders[2]?.feeRateBps).toBe(175);
+
+        // 5. Pending activeOrders commitment is counted against market exposure cap
+        manager.activeOrders.set('pending-1', {
+          orderId: 'pending-1',
+          tokenId: 'tok-live-1',
+          side: 'BUY',
+          size: 300,
+          price: 0.5, // $150 pending notional
+          status: 'pending',
+          submittedAt: Date.now(),
+          lastPollAt: Date.now(),
+          pollAttempts: 0,
+        });
+        await expect(
+          manager.submitSignal(
+            {
+              tokenId: 'tok-live-1',
+              side: 'BUY',
+              price: 0.5,
+              size: 150, // $75 new + $150 pending = $225 > $200 cap
+              timestamp: Date.now(),
+            },
+            'strat-alpha',
+          ),
+        ).rejects.toThrow(/RISK_GATE_REJECTED: MARKET_EXPOSURE_CAP_EXCEEDED/);
       } finally {
         if (prevLiveEnabled === undefined) {
           delete process.env['LIVE_TRADING_ENABLED'];

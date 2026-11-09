@@ -17,7 +17,11 @@ import type { PolymarketOrderResponse } from './polymarket-adapter';
 import type { PolymarketOrder } from './polymarket-signer';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { LiveOrderManagerCtx } from './live-order-manager-types';
-import { SIGNAL_TTL_MS, RATE_LIMIT_ORDERS_PER_SEC } from './live-order-manager-types';
+import {
+  SIGNAL_TTL_MS,
+  RATE_LIMIT_ORDERS_PER_SEC,
+  computePendingRiskAdjustments,
+} from './live-order-manager-types';
 import { validateSignalWithPolymarketV2Gate } from './polymarket-v2-pretrade-bridge';
 
 /**
@@ -81,17 +85,22 @@ export async function runRiskGates(
   };
 
   if (ctx.polymarketV2Gate) {
+    const pending = computePendingRiskAdjustments(ctx.activeOrders, signal.tokenId, signal.side);
     const rawFreeBalanceUsd =
       typeof ctx.positionTracker?.getFreeBalanceUsd === 'function'
-        ? ctx.positionTracker.getFreeBalanceUsd()
+        ? Math.max(0, ctx.positionTracker.getFreeBalanceUsd() - pending.pendingFreeNotionalUsd)
         : undefined;
     const currentMarketExposureUsd =
       typeof ctx.positionTracker?.getTokenExposureUsd === 'function'
-        ? ctx.positionTracker.getTokenExposureUsd(signal.tokenId)
+        ? ctx.positionTracker.getTokenExposureUsd(signal.tokenId) + pending.pendingSameSideUsd
         : undefined;
     const isPositionReducing =
       typeof ctx.positionTracker?.isPositionReducingOrder === 'function'
-        ? ctx.positionTracker.isPositionReducingOrder(signal.tokenId, signal.side, signal.size)
+        ? ctx.positionTracker.isPositionReducingOrder(
+            signal.tokenId,
+            signal.side,
+            signal.size + pending.pendingOppositeShares,
+          )
         : false;
     const tickSizeMicro = ctx.getTickSizeMicro?.(signal.tokenId);
 
@@ -127,6 +136,12 @@ export async function runRiskGates(
       });
       throw new Error(`RISK_GATE_REJECTED: ${reason}`);
     }
+  }
+
+  const postGateAge = Date.now() - signal.timestamp;
+  if (postGateAge > SIGNAL_TTL_MS) {
+    ctx.emit('staleSignal', signal, postGateAge);
+    throw new Error(`STALE_SIGNAL: Signal age ${postGateAge}ms exceeds TTL of ${SIGNAL_TTL_MS}ms`);
   }
 
   return ctx.submitAndTrack(order);
