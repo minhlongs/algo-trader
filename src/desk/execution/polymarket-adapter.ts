@@ -17,7 +17,12 @@ import {
   CLOB_BASE, PolymarketOrderResponse, PolymarketOpenOrder, PolymarketOrderBook, PolymarketMarketInfo,
 } from './polymarket-adapter-types';
 import {
-  serializeSignedOrder, computePolymarketSignature, buildPolymarketHeaders, executeHttp2StreamRequest,
+  serializeSignedOrder,
+  computePolymarketSignature,
+  buildPolymarketHeaders,
+  executeHttp2StreamRequest,
+  normalizePolymarketFeeRateResponse,
+  type NormalizedPolymarketFeeRate,
 } from './polymarket-adapter-transport';
 
 // Re-export all types and transport helpers so existing callers importing from this file keep working.
@@ -89,6 +94,12 @@ export class PolymarketAdapter {
   /** Fetch current orderbook snapshot for a token. */
   async getOrderBook(tokenId: string): Promise<PolymarketOrderBook> {
     return this.request<PolymarketOrderBook>('GET', `/book?token_id=${tokenId}`);
+  }
+
+  /** Fetch and normalize CLOB fee rate for a token. */
+  async getFeeRate(tokenId: string): Promise<NormalizedPolymarketFeeRate> {
+    const raw = await this.request<Record<string, unknown>>('GET', `/fee-rate?token_id=${tokenId}`);
+    return normalizePolymarketFeeRateResponse(raw);
   }
 
   /** Make an HTTP/2 request using pooled sessions */

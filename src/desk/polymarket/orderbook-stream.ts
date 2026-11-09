@@ -2,18 +2,18 @@
  * OrderBookStream — Real-time Polymarket CLOB order book stream.
  *
  * Manages a WebSocket connection to wss://ws-subscriptions-clob.polymarket.com/ws/market,
- * parses L2 order book updates, and emits normalized price updates to the TradingEventBus.
+ * parses L2 order book and tick_size_change updates, and emits normalized updates to TradingEventBus.
  */
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import { logger } from '../../shared/utils/logger';
 import { tradingEventBus, type TradingEventBus } from '../events/trading-event-bus';
-import { scheduleReconnect } from './orderbook-stream-reconnect';
+import { resolveAuthoritativeTickSizeMicro } from './orderbook-stream-parse';
+import { scheduleReconnect, type OrderBookStreamReconnectCtx } from './orderbook-stream-reconnect';
 import {
   setupWebSocketHandlers, onOpen, onMessage, onError, onClose,
   processPriceEvent, sendSubscribe, startHeartbeat, stopHeartbeat,
 } from './orderbook-stream-ws';
-import type { OrderBookStreamReconnectCtx } from './orderbook-stream-reconnect';
 
 export class OrderBookStream extends EventEmitter {
   public subscribedTokenIds = new Set<string>();
@@ -23,6 +23,8 @@ export class OrderBookStream extends EventEmitter {
   public closed = false;
   public eventBus: TradingEventBus;
   public lastPrices = new Map<string, { bestBid: number; bestAsk: number }>();
+  public wsTickSizeMicroByToken = new Map<string, number>();
+  public tickSizeMicroByToken = new Map<string, number>();
   public ws: WebSocket | null = null;
 
   constructor(eventBus?: TradingEventBus) {
@@ -42,10 +44,31 @@ export class OrderBookStream extends EventEmitter {
   unsubscribe(tokenId: string): void {
     this.subscribedTokenIds.delete(tokenId);
     this.lastPrices.delete(tokenId);
+    this.wsTickSizeMicroByToken.delete(tokenId);
+    this.tickSizeMicroByToken.delete(tokenId);
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'unsubscribe', assets_ids: [tokenId] }));
       logger.debug('[OrderBookStream] Unsubscribed', { tokenId });
     }
+  }
+
+  /** Apply a REST-polled tick size while preserving any finer WebSocket tick-size precision. */
+  applyRestTickSize(tokenId: string, restTickSize: number): number {
+    const restMicro =
+      Number.isFinite(restTickSize) && restTickSize > 0
+        ? Math.max(1, Math.round(restTickSize * 1_000_000))
+        : undefined;
+    const authoritative = resolveAuthoritativeTickSizeMicro(
+      this.wsTickSizeMicroByToken.get(tokenId),
+      restMicro,
+    );
+    this.tickSizeMicroByToken.set(tokenId, authoritative);
+    return authoritative;
+  }
+
+  /** Get the authoritative tick size in micro-units (default 10,000 = 0.01). */
+  getTickSizeMicro(tokenId: string): number {
+    return this.tickSizeMicroByToken.get(tokenId) ?? 10_000;
   }
 
   /** Initiate WebSocket connection to Polymarket CLOB. */
@@ -77,6 +100,8 @@ export class OrderBookStream extends EventEmitter {
     this.ws = null;
     this.subscribedTokenIds.clear();
     this.lastPrices.clear();
+    this.wsTickSizeMicroByToken.clear();
+    this.tickSizeMicroByToken.clear();
     logger.info('[OrderBookStream] Disconnected');
   }
 

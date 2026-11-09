@@ -9,6 +9,7 @@ export const HEARTBEAT_INTERVAL_MS = 30_000;
 export const RECONNECT_BASE_MS = 1_000;
 export const RECONNECT_MAX_MS = 30_000;
 export const MAX_RECONNECT_ATTEMPTS = 10;
+export const WS_SUBSCRIBE_CHUNK_SIZE = 150;
 
 // ─── Internal Types ────────────────────────────────────────────────────────────
 
@@ -36,6 +37,9 @@ export interface RawWsEvent {
   asks?: RawBookEvent['asks'];
   price?: string;
   size?: string;
+  new_tick_size?: string;
+  old_tick_size?: string;
+  tick_size?: string;
   data?: RawBookEvent | RawTradeEvent | unknown;
   [key: string]: unknown;
 }
@@ -46,4 +50,5 @@ export interface ParsedEvent {
   bestAsk: number;
   lastTradePrice?: number;
   volume24h?: number;
+  tickSizeMicro?: number;
 }

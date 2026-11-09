@@ -40,6 +40,9 @@ export async function submitAndTrackOrder(
   requireLiveEnabled('LiveOrderManager.submitAndTrack');
 
   const response = await host.adapter.placeOrder(order);
+  if (!response?.orderID || response.orderID.trim().length === 0) {
+    throw new Error('CLOB_ORDER_REJECTED: empty orderID in placeOrder response');
+  }
 
   const state: OrderState = {
     orderId: response.orderID,
@@ -72,5 +75,9 @@ export async function submitOnlyOrder(
   if (host.stopped) throw new Error('LiveOrderManager is stopped');
   assertPolymarketV2OrderAllowed(host, order);
   requireLiveEnabled('LiveOrderManager.submitOnly');
-  return host.adapter.placeOrder(order);
+  const response = await host.adapter.placeOrder(order);
+  if (!response?.orderID || response.orderID.trim().length === 0) {
+    throw new Error('CLOB_ORDER_REJECTED: empty orderID in placeOrder response');
+  }
+  return response;
 }
