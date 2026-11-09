@@ -1,12 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LivePositionTracker } from '../../src/desk/execution/live-position-tracker';
 import { LiveOrderManager } from '../../src/desk/execution/live-order-manager';
+import { computePendingRiskAdjustments } from '../../src/desk/execution/live-order-manager-types';
 import { PolymarketV2PreTradeRiskGate } from '../../src/desk/execution/polymarket-v2-pretrade-risk-gate';
+import {
+  buildPreTradeCandidateFromIntent,
+  validateIntentWithPolymarketV2Gate,
+  validateOrchestratorOrderV2,
+} from '../../src/desk/execution/polymarket-v2-pretrade-bridge';
 import { LiveTradingOrchestrator } from '../../src/desk/polymarket/live-trading-orchestrator';
 import { StrategyLiveBridge } from '../../src/desk/polymarket/strategy-live-bridge';
 import { cleanJournalFiles } from '../../src/desk/polymarket/__tests__/strategy-runner-fixtures';
 import type { PolymarketAdapter } from '../../src/desk/execution/polymarket-adapter';
 import type { PolymarketOrder } from '../../src/desk/execution/polymarket-signer';
+import type { UnifiedTradeIntent } from '../../src/desk/orchestrator/orchestrator-types';
 
 describe('Polymarket V4 Orchestrator & OrderManager End-to-End Runtime Wiring', () => {
   beforeEach(() => cleanJournalFiles());
@@ -319,6 +326,203 @@ describe('Polymarket V4 Orchestrator & OrderManager End-to-End Runtime Wiring', 
       expect(rejectedResult.rejected).toBe(true);
       expect(rejectedResult.rejectReason).toContain('RISK_GATE_REJECTED: PRICE_NOT_ALIGNED_TO_TICK');
       expect(bridge.getStats().signalsRejected).toBe(1);
+    });
+  });
+
+  describe('Pre-trade bridge intent helpers, non-finite terms, and pending order adjustments', () => {
+    it('builds and validates UnifiedTradeIntent candidates across polymarket_clob and non-polymarket venues', () => {
+      const gate = new PolymarketV2PreTradeRiskGate({
+        maxMarketExposureMicro: 300_000_000,
+      });
+
+      const nonPolyIntent = {
+        intentId: 'int-1',
+        strategyId: 's1',
+        venue: 'binance_spot',
+        symbol: 'BTCUSDT',
+        side: 'BUY',
+        orderType: 'LIMIT',
+        quantity: 1,
+        limitPrice: 50_000,
+        timestamp: Date.now(),
+      } as unknown as UnifiedTradeIntent;
+
+      const nonPolyRes = validateIntentWithPolymarketV2Gate(gate, nonPolyIntent, 0.5, 100);
+      expect(nonPolyRes.allowed).toBe(true);
+      expect(nonPolyRes.requiredNotionalMicro).toBe(0);
+
+      const polyIntent = {
+        intentId: 'int-2',
+        strategyId: 's2',
+        venue: 'polymarket_clob',
+        symbol: 'tok-poly',
+        side: 'BUY',
+        orderType: 'MARKET',
+        quantity: 100,
+        timestamp: Date.now(),
+        metadata: {
+          isLimitOrder: false,
+          isMarketBuyFakOrFok: true,
+          isPositionReducing: false,
+          rawFreeBalanceMicro: 400_000_000,
+          currentMarketExposureMicro: 150_000_000,
+          tickSizeMicro: 10_000,
+          currentVpin: 0.2,
+          clusterCvar99Pct: 0.02,
+          consecutiveBookErrors: 0,
+        },
+      } as unknown as UnifiedTradeIntent;
+
+      const candidate = buildPreTradeCandidateFromIntent(polyIntent, 0.5, 100, {
+        rawFreeBalanceUsd: 350, // tighter than 400 -> min(350M, 400M) = 350M
+        currentMarketExposureUsd: 180, // higher than 150 -> max(180M, 150M) = 180M
+      });
+      expect(candidate.rawFreeBalanceMicro).toBe(350_000_000);
+      expect(candidate.currentMarketExposureMicro).toBe(180_000_000);
+      expect(candidate.isLimitOrder).toBe(false);
+      expect(candidate.isMarketBuyFakOrFok).toBe(true);
+
+      const polyRes = validateIntentWithPolymarketV2Gate(gate, polyIntent, 0.5, 1, {
+        rawFreeBalanceUsd: 350,
+        currentMarketExposureUsd: 100, // 0.5 * 1 = $0.50 <= $1.00 FAK/FOK cap
+      });
+      expect(polyRes.allowed).toBe(true);
+    });
+
+    it('fails closed on non-finite order terms in validateOrchestratorOrderV2 and handles computePendingRiskAdjustments edge cases', () => {
+      const gate = new PolymarketV2PreTradeRiskGate();
+      const tracker = new LivePositionTracker(1_000);
+      const recordEvent = vi.fn();
+      const journal = { recordEvent } as unknown as Parameters<typeof validateOrchestratorOrderV2>[0]['journal'];
+
+      expect(() =>
+        validateOrchestratorOrderV2({
+          polymarketV2Gate: gate,
+          positionTracker: tracker,
+          journal,
+          order: {
+            tokenId: 'tok-nan',
+            side: 'BUY',
+            price: Number.NaN,
+            size: 10,
+            expiration: 0,
+            nonce: '1',
+            feeRateBps: 0,
+            signatureType: 0,
+          },
+        }),
+      ).toThrow(/RISK_GATE_REJECTED: NON_FINITE_ORDER_TERMS/);
+      expect(recordEvent).toHaveBeenCalledWith('v2_risk_gate_reject', {
+        tokenId: 'tok-nan',
+        reason: 'NON_FINITE_ORDER_TERMS',
+      });
+
+      // computePendingRiskAdjustments with undefined map and opposite-side orders
+      expect(computePendingRiskAdjustments(undefined, 'tok-1', 'BUY')).toEqual({
+        pendingFreeNotionalUsd: 0,
+        pendingSameSideUsd: 0,
+        pendingOppositeShares: 0,
+      });
+
+      const activeMap = new Map([
+        [
+          'o-opp',
+          {
+            orderId: 'o-opp',
+            tokenId: 'tok-1',
+            side: 'BUY' as const,
+            size: 40,
+            price: 0.5,
+            status: 'delayed' as const,
+            submittedAt: Date.now(),
+            lastPollAt: Date.now(),
+            pollAttempts: 1,
+          },
+        ],
+        [
+          'o-done',
+          {
+            orderId: 'o-done',
+            tokenId: 'tok-1',
+            side: 'SELL' as const,
+            size: 20,
+            price: 0.5,
+            status: 'matched' as const,
+            submittedAt: Date.now(),
+            lastPollAt: Date.now(),
+            pollAttempts: 1,
+          },
+        ],
+      ]);
+      const adj = computePendingRiskAdjustments(activeMap, 'tok-1', 'SELL');
+      expect(adj.pendingFreeNotionalUsd).toBe(20);
+      expect(adj.pendingSameSideUsd).toBe(0);
+      expect(adj.pendingOppositeShares).toBe(40);
+    });
+
+    it('covers getFeeRate fallback on error, submitOnly V2 rejection, and empty orderID rejection', async () => {
+      const prevLiveEnabled = process.env['LIVE_TRADING_ENABLED'];
+      process.env['LIVE_TRADING_ENABLED'] = 'true';
+      try {
+        const mockAdapter = {
+          getFeeRate: vi.fn().mockRejectedValue(new Error('fee endpoint timeout')),
+          placeOrder: vi.fn().mockResolvedValue({ orderID: '', status: 'pending' }),
+          getOrderStatus: vi.fn(),
+          cancelOrder: vi.fn(),
+        } as unknown as PolymarketAdapter;
+
+        const tracker = new LivePositionTracker(500);
+        const v2Gate = new PolymarketV2PreTradeRiskGate();
+        const manager = new LiveOrderManager(mockAdapter, tracker, 60_000, undefined, v2Gate);
+
+        // submitSignal falls back to feeRateBps=0 when getFeeRate rejects, then rejects on empty orderID
+        await expect(
+          manager.submitSignal(
+            {
+              tokenId: 'tok-err',
+              side: 'BUY',
+              price: 0.5,
+              size: 10,
+              timestamp: Date.now(),
+            },
+            'strat-err',
+          ),
+        ).rejects.toThrow(/CLOB_ORDER_REJECTED: empty orderID/);
+
+        // submitOnly rejects off-tick order via assertPolymarketV2OrderAllowed
+        await expect(
+          manager.submitOnly({
+            tokenId: 'tok-err',
+            side: 'BUY',
+            price: 0.5005, // 500_500 micro -> off-tick for default 1_000 micro (0.001)
+            size: 10,
+            expiration: Math.floor(Date.now() / 1000) + 300,
+            nonce: '2',
+            feeRateBps: 0,
+            signatureType: 0,
+          }),
+        ).rejects.toThrow(/RISK_GATE_REJECTED: PRICE_NOT_ALIGNED_TO_TICK/);
+
+        // submitOnly rejects empty orderID when order passes V2 gate
+        await expect(
+          manager.submitOnly({
+            tokenId: 'tok-err',
+            side: 'BUY',
+            price: 0.5,
+            size: 10,
+            expiration: Math.floor(Date.now() / 1000) + 300,
+            nonce: '3',
+            feeRateBps: 0,
+            signatureType: 0,
+          }),
+        ).rejects.toThrow(/CLOB_ORDER_REJECTED: empty orderID/);
+      } finally {
+        if (prevLiveEnabled === undefined) {
+          delete process.env['LIVE_TRADING_ENABLED'];
+        } else {
+          process.env['LIVE_TRADING_ENABLED'] = prevLiveEnabled;
+        }
+      }
     });
   });
 });
