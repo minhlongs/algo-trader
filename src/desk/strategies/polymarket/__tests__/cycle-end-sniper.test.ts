@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { scanCycleEndOpportunities, isInEntryWindow } from '../cycle-end-sniper';
+import {
+  scanCycleEndOpportunities,
+  isInEntryWindow,
+  computeSnipeExpectedProfitV2,
+  evaluateSnipeMarket,
+} from '../cycle-end-sniper';
 
 describe('cycle-end-sniper::scanCycleEndOpportunities', () => {
   const mkMarket = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
@@ -80,6 +85,33 @@ describe('cycle-end-sniper::isInEntryWindow', () => {
     expect(isInEntryWindow({ timeToResolution: 60 } as any)).toBe(true);
   });
   it('true when timeToResolution is 0 (always within window)', () => {
-    expect(isInEntryWindow({ timeToResolution: 0 } as any)).toBe(true);
+    expect(isInEntryWindow({ timeToResolution: 0 } as never)).toBe(true);
+  });
+});
+
+describe('cycle-end-sniper::CLOB V2 fee model', () => {
+  it('computes higher expected profit under CLOB V2 quadratic fee at p=0.98 than flat 2% legacy fee', () => {
+    const profitCrypto = computeSnipeExpectedProfitV2(0.98, 'crypto');
+    const profitGeopolitics = computeSnipeExpectedProfitV2(0.98, 'geopolitics');
+    // At p=0.98, p*(1-p) = 0.0196 -> quadratic fee rate is tiny (~0.14%), so net profit > 0.018
+    expect(profitCrypto).toBeGreaterThan(0.018);
+    expect(profitGeopolitics).toBeCloseTo(0.02, 6);
+
+    const now = Date.now();
+    const m = {
+      conditionId: 'btc-1',
+      question: 'Will Bitcoin exceed $100k?',
+      outcomePrices: '["0.985"]',
+      endDate: new Date(now + 45_000).toISOString(),
+      active: true,
+      closed: false,
+      volume: 25_000,
+    };
+    // Legacy flat 2% rejects 0.985 ((1 - 0.985) - 0.02 = -0.005 < MIN_PROFIT)
+    expect(evaluateSnipeMarket(m, now)).toBeNull();
+    // CLOB V2 accepts 0.985 because quadratic fee at tail p=0.985 is ~0.00106, leaving ~1.39% > 0.5%
+    const v2Sig = evaluateSnipeMarket(m, now, { useClobV2Fees: true });
+    expect(v2Sig).not.toBeNull();
+    expect(v2Sig?.expectedProfit).toBeGreaterThan(0.01);
   });
 });

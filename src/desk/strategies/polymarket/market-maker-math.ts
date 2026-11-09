@@ -3,6 +3,11 @@
  */
 
 import type { RawOrderBook } from '../../polymarket/clob-client';
+import {
+  calcMakerRebateV2,
+  calcQuadraticTakerFeeV2,
+  type PolymarketCategory,
+} from '../../polymarket/polymarket-fee-calculator';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -40,6 +45,17 @@ export interface MmMarket {
   liquidity: number;
 }
 
+export interface MakerQuoteEconomicsV2 {
+  category: PolymarketCategory;
+  bidContracts: number;
+  askContracts: number;
+  bidRebateUsdc: number;
+  askRebateUsdc: number;
+  avoidedTakerFeeUsdc: number;
+  grossSpreadUsdc: number;
+  netMakerEdgeUsdc: number;
+}
+
 export interface MmMarketState {
   info: MmMarket;
   fairValue: number;
@@ -47,6 +63,10 @@ export interface MmMarketState {
   bidPlaced: number;   // timestamp of last bid
   askPlaced: number;   // timestamp of last ask
   inventorySkew: number; // > 0 = long, < 0 = short
+  category?: PolymarketCategory;
+  lastQuoteEconomics?: MakerQuoteEconomicsV2;
+  cumulativeRebateUsdc?: number;
+  cumulativeAvoidedTakerFeeUsdc?: number;
 }
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
@@ -83,4 +103,35 @@ export function computeBestBidAsk(book: RawOrderBook): { bid: number; ask: numbe
   const bid = book.bids.length > 0 ? parseFloat(book.bids[0]!.price) : 0;
   const ask = book.asks.length > 0 ? parseFloat(book.asks[0]!.price) : 1;
   return { bid, ask, mid: (bid + ask) / 2 };
+}
+
+/** Compute CLOB V2 maker rebate and avoided taker fee economics for a two-sided quote. */
+export function computeMakerQuoteEconomicsV2(
+  bidPrice: number,
+  askPrice: number,
+  quoteSizeUsdc: number,
+  category: PolymarketCategory,
+): MakerQuoteEconomicsV2 {
+  const safeBid = Math.max(0.01, Math.min(0.99, bidPrice));
+  const safeAsk = Math.max(0.01, Math.min(0.99, askPrice));
+  const bidContracts = quoteSizeUsdc > 0 ? quoteSizeUsdc / safeBid : 0;
+  const askContracts = quoteSizeUsdc > 0 ? quoteSizeUsdc / safeAsk : 0;
+  const bidRebateUsdc = calcMakerRebateV2(category, safeBid, bidContracts) * safeBid;
+  const askRebateUsdc = calcMakerRebateV2(category, safeAsk, askContracts) * safeAsk;
+  const avoidedBidTakerUsdc = calcQuadraticTakerFeeV2(category, safeBid, bidContracts, false) * safeBid;
+  const avoidedAskTakerUsdc = calcQuadraticTakerFeeV2(category, safeAsk, askContracts, false) * safeAsk;
+  const avoidedTakerFeeUsdc = avoidedBidTakerUsdc + avoidedAskTakerUsdc;
+  const pairedContracts = Math.min(bidContracts, askContracts);
+  const grossSpreadUsdc = Math.max(0, safeAsk - safeBid) * pairedContracts;
+  const netMakerEdgeUsdc = grossSpreadUsdc + bidRebateUsdc + askRebateUsdc + avoidedTakerFeeUsdc;
+  return {
+    category,
+    bidContracts,
+    askContracts,
+    bidRebateUsdc,
+    askRebateUsdc,
+    avoidedTakerFeeUsdc,
+    grossSpreadUsdc,
+    netMakerEdgeUsdc,
+  };
 }

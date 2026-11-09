@@ -19,13 +19,22 @@ import { logger } from '../../../shared/utils/logger';
 
 import {
   type CycleEndSignal,
+  type EvaluateSnipeOptions,
   type GammaMarket,
   GAMMA_MARKETS_URL,
+  computeSnipeExpectedProfitV2,
   evaluateSnipeMarket,
   isInEntryWindow,
 } from './cycle-end-sniper-math';
 
-export { type CycleEndSignal, type GammaMarket, isInEntryWindow };
+export {
+  type CycleEndSignal,
+  type EvaluateSnipeOptions,
+  type GammaMarket,
+  computeSnipeExpectedProfitV2,
+  evaluateSnipeMarket,
+  isInEntryWindow,
+};
 
 // ─── Core scanner ─────────────────────────────────────────────────────────────
 
@@ -33,12 +42,15 @@ export { type CycleEndSignal, type GammaMarket, isInEntryWindow };
  * Scan a list of Gamma markets for cycle-end snipe opportunities.
  * Returns signals sorted by shortest time-to-resolution (most urgent first).
  */
-export function scanCycleEndOpportunities(markets: GammaMarket[]): CycleEndSignal[] {
+export function scanCycleEndOpportunities(
+  markets: GammaMarket[],
+  options?: EvaluateSnipeOptions,
+): CycleEndSignal[] {
   const now = Date.now();
   const signals: CycleEndSignal[] = [];
 
   for (const m of markets) {
-    const signal = evaluateSnipeMarket(m, now);
+    const signal = evaluateSnipeMarket(m, now, options);
     if (signal) {
       signals.push(signal);
     }
@@ -54,7 +66,9 @@ export function scanCycleEndOpportunities(markets: GammaMarket[]): CycleEndSigna
  * Fetch live markets from Gamma API and return cycle-end snipe signals.
  * Designed to be called frequently (every 10-30s) to catch short windows.
  */
-export async function fetchAndScanCycleEnd(): Promise<CycleEndSignal[]> {
+export async function fetchAndScanCycleEnd(
+  options?: EvaluateSnipeOptions,
+): Promise<CycleEndSignal[]> {
   logger.info('[CycleEndSniper] Scanning for markets resolving in <5 min');
 
   try {
@@ -62,7 +76,7 @@ export async function fetchAndScanCycleEnd(): Promise<CycleEndSignal[]> {
     if (!resp.ok) throw new Error(`Gamma API ${resp.status}`);
 
     const raw = (await resp.json()) as GammaMarket[];
-    const signals = scanCycleEndOpportunities(raw);
+    const signals = scanCycleEndOpportunities(raw, options);
 
     if (signals.length > 0) {
       logger.info('[CycleEndSniper] Opportunities found', {

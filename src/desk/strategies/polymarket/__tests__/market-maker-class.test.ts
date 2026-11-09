@@ -134,4 +134,17 @@ describe('MarketMakerStrategy class', () => {
     await s.executeTick();
     expect(mocks.getOrderBook).not.toHaveBeenCalled();
   });
+
+  it('tracks CLOB V2 quote economics and accumulates maker rebates on fills', async () => {
+    const s = mkStrategy({ baseSpread: 0.02, refreshIntervalMs: 0 });
+    s.addMarket({ ...OPP, conditionId: 'btc-crypto-market' });
+    s.setFairValue('y-1', 0.5, 0.8);
+    mocks.getOrderBook.mockResolvedValueOnce(mkBook(0.515, 2000));
+    await s.executeTick();
+    const stateAfterAsk = s.getMarketState('btc-crypto-market');
+    expect(stateAfterAsk?.lastQuoteEconomics?.category).toBe('crypto');
+    expect(stateAfterAsk?.lastQuoteEconomics?.askRebateUsdc).toBeGreaterThan(0);
+    expect(stateAfterAsk?.cumulativeRebateUsdc).toBeGreaterThan(0);
+    expect(stateAfterAsk?.cumulativeAvoidedTakerFeeUsdc).toBeGreaterThan(0);
+  });
 });

@@ -15,10 +15,12 @@
 
 import { EventEmitter } from 'events';
 import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client';
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import type { StrategyConfig } from '../../core/types';
 import { logger } from '../../core/logger';
 
 import {
+  type MakerQuoteEconomicsV2,
   type MarketMakerConfig,
   type MmMarket,
   type MmMarketState,
@@ -27,9 +29,11 @@ import {
   computeAskPrice,
   updateSkew,
   computeBestBidAsk,
+  computeMakerQuoteEconomicsV2,
 } from './market-maker-math';
 
 export {
+  type MakerQuoteEconomicsV2,
   type MarketMakerConfig,
   type MmMarket,
   type MmMarketState,
@@ -37,6 +41,7 @@ export {
   computeBidPrice,
   computeAskPrice,
   updateSkew,
+  computeMakerQuoteEconomicsV2,
 };
 
 // ── Strategy class (keeps original constructor interface) ────────────────────
@@ -74,8 +79,16 @@ export class MarketMakerStrategy extends EventEmitter {
       bidPlaced: 0,
       askPlaced: 0,
       inventorySkew: 0,
+      category: classifyMarketCategory(opp.conditionId),
+      cumulativeRebateUsdc: 0,
+      cumulativeAvoidedTakerFeeUsdc: 0,
     });
     logger.debug('[market-maker] Market added', { key });
+  }
+
+  /** Retrieve tracked state and CLOB V2 maker economics for a conditionId. */
+  getMarketState(conditionId: string): MmMarketState | undefined {
+    return this.markets.get(conditionId);
   }
 
   /** Set fair value estimate from AI prediction loop. */
@@ -108,6 +121,9 @@ export class MarketMakerStrategy extends EventEmitter {
 
         const bid = computeBidPrice(state.fairValue, this.cfg.baseSpread, state.inventorySkew, this.cfg.skewSpreadMultiplier);
         const ask = computeAskPrice(state.fairValue, this.cfg.baseSpread, state.inventorySkew, this.cfg.skewSpreadMultiplier);
+        const category = state.category ?? classifyMarketCategory(key);
+        const econ = computeMakerQuoteEconomicsV2(bid, ask, this.cfg.quoteSizeUsdc, category);
+        state.lastQuoteEconomics = econ;
 
         state.bidPlaced = now;
         state.askPlaced = now;
@@ -116,10 +132,18 @@ export class MarketMakerStrategy extends EventEmitter {
         if (ba.mid >= ask) {
           // Ask filled — we sold, increase long skew
           state.inventorySkew = updateSkew(state.inventorySkew, 'ask');
+          state.cumulativeRebateUsdc = (state.cumulativeRebateUsdc ?? 0) + econ.askRebateUsdc;
+          state.cumulativeAvoidedTakerFeeUsdc =
+            (state.cumulativeAvoidedTakerFeeUsdc ?? 0) +
+            calcQuadraticTakerFeeV2(category, ask, econ.askContracts, false) * ask;
           logger.debug('[market-maker] Ask filled', { market: key, price: ask.toFixed(4) });
         } else if (ba.mid <= bid) {
           // Bid filled — we bought, increase short skew
           state.inventorySkew = updateSkew(state.inventorySkew, 'bid');
+          state.cumulativeRebateUsdc = (state.cumulativeRebateUsdc ?? 0) + econ.bidRebateUsdc;
+          state.cumulativeAvoidedTakerFeeUsdc =
+            (state.cumulativeAvoidedTakerFeeUsdc ?? 0) +
+            calcQuadraticTakerFeeV2(category, bid, econ.bidContracts, false) * bid;
           logger.debug('[market-maker] Bid filled', { market: key, price: bid.toFixed(4) });
         }
       } catch {

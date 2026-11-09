@@ -2,6 +2,7 @@
  * Price Impact Estimator - Position Exit Logic
  */
 
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import {
   STRATEGY_NAME,
@@ -66,13 +67,16 @@ export async function checkPriceImpactExits(
     if (shouldExit) {
       try {
         const exitSide = pos.side === 'yes' ? 'sell' : 'buy';
-        await orderManager.placeOrder({
+        const exitShares = Math.round(pos.sizeUsdc / currentPrice!);
+        const exitOrder = await orderManager.placeOrder({
           tokenId: pos.tokenId,
           side: exitSide,
           price: currentPrice!.toFixed(4),
-          size: String(Math.round(pos.sizeUsdc / currentPrice!)),
+          size: String(exitShares),
           orderType: 'IOC',
         });
+        const category = pos.category ?? classifyMarketCategory(pos.conditionId);
+        const feeUsdc = calcQuadraticTakerFeeV2(category, currentPrice!, exitShares) * currentPrice!;
 
         const pnl = pos.side === 'yes'
           ? (currentPrice! - pos.entryPrice) * (pos.sizeUsdc / pos.entryPrice)
@@ -92,7 +96,7 @@ export async function checkPriceImpactExits(
             side: exitSide,
             fillPrice: String(currentPrice),
             fillSize: String(pos.sizeUsdc),
-            fees: '0',
+            fees: exitOrder?.fees ?? feeUsdc.toFixed(6),
             timestamp: Date.now(),
             strategy: STRATEGY_NAME,
           },

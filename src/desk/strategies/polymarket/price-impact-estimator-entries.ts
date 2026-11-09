@@ -3,6 +3,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import {
   STRATEGY_NAME,
@@ -86,6 +87,8 @@ export async function scanPriceImpactEntries(
         size: String(shares),
         orderType: 'GTC',
       });
+      const category = classifyMarketCategory(market.question ?? market.conditionId);
+      const feeUsdc = calcQuadraticTakerFeeV2(category, entryPrice, shares) * entryPrice;
 
       // Track position
       positions.push({
@@ -96,6 +99,7 @@ export async function scanPriceImpactEntries(
         sizeUsdc: posSize,
         orderId: order.id,
         openedAt: Date.now(),
+        category,
       });
 
       logger.info('Entry', STRATEGY_NAME, {
@@ -112,7 +116,7 @@ export async function scanPriceImpactEntries(
           side: 'buy',
           fillPrice: String(entryPrice),
           fillSize: String(posSize),
-          fees: '0',
+          fees: order?.fees ?? feeUsdc.toFixed(6),
           timestamp: Date.now(),
           strategy: STRATEGY_NAME,
         },

@@ -2,6 +2,12 @@
  * Pure decay, urgency, and sniper math helpers for Cycle-End Sniper Strategy.
  */
 
+import {
+  calcQuadraticTakerFeeRateV2,
+  classifyMarketCategory,
+  type PolymarketCategory,
+} from '../../polymarket/polymarket-fee-calculator';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CycleEndSignal {
@@ -62,10 +68,28 @@ export function computeConfidence(yesPrice: number): number {
   return yesPrice >= 0.5 ? yesPrice : 1 - yesPrice;
 }
 
+/** Compute net profit per share under CLOB V2 share-deduction fee: (1 - feeRate) - entryPrice. */
+export function computeSnipeExpectedProfitV2(
+  entryPrice: number,
+  category: PolymarketCategory,
+): number {
+  const feeRate = calcQuadraticTakerFeeRateV2(category, entryPrice, false);
+  return 1 - feeRate - entryPrice;
+}
+
+export interface EvaluateSnipeOptions {
+  useClobV2Fees?: boolean;
+  category?: PolymarketCategory;
+}
+
 /**
  * Evaluate a single Gamma market for a cycle-end snipe opportunity.
  */
-export function evaluateSnipeMarket(m: GammaMarket, now: number): CycleEndSignal | null {
+export function evaluateSnipeMarket(
+  m: GammaMarket,
+  now: number,
+  options?: EvaluateSnipeOptions,
+): CycleEndSignal | null {
   if (m.closed || m.active === false) return null;
 
   const endMs = parseEndDateMs(m);
@@ -77,11 +101,14 @@ export function evaluateSnipeMarket(m: GammaMarket, now: number): CycleEndSignal
 
   const yesPrice = parseYesPrice(m.outcomePrices);
   if (yesPrice === null) return null;
+  const cat = options?.category ?? classifyMarketCategory(String(m.question ?? m.conditionId ?? ''));
 
   // Must be strongly trending toward one outcome
   if (yesPrice > PRICE_CERTAINTY_THRESHOLD) {
     // YES near-certain: buy YES, collect ~$1 at resolution
-    const expectedProfit = (1 - yesPrice) - POLY_FEE;
+    const expectedProfit = options?.useClobV2Fees
+      ? computeSnipeExpectedProfitV2(yesPrice, cat)
+      : (1 - yesPrice) - POLY_FEE;
     if (expectedProfit < MIN_PROFIT) return null;
 
     const volume = Number(m.volume ?? 0);
@@ -101,7 +128,9 @@ export function evaluateSnipeMarket(m: GammaMarket, now: number): CycleEndSignal
   if (yesPrice < 1 - PRICE_CERTAINTY_THRESHOLD) {
     // NO near-certain: buy NO (price = 1-yesPrice), collect ~$1 at resolution
     const noPrice = 1 - yesPrice;
-    const expectedProfit = (1 - noPrice) - POLY_FEE;
+    const expectedProfit = options?.useClobV2Fees
+      ? computeSnipeExpectedProfitV2(noPrice, cat)
+      : (1 - noPrice) - POLY_FEE;
     if (expectedProfit < MIN_PROFIT) return null;
 
     const volume = Number(m.volume ?? 0);

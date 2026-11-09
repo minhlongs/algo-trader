@@ -8,6 +8,7 @@ import type { ClobClient } from '../../polymarket/clob-client';
 import type { OrderManager } from '../../polymarket/order-manager';
 import type { EventBus } from '../../events/event-bus';
 import type { GammaClient } from '../../polymarket/gamma-client';
+import type { PolymarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import type { StrategyName } from '../../core/types';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ export interface OpenPosition {
   sizeUsdc: number;
   orderId: string;
   openedAt: number;
+  category?: PolymarketCategory;
 }
 
 // ── Dependencies ─────────────────────────────────────────────────────────────
