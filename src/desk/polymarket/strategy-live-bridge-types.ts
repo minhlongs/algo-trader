@@ -16,6 +16,14 @@ export interface TradeSignal {
   confidence?: number;
   /** Signal generation timestamp (ms since epoch). Used for TTL validation. */
   timestamp: number;
+  /** Optional CLOB V2 pre-trade risk metadata */
+  tickSizeMicro?: number;
+  isLimitOrder?: boolean;
+  rawFreeBalanceMicro?: number;
+  currentMarketExposureMicro?: number;
+  currentVpin?: number;
+  clusterCvar99Pct?: number;
+  consecutiveBookErrors?: number;
 }
 
 export interface SignalResult {

@@ -14,6 +14,7 @@ import type { PolymarketOrder } from './polymarket-signer';
 import type { LivePositionTracker, FilledOrder } from './live-position-tracker';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
+import type { PolymarketV2PreTradeRiskGate } from './polymarket-v2-pretrade-risk-gate';
 
 // ── Public Types ────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,9 @@ export interface LiveOrderManagerCtx {
 
   // Optional risk gate manager
   readonly riskGateManager?: RiskGateManager;
+
+  // Optional CLOB V2 pre-trade risk gate
+  readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
 
   // Per-strategy rate limiters
   strategyRateLimiters: Map<string, TokenBucketRateLimiter>;

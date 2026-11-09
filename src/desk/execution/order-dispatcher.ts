@@ -9,6 +9,7 @@
 
 import { logger } from '../../shared/utils/logger';
 import type { LiveExecutionGuard } from './live-execution-guard';
+import type { PolymarketV2PreTradeRiskGate } from './polymarket-v2-pretrade-risk-gate';
 import type { UnifiedTradeIntent } from '../orchestrator/orchestrator-types';
 import { TriModeDispatcher } from './tri-mode-dispatcher';
 import type { DispatchResult, OrderSlice, TriMode } from './tri-mode-types';
@@ -27,6 +28,7 @@ export interface CloudSignalEnvelope {
 export interface OrderDispatcherConfig {
   readonly initialMode?: TriMode;
   readonly liveGuard?: LiveExecutionGuard;
+  readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
   readonly cloudBridgeEndpoint?: string;
 }
 
@@ -36,7 +38,11 @@ export class OrderDispatcher {
   private readonly signalHistory: CloudSignalEnvelope[] = [];
 
   constructor(config?: OrderDispatcherConfig) {
-    this.dispatcher = new TriModeDispatcher(config?.initialMode ?? 'PAPER', config?.liveGuard);
+    this.dispatcher = new TriModeDispatcher(
+      config?.initialMode ?? 'PAPER',
+      config?.liveGuard,
+      config?.polymarketV2Gate,
+    );
     this.cloudBridgeEndpoint = config?.cloudBridgeEndpoint;
   }
 

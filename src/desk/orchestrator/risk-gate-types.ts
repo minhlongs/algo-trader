@@ -7,6 +7,7 @@ import type { GlobalCircuitBreaker } from '../risk/global-circuit-breaker';
 import type { CircuitBreakerTier } from '../risk/portfolio-risk-types';
 import type { LeverageExposureGuard } from '../risk/leverage-exposure-guard';
 import type { LiveExecutionGuard } from '../execution/live-execution-guard';
+import type { PolymarketV2PreTradeRiskGate } from '../execution/polymarket-v2-pretrade-risk-gate';
 import type { EngineId } from './orchestrator-types';
 
 export type { CircuitBreakerTier };
@@ -34,4 +35,5 @@ export interface SynchronizedRiskGateOptions {
   readonly circuitBreaker?: GlobalCircuitBreaker;
   readonly leverageGuard?: LeverageExposureGuard;
   readonly liveGuard?: LiveExecutionGuard;
+  readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
 }
