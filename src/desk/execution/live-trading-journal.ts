@@ -22,7 +22,7 @@ import type { FilledOrder } from './live-position-tracker';
 
 export interface JournalEntry {
   timestamp: number;
-  type: 'fill' | 'circuit_trip' | 'circuit_reset' | 'daily_reset' | 'guard_reject';
+  type: 'fill' | 'circuit_trip' | 'circuit_reset' | 'daily_reset' | 'guard_reject' | 'v2_risk_gate_reject';
   data: Record<string, unknown>;
 }
 

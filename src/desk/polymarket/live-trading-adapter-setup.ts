@@ -15,12 +15,11 @@ import { LiveTradingJournal } from '../execution/live-trading-journal';
 import { RiskGateManager } from '../risk/risk-gate-manager';
 import { LiveOrderManager } from '../execution/live-order-manager';
 import { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
+import { PolymarketV2PreTradeRiskGate } from '../execution/polymarket-v2-pretrade-risk-gate';
+export { validateOrchestratorOrderV2 } from '../execution/polymarket-v2-pretrade-bridge';
 import {
-  extractPaperOrderParams,
-  sweepOrderBookLevels,
-  applyPaperOrderOutcome,
-  PaperLegDecayTracker,
-  type PaperOrderBookProvider,
+  extractPaperOrderParams, sweepOrderBookLevels, applyPaperOrderOutcome,
+  PaperLegDecayTracker, type PaperOrderBookProvider,
 } from './paper-orderbook-simulator';
 import { saveReconcilerState, appendG2ShadowTelemetry } from './g2-shadow-telemetry';
 import { logger } from '../../shared/utils/logger';
@@ -37,6 +36,7 @@ export interface OrchestratorComponents {
   strategyExecutor: LiveTradingStrategyExecutor;
   reconciler: PolymarketOrderReconciler;
   legDecayTracker: PaperLegDecayTracker;
+  polymarketV2Gate: PolymarketV2PreTradeRiskGate;
 }
 
 /** Normalize config with defaults and PAPER_MODE env fallback. */
@@ -54,6 +54,7 @@ export function normalizeConfig(raw: LiveTradingConfig): LiveTradingConfig {
     chainId: raw.chainId,
     apiUrl: raw.apiUrl,
     allowCohortContinuation: raw.allowCohortContinuation ?? false,
+    preTradeRiskGateConfigV2: raw.preTradeRiskGateConfigV2,
   };
 }
 
@@ -78,16 +79,13 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
   );
   const reconciler = new PolymarketOrderReconciler(config.capitalUsdc);
   const legDecayTracker = new PaperLegDecayTracker();
+  const polymarketV2Gate = new PolymarketV2PreTradeRiskGate({
+    maxMarketExposureMicro: Math.max(7_500_000_000, Math.round(config.capitalUsdc * 1_000_000)),
+    ...config.preTradeRiskGateConfigV2,
+  });
   return {
-    adapter: null,
-    positionTracker,
-    orderManager: null,
-    guard,
-    journal,
-    riskManager,
-    strategyExecutor,
-    reconciler,
-    legDecayTracker,
+    adapter: null, positionTracker, orderManager: null, guard, journal,
+    riskManager, strategyExecutor, reconciler, legDecayTracker, polymarketV2Gate,
   };
 }
 
@@ -154,7 +152,11 @@ export function recordPaperOrderCancel(reconciler: PolymarketOrderReconciler, or
 }
 
 /** Build the Polymarket adapter and wire an OrderManager (for start()). */
-export function buildStartComponents(config: LiveTradingConfig, core: OrchestratorComponents): void {
+export function buildStartComponents(
+  config: LiveTradingConfig,
+  core: OrchestratorComponents,
+  getTickSizeMicro?: (tokenId: string) => number,
+): void {
   const exec = buildPolymarketAdapter({
     paperTrading: config.paperTrading,
     chainId: config.chainId,
@@ -163,7 +165,14 @@ export function buildStartComponents(config: LiveTradingConfig, core: Orchestrat
   if (exec.adapter) {
     core.adapter = exec.adapter;
     core.guard.setEnabled(true);
-    core.orderManager = new LiveOrderManager(exec.adapter, core.positionTracker);
+    core.orderManager = new LiveOrderManager(
+      exec.adapter,
+      core.positionTracker,
+      undefined,
+      core.riskManager,
+      core.polymarketV2Gate,
+      getTickSizeMicro,
+    );
   }
 }
 

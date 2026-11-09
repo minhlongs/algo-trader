@@ -4,11 +4,7 @@
  * Extracted from live-trading-orchestrator.ts for modularity.
  */
 
-import { z } from 'zod';
-
-// ---------------------------------------------------------------------------
-// Env-var validation (Zod)
-// ---------------------------------------------------------------------------
+import type { PreTradeRiskGateConfigV2 } from '../execution/polymarket-v2-pretrade-risk-gate';
 
 // ---------------------------------------------------------------------------
 // Env-var validation
@@ -62,6 +58,8 @@ export interface LiveTradingConfig {
   apiUrl?: string;
   /** Preserve PAPER shadow cohort T0_G2 across >15m probe gaps when drift === 0. */
   allowCohortContinuation?: boolean;
+  /** Optional CLOB V2 pre-trade risk gate configuration overrides. */
+  preTradeRiskGateConfigV2?: Partial<PreTradeRiskGateConfigV2>;
 }
 
 // ---------------------------------------------------------------------------

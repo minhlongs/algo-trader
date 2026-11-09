@@ -86,6 +86,9 @@ export interface LiveOrderManagerCtx {
   // Optional CLOB V2 pre-trade risk gate
   readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
 
+  // Optional authoritative tick-size resolver (e.g. OrderBookStream.getTickSizeMicro)
+  readonly getTickSizeMicro?: (tokenId: string) => number;
+
   // Per-strategy rate limiters
   strategyRateLimiters: Map<string, TokenBucketRateLimiter>;
 

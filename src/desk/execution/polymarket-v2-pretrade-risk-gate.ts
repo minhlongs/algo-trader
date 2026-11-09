@@ -18,13 +18,14 @@
 import { MICRO_PER_PUSD } from './integer-micro-unit-fifo-ledger';
 import { allOrderTermsFinite, failNonFiniteOrderTerms } from './polymarket-pretrade-finite-guard';
 
-export type AllowedTickSizeMicro = 10_000 | 5_000 | 2_500 | 1_000;
+export type AllowedTickSizeMicro = 10_000 | 5_000 | 2_500 | 1_000 | 100;
 
 export const ALLOWED_TICK_SIZES_MICRO: ReadonlySet<number> = new Set<AllowedTickSizeMicro>([
   10_000,
   5_000,
   2_500,
   1_000,
+  100,
 ]);
 
 export interface PreTradeRiskGateConfigV2 {
@@ -68,6 +69,8 @@ export interface PreTradeOrderCandidateV2 {
   tickSizeMicro: number;
   isLimitOrder: boolean;
   isMarketBuyFakOrFok?: boolean;
+  /** True when this order reduces or closes an existing opposite-side position. */
+  isPositionReducing?: boolean;
   rawFreeBalanceMicro: number;
   currentMarketExposureMicro?: number;
   currentVpin: number;
@@ -175,12 +178,13 @@ export class PolymarketV2PreTradeRiskGate {
     if (!candidate.isLimitOrder && sanitizedNotionalMicro <= 0) {
       return fail('MARKET_BUY_NOTIONAL_ZERO_AFTER_FLOOR');
     }
-    if (sanitizedNotionalMicro > effectiveFreeBalanceMicro) {
+    if (!candidate.isPositionReducing && sanitizedNotionalMicro > effectiveFreeBalanceMicro) {
       return fail('INSUFFICIENT_RESERVED_BALANCE');
     }
-    const projectedExposureMicro =
-      (candidate.currentMarketExposureMicro ?? 0) + sanitizedNotionalMicro;
-    if (projectedExposureMicro > this.cfg.maxMarketExposureMicro) {
+    const projectedExposureMicro = candidate.isPositionReducing
+      ? Math.max(0, (candidate.currentMarketExposureMicro ?? 0) - sanitizedNotionalMicro)
+      : (candidate.currentMarketExposureMicro ?? 0) + sanitizedNotionalMicro;
+    if (!candidate.isPositionReducing && projectedExposureMicro > this.cfg.maxMarketExposureMicro) {
       return fail('MARKET_EXPOSURE_CAP_EXCEEDED');
     }
 

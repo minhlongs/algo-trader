@@ -59,6 +59,16 @@ export async function runRiskGates(
   }
 
   // GATE 3: LiveExecutionGuard — position size, drawdown, concurrent limits, circuit breaker
+  let resolvedFeeRateBps = signal.feeRateBps ?? 0;
+  if (signal.feeRateBps === undefined && typeof ctx.adapter?.getFeeRate === 'function') {
+    try {
+      const feeRate = await ctx.adapter.getFeeRate(signal.tokenId);
+      resolvedFeeRateBps = feeRate.feeRateBps;
+    } catch {
+      resolvedFeeRateBps = 0;
+    }
+  }
+
   const order: PolymarketOrder = {
     tokenId: signal.tokenId,
     side: signal.side,
@@ -66,12 +76,31 @@ export async function runRiskGates(
     size: signal.size,
     expiration: Math.floor(Date.now() / 1000) + 300, // 5 min GTC
     nonce: String(Date.now()),
-    feeRateBps: 0,
+    feeRateBps: resolvedFeeRateBps,
     signatureType: 0,
   };
 
   if (ctx.polymarketV2Gate) {
-    const v2Result = validateSignalWithPolymarketV2Gate(ctx.polymarketV2Gate, signal);
+    const rawFreeBalanceUsd =
+      typeof ctx.positionTracker?.getFreeBalanceUsd === 'function'
+        ? ctx.positionTracker.getFreeBalanceUsd()
+        : undefined;
+    const currentMarketExposureUsd =
+      typeof ctx.positionTracker?.getTokenExposureUsd === 'function'
+        ? ctx.positionTracker.getTokenExposureUsd(signal.tokenId)
+        : undefined;
+    const isPositionReducing =
+      typeof ctx.positionTracker?.isPositionReducingOrder === 'function'
+        ? ctx.positionTracker.isPositionReducingOrder(signal.tokenId, signal.side, signal.size)
+        : false;
+    const tickSizeMicro = ctx.getTickSizeMicro?.(signal.tokenId);
+
+    const v2Result = validateSignalWithPolymarketV2Gate(ctx.polymarketV2Gate, signal, {
+      rawFreeBalanceUsd,
+      currentMarketExposureUsd,
+      tickSizeMicro,
+      isPositionReducing,
+    });
     if (!v2Result.allowed) {
       const reason = v2Result.reason ?? 'POLYMARKET_V2_GATE_REJECTED';
       logger.warn('POLYMARKET_V2_RISK_GATE_REJECTED', 'LiveOrderManager', {

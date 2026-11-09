@@ -12,6 +12,9 @@ import type {
   PreTradeOrderCandidateV2,
   PreTradeValidationResultV2,
 } from './polymarket-v2-pretrade-risk-gate';
+import type { PolymarketOrder } from './polymarket-signer';
+import type { LivePositionTracker } from './live-position-tracker';
+import type { LiveTradingJournal } from './live-trading-journal';
 import type { UnifiedTradeIntent } from '../orchestrator/orchestrator-types';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge-types';
 
@@ -19,6 +22,7 @@ export interface PolymarketV2RiskContext {
   readonly rawFreeBalanceUsd?: number;
   readonly currentMarketExposureUsd?: number;
   readonly tickSizeMicro?: number;
+  readonly isPositionReducing?: boolean;
   readonly currentVpin?: number;
   readonly clusterCvar99Pct?: number;
   readonly consecutiveBookErrors?: number;
@@ -90,6 +94,7 @@ export function buildPreTradeCandidateFromIntent(
     tickSizeMicro,
     isLimitOrder,
     isMarketBuyFakOrFok,
+    isPositionReducing: readBoolMeta(meta, 'isPositionReducing', Boolean(ctx.isPositionReducing)),
     rawFreeBalanceMicro,
     currentMarketExposureMicro,
     currentVpin: readNumMeta(meta, 'currentVpin', ctx.currentVpin ?? 0),
@@ -145,10 +150,50 @@ export function validateSignalWithPolymarketV2Gate(
     tickSizeMicro: signal.tickSizeMicro ?? ctx.tickSizeMicro ?? 1_000,
     isLimitOrder,
     isMarketBuyFakOrFok: !isLimitOrder && signal.side === 'BUY',
+    isPositionReducing: Boolean(ctx.isPositionReducing),
     rawFreeBalanceMicro: signal.rawFreeBalanceMicro ?? fallbackFreeMicro,
     currentMarketExposureMicro: signal.currentMarketExposureMicro ?? fallbackExposureMicro,
     currentVpin: signal.currentVpin ?? ctx.currentVpin ?? 0,
     clusterCvar99Pct: signal.clusterCvar99Pct ?? ctx.clusterCvar99Pct ?? 0,
     consecutiveBookErrors: signal.consecutiveBookErrors ?? ctx.consecutiveBookErrors ?? 0,
   });
+}
+
+/** Validate a direct order against PolymarketV2PreTradeRiskGate when numeric price & size are present. */
+export function validateOrchestratorOrderV2(params: {
+  polymarketV2Gate: PolymarketV2PreTradeRiskGate;
+  positionTracker: LivePositionTracker;
+  journal: LiveTradingJournal;
+  order: PolymarketOrder;
+  getTickSizeMicro?: (tokenId: string) => number;
+}): void {
+  if (typeof params.order.price !== 'number' || typeof params.order.size !== 'number') return;
+  const v2Result = validateSignalWithPolymarketV2Gate(
+    params.polymarketV2Gate,
+    {
+      tokenId: params.order.tokenId,
+      side: params.order.side,
+      price: params.order.price,
+      size: params.order.size,
+      timestamp: Date.now(),
+    },
+    {
+      rawFreeBalanceUsd: params.positionTracker.getFreeBalanceUsd(),
+      currentMarketExposureUsd: params.positionTracker.getTokenExposureUsd(params.order.tokenId),
+      tickSizeMicro: params.getTickSizeMicro?.(params.order.tokenId),
+      isPositionReducing: params.positionTracker.isPositionReducingOrder(
+        params.order.tokenId,
+        params.order.side,
+        params.order.size,
+      ),
+    },
+  );
+  if (!v2Result.allowed) {
+    const reason = v2Result.reason ?? 'POLYMARKET_V2_GATE_REJECTED';
+    params.journal.recordEvent('v2_risk_gate_reject', {
+      tokenId: params.order.tokenId.slice(0, 12),
+      reason,
+    });
+    throw new Error(`RISK_GATE_REJECTED: ${reason}`);
+  }
 }
