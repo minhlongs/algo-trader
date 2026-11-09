@@ -52,6 +52,7 @@ export class LiveOrderManager extends EventEmitter {
     maxOrderLifetimeMs: number = DEFAULT_MAX_ORDER_LIFETIME,
     readonly riskGateManager?: RiskGateManager,
     readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate,
+    readonly getTickSizeMicro?: (tokenId: string) => number,
   ) {
     super();
     this.adapter = adapter;

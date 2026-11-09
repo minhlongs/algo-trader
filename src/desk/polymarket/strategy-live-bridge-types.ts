@@ -16,6 +16,8 @@ export interface TradeSignal {
   confidence?: number;
   /** Signal generation timestamp (ms since epoch). Used for TTL validation. */
   timestamp: number;
+  /** Optional CLOB V2 fee rate in bps (default 0 for zero-fee markets) */
+  feeRateBps?: number;
   /** Optional CLOB V2 pre-trade risk metadata */
   tickSizeMicro?: number;
   isLimitOrder?: boolean;

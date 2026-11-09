@@ -47,7 +47,7 @@ export class StrategyLiveBridge {
         side: signal.side,
         expiration: Math.floor(Date.now() / 1000) + 300, // 5 min GTC
         nonce: String(Date.now()),
-        feeRateBps: 0,
+        feeRateBps: signal.feeRateBps ?? 0,
         signatureType: 0,
       });
 
@@ -63,7 +63,7 @@ export class StrategyLiveBridge {
     } catch (err) {
       const msg = String(err);
 
-      if (msg.includes('Guard rejected')) {
+      if (msg.includes('Guard rejected') || msg.includes('RISK_GATE_REJECTED')) {
         this.signalsRejected++;
         logger.warn('Signal rejected by guard', 'StrategyLiveBridge', {
           reason: msg,

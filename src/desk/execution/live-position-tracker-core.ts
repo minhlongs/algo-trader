@@ -127,6 +127,27 @@ export class LivePositionTracker {
     return this.realizedPnl;
   }
 
+  /** Available free USDC collateral (`max(0, capitalUsdc + realizedPnl - openCostBasisUsd)`). */
+  getFreeBalanceUsd(): number {
+    let openCostBasisUsd = 0;
+    for (const pos of this.positions.values()) {
+      openCostBasisUsd += pos.size * pos.entryPrice;
+    }
+    return Math.max(0, this.capitalUsdc + this.realizedPnl - openCostBasisUsd);
+  }
+
+  /** Current USD notional exposure (`size * currentPrice`) for a single token. */
+  getTokenExposureUsd(tokenId: string): number {
+    const pos = this.positions.get(tokenId);
+    return pos ? pos.size * pos.currentPrice : 0;
+  }
+
+  /**Whether `order` reduces an existing opposite-side position (`size <= existing.size`). */
+  isPositionReducingOrder(tokenId: string, side: 'BUY' | 'SELL', size: number): boolean {
+    const pos = this.positions.get(tokenId);
+    return Boolean(pos && pos.side !== side && size <= pos.size);
+  }
+
   getFilledOrders(): readonly FilledOrder[] {
     return this.filledOrders;
   }
