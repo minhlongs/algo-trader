@@ -89,6 +89,9 @@ export interface LiveOrderManagerCtx {
   // Optional authoritative tick-size resolver (e.g. OrderBookStream.getTickSizeMicro)
   readonly getTickSizeMicro?: (tokenId: string) => number;
 
+  // Optional dynamic microstructure & book-error context resolver
+  readonly getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number };
+
   // Per-strategy rate limiters
   strategyRateLimiters: Map<string, TokenBucketRateLimiter>;
 

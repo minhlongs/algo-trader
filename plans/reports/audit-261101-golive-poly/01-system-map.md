@@ -15,7 +15,7 @@ flowchart TD
     ModeGate[execution-mode.ts: READ_ONLY / PAPER / LIVE]
     ExecGuard[LiveExecutionGuard + SynchronizedRiskGate + PolymarketV2PreTradeRiskGate]
     Builder[polymarket-execution-adapter.ts]
-    Orch[LiveTradingOrchestrator + StrategyRunner + StrategyLiveBridge]
+    Orch[LiveTradingOrchestrator + PolymarketMicrostructureTracker + PolymarketSettlementListener]
     LOM[LiveOrderManager + live-order-submission.ts]
     Reconciler[PolymarketOrderReconciler + IntegerMicroUnitFifoLedger + g2-shadow-telemetry.ts]
     Arb[PolymarketArbStrategy + 30 Backtest Strategies + BacktestOrderManager V2 Fees]

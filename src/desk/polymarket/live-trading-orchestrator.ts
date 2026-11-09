@@ -1,13 +1,12 @@
 /**
- * Live Trading Orchestrator
- * Wires PolymarketAdapter -> LiveOrderManager -> LiveExecutionGuard -> LivePositionTracker -> PolymarketOrderReconciler
+ * Live Trading Orchestrator — Wires PolymarketAdapter -> LiveOrderManager -> LiveExecutionGuard -> LivePositionTracker -> PolymarketOrderReconciler
  */
 
 import { EventEmitter } from 'events';
 import type { PolymarketAdapter, PolymarketOrderResponse, PolymarketOrderBook } from '../execution/polymarket-adapter';
 import type { PolymarketOrder } from '../execution/polymarket-signer';
-import { LivePositionTracker, type PositionSummary } from '../execution/live-position-tracker';
-import { LiveOrderManager, type OrderState } from '../execution/live-order-manager';
+import type { LivePositionTracker, PositionSummary } from '../execution/live-position-tracker';
+import type { LiveOrderManager, OrderState } from '../execution/live-order-manager';
 import type { LiveExecutionGuard, GuardStatus } from '../execution/live-execution-guard';
 import type { LiveTradingJournal } from '../execution/live-trading-journal';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
@@ -16,13 +15,18 @@ import type { PolymarketV2PreTradeRiskGate } from '../execution/polymarket-v2-pr
 import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
 import type { TradeSignal } from './strategy-live-bridge';
-import { LiveTradingStrategyExecutor } from './live-trading-strategy-executor';
+import type { LiveTradingStrategyExecutor } from './live-trading-strategy-executor';
 import type { OrchestratorStatus, LiveTradingConfig } from './live-trading-types';
 import {
-  normalizeConfig, buildCoreComponents, buildStartComponents,
-  executePaperOrderPlacement, recordPaperOrderCancel, validateOrchestratorOrderV2,
+  normalizeConfig, buildCoreComponents, buildStartComponents, executePaperOrderPlacement,
+  recordPaperOrderCancel, validateOrchestratorOrderV2, type OrchestratorComponents,
 } from './live-trading-adapter-setup';
 import type { PaperOrderBookProvider, PaperLegDecayTracker, Leg2DecayStats } from './paper-orderbook-simulator';
+import {
+  PolymarketMicrostructureTracker, executeOrchestratorMarketRedemption,
+  type RawOrderBookSnapshotInput, type TokenMicrostructureTelemetry, type UnrealizedMtmResult,
+} from './polymarket-microstructure-tracker';
+import type { OfiSnapshotResult, OnchainOrderFilledEvent } from './onchain-ofi-vpin-estimator';
 import { persistOrchestratorState, restoreOrchestratorState } from './live-trading-state-persistence';
 import { LiveTradingEventSubscriber } from './live-trading-event-subscriber';
 
@@ -37,68 +41,72 @@ export class LiveTradingOrchestrator extends EventEmitter {
   private status: OrchestratorStatus = 'stopped';
   private config: LiveTradingConfig;
   private adapter: PolymarketAdapter | null = null;
-  private positionTracker: LivePositionTracker;
+  private positionTracker!: LivePositionTracker;
   private orderManager: LiveOrderManager | null = null;
-  private guard: LiveExecutionGuard;
-  private journal: LiveTradingJournal;
-  private riskManager: RiskGateManager;
-  private strategyExecutor: LiveTradingStrategyExecutor;
-  private reconciler: PolymarketOrderReconciler;
-  private legDecayTracker: PaperLegDecayTracker;
-  private polymarketV2Gate: PolymarketV2PreTradeRiskGate;
+  private guard!: LiveExecutionGuard;
+  private journal!: LiveTradingJournal;
+  private riskManager!: RiskGateManager;
+  private strategyExecutor!: LiveTradingStrategyExecutor;
+  private reconciler!: PolymarketOrderReconciler;
+  private legDecayTracker!: PaperLegDecayTracker;
+  private polymarketV2Gate!: PolymarketV2PreTradeRiskGate;
+  private microstructureTracker!: PolymarketMicrostructureTracker;
   private tickSizeMicroResolver: ((tokenId: string) => number) | null = null;
   private paperOrderBookProvider: PaperOrderBookProvider | null = null;
   private startedAtMs = 0;
-  private eventSubscriber: LiveTradingEventSubscriber;
+  private eventSubscriber!: LiveTradingEventSubscriber;
 
   constructor(rawConfig: LiveTradingConfig) {
     super();
     this.config = normalizeConfig(rawConfig);
-    const c = buildCoreComponents(this.config);
-    this.adapter = c.adapter;
-    this.positionTracker = c.positionTracker;
-    this.orderManager = c.orderManager;
-    this.guard = c.guard;
-    this.journal = c.journal;
-    this.riskManager = c.riskManager;
-    this.strategyExecutor = c.strategyExecutor;
-    this.reconciler = c.reconciler;
-    this.legDecayTracker = c.legDecayTracker;
-    this.polymarketV2Gate = c.polymarketV2Gate;
+    this.assignCore(buildCoreComponents(this.config));
+  }
+  private assignCore(c: OrchestratorComponents): void {
+    Object.assign(this, c);
     this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
   }
-
   setPaperOrderBookProvider(provider: PaperOrderBookProvider | null): void { this.paperOrderBookProvider = provider; }
   setTickSizeMicroResolver(resolver: ((tokenId: string) => number) | null): void { this.tickSizeMicroResolver = resolver; }
   getTickSizeMicro(tokenId: string): number { return this.tickSizeMicroResolver?.(tokenId) ?? 10_000; }
   getPolymarketV2Gate(): PolymarketV2PreTradeRiskGate { return this.polymarketV2Gate; }
   getStartedAtMs(): number { return this.startedAtMs; }
   getLeg2DecayStats(): Leg2DecayStats { return this.legDecayTracker.getStats(); }
-
+  recordOrderBookSnapshot(tokenId: string, book: RawOrderBookSnapshotInput): OfiSnapshotResult {
+    return this.microstructureTracker.recordOrderBookSnapshot(tokenId, book);
+  }
+  recordTradePrint(tokenId: string, event: Pick<OnchainOrderFilledEvent, 'makerAssetId' | 'sharesMicro' | 'notionalUsdMicro'>): number {
+    return this.microstructureTracker.recordTradePrint(tokenId, event);
+  }
+  recordBookError(tokenId: string): number { return this.microstructureTracker.recordBookError(tokenId); }
+  getMicrostructureTelemetry(tokenId: string): TokenMicrostructureTelemetry { return this.microstructureTracker.getTelemetry(tokenId); }
+  settleMarketRedemption(params: { marketId?: string; tokenId: string; payoutPerShareUsdc: 0 | 1 }) {
+    return executeOrchestratorMarketRedemption({
+      reconciler: this.reconciler, positionTracker: this.positionTracker, journal: this.journal,
+      legDecayTracker: this.legDecayTracker, startedAtMs: this.startedAtMs, mode: this.getMode(), ...params,
+    });
+  }
+  computeUnrealizedMtm(tokenId: string, bidLevels: Array<{ price: number; size: number }>, exitFeeBps = 0): UnrealizedMtmResult & { unrealizedMtmUsdc: number } {
+    return this.reconciler.computeUnrealizedMtm(tokenId, bidLevels, exitFeeBps);
+  }
   async start(): Promise<void> {
     if (this.status === 'running') return;
     this.status = 'starting';
-    const mode = this.config.paperTrading ? 'PAPER' : 'LIVE';
+    const mode = this.getMode();
     logger.info(`Orchestrator starting in ${mode} mode`, 'Orchestrator', { capital: this.config.capitalUsdc });
     try {
       const c = buildCoreComponents(this.config);
-      this.positionTracker = c.positionTracker;
-      this.guard = c.guard;
-      this.journal = c.journal;
-      this.riskManager = c.riskManager;
-      this.strategyExecutor = c.strategyExecutor;
-      this.reconciler = c.reconciler;
-      this.legDecayTracker = c.legDecayTracker;
-      this.polymarketV2Gate = c.polymarketV2Gate;
+      this.assignCore(c);
       this.guard.attachTracker(this.positionTracker);
       await this.restoreState({
         failClosed: !this.config.paperTrading,
         allowCohortContinuation: Boolean(this.config.paperTrading && this.config.allowCohortContinuation),
       });
-      buildStartComponents(this.config, c, (tokenId) => this.getTickSizeMicro(tokenId));
+      buildStartComponents(
+        this.config, c, (tokenId) => this.getTickSizeMicro(tokenId),
+        (tokenId) => this.microstructureTracker.getRiskContext(tokenId),
+      );
       this.adapter = c.adapter;
       this.orderManager = c.orderManager;
-      this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
       this.eventSubscriber.subscribe();
       this.status = 'running';
       setStrategyActive('live-orchestrator', true);
@@ -109,7 +117,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
       throw err;
     }
   }
-
   async stop(): Promise<void> {
     if (this.status === 'stopped') return;
     this.status = 'stopping';
@@ -120,7 +127,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
     setStrategyActive('live-orchestrator', false);
     this.emit('stopped');
   }
-
   async placeOrder(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
     if (this.status !== 'running') throw new Error('Orchestrator not running');
     const result = this.guard.guardOrder(order);
@@ -131,16 +137,16 @@ export class LiveTradingOrchestrator extends EventEmitter {
     validateOrchestratorOrderV2({
       polymarketV2Gate: this.polymarketV2Gate, positionTracker: this.positionTracker,
       journal: this.journal, order, getTickSizeMicro: (tokenId) => this.getTickSizeMicro(tokenId),
+      getRiskContext: (tokenId) => this.microstructureTracker.getRiskContext(tokenId),
     });
     if (this.orderManager) return this.orderManager.submitAndTrack(order);
     const orderID = `paper-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     return executePaperOrderPlacement({
       reconciler: this.reconciler, positionTracker: this.positionTracker, journal: this.journal,
-      legDecayTracker: this.legDecayTracker, orderBookProvider: this.paperOrderBookProvider,
-      startedAtMs: this.startedAtMs, order, orderId: orderID,
+      legDecayTracker: this.legDecayTracker, microstructureTracker: this.microstructureTracker,
+      orderBookProvider: this.paperOrderBookProvider, startedAtMs: this.startedAtMs, order, orderId: orderID,
     });
   }
-
   async cancelOrder(orderId: string): Promise<void> {
     if (this.orderManager) await this.orderManager.cancelOrder(orderId);
     recordPaperOrderCancel(this.reconciler, orderId);
@@ -159,42 +165,30 @@ export class LiveTradingOrchestrator extends EventEmitter {
     if (!this.adapter) throw new Error('Orderbook only available in LIVE mode');
     return this.adapter.getOrderBook(tokenId);
   }
-
   async submitSignal(signal: TradeSignal, strategyName: string): Promise<PolymarketOrderResponse> {
     if (!this.orderManager) throw new Error('submitSignal only available in LIVE mode');
     return this.orderManager.submitSignal(signal, strategyName);
   }
-
   async executeStrategyTick(strategyKey: string, tickFn: () => Promise<void>): Promise<void> {
     const gate = await this.riskManager.check(strategyKey);
-    if (!gate.allowed) {
-      logger.warn(`Strategy tick skipped for ${strategyKey}: ${gate.reason}`, 'Orchestrator');
-      return;
-    }
-    try { await tickFn(); } catch (err) {
-      logger.error(`Strategy tick failed for ${strategyKey}`, 'Orchestrator', { err: String(err) });
-    }
+    if (!gate.allowed) { logger.warn(`Strategy tick skipped for ${strategyKey}: ${gate.reason}`, 'Orchestrator'); return; }
+    try { await tickFn(); } catch (err) { logger.error(`Strategy tick failed for ${strategyKey}`, 'Orchestrator', { err: String(err) }); }
   }
-
   updatePaperPnl(strategyKey: string, pnlDelta: number): void { this.strategyExecutor.updatePaperPnl(strategyKey, pnlDelta); }
   getPaperStats() { return this.strategyExecutor.getPaperStats(); }
   getRiskManager(): RiskGateManager { return this.riskManager; }
-
   private subscribeToPriceUpdates(): void { this.eventSubscriber.subscribe(); }
   private unsubscribeFromPriceUpdates(): void { this.eventSubscriber.unsubscribe(); }
-
   private async persistState(): Promise<void> {
     await persistOrchestratorState({
       journal: this.journal, guard: this.guard, positionTracker: this.positionTracker,
-      reconciler: this.reconciler, startedAtMs: this.startedAtMs, mode: this.getMode(),
-      leg2DecayStats: this.legDecayTracker.getStats(),
+      reconciler: this.reconciler, startedAtMs: this.startedAtMs, mode: this.getMode(), leg2DecayStats: this.legDecayTracker.getStats(),
     });
   }
   private async restoreState(options: { failClosed?: boolean; allowCohortContinuation?: boolean } = {}): Promise<void> {
     await restoreOrchestratorState({
       journal: this.journal, guard: this.guard, positionTracker: this.positionTracker,
-      reconciler: this.reconciler, startedAtMs: this.startedAtMs, mode: this.getMode(),
-      onStartedAtMs: (ts) => { this.startedAtMs = ts; },
+      reconciler: this.reconciler, startedAtMs: this.startedAtMs, mode: this.getMode(), onStartedAtMs: (ts) => { this.startedAtMs = ts; },
     }, options);
   }
 }

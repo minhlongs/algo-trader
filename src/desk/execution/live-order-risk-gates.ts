@@ -103,12 +103,15 @@ export async function runRiskGates(
           )
         : false;
     const tickSizeMicro = ctx.getTickSizeMicro?.(signal.tokenId);
+    const riskCtx = ctx.getRiskContext?.(signal.tokenId);
 
     const v2Result = validateSignalWithPolymarketV2Gate(ctx.polymarketV2Gate, signal, {
       rawFreeBalanceUsd,
       currentMarketExposureUsd,
       tickSizeMicro,
       isPositionReducing,
+      currentVpin: riskCtx?.currentVpin,
+      consecutiveBookErrors: riskCtx?.consecutiveBookErrors,
     });
     if (!v2Result.allowed) {
       const reason = v2Result.reason ?? 'POLYMARKET_V2_GATE_REJECTED';

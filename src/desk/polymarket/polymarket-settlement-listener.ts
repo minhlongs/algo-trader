@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import { logger } from '../../shared/utils/logger';
 import type { PortfolioTelemetryHub } from '../telemetry/portfolio-telemetry-hub';
 import type { EngineId } from '../portfolio/types';
+import type { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
 import {
   buildMarketResolutionSettlement,
   buildCtfPayoutSettlement,
@@ -34,11 +35,13 @@ export class PolymarketSettlementListener extends EventEmitter {
   private readonly resolvedConditions = new Map<string, MarketResolutionEvent>();
   private readonly portfolioHub?: PortfolioTelemetryHub;
   private readonly defaultEngineId: EngineId;
+  private readonly reconciler?: PolymarketOrderReconciler;
 
   constructor(config: SettlementListenerConfig = {}) {
     super();
     this.portfolioHub = config.portfolioHub;
     this.defaultEngineId = config.defaultEngineId ?? 'arbitrage';
+    this.reconciler = config.reconciler;
   }
 
   public trackPosition(pos: TrackedPosition): void {
@@ -114,6 +117,17 @@ export class PolymarketSettlementListener extends EventEmitter {
 
   private recordSettlement(settlement: RealizedSettlement, engineId?: EngineId): void {
     const targetEngine = engineId ?? this.defaultEngineId;
+    if (this.reconciler) {
+      try {
+        this.reconciler.settleMarketRedemption({
+          marketId: settlement.conditionId,
+          tokenId: settlement.tokenId,
+          payoutPerShareUsdc: settlement.won ? 1 : 0,
+        });
+      } catch (err) {
+        logger.error('[PolymarketSettlement] Failed to settle redemption in reconciler', { err });
+      }
+    }
     if (this.portfolioHub) {
       try {
         this.portfolioHub.ingestEngineTrade(targetEngine, settlement.realizedPnlUsd, 0);
