@@ -85,33 +85,18 @@ export function buildSubscribePayload(tokenId: string): string {
 }
 
 /** Split an iterable of token IDs into chunks of at most `chunkSize` (default 150) per frame. */
-export function chunkAssetIdsForWsSubscribe(
-  tokenIds: Iterable<string>,
-  chunkSize: number = WS_SUBSCRIBE_CHUNK_SIZE,
-): string[][] {
-  const safeChunkSize =
-    Number.isFinite(chunkSize) && chunkSize > 0
-      ? Math.max(1, Math.floor(chunkSize))
-      : WS_SUBSCRIBE_CHUNK_SIZE;
+export function chunkAssetIdsForWsSubscribe(tokenIds: Iterable<string>, chunkSize: number = WS_SUBSCRIBE_CHUNK_SIZE): string[][] {
+  const safeChunkSize = Number.isFinite(chunkSize) && chunkSize > 0 ? Math.max(1, Math.floor(chunkSize)) : WS_SUBSCRIBE_CHUNK_SIZE;
   const all = Array.from(tokenIds).filter((id) => id.length > 0);
   const chunks: string[][] = [];
-  for (let i = 0; i < all.length; i += safeChunkSize) {
-    chunks.push(all.slice(i, i + safeChunkSize));
-  }
+  for (let i = 0; i < all.length; i += safeChunkSize) chunks.push(all.slice(i, i + safeChunkSize));
   return chunks;
 }
 
 /** Build chunked JSON subscription frames (`<= 150` `assets_ids` per frame). */
-export function buildChunkedSubscribePayloads(
-  tokenIds: Iterable<string>,
-  chunkSize: number = WS_SUBSCRIBE_CHUNK_SIZE,
-): string[] {
+export function buildChunkedSubscribePayloads(tokenIds: Iterable<string>, chunkSize: number = WS_SUBSCRIBE_CHUNK_SIZE): string[] {
   return chunkAssetIdsForWsSubscribe(tokenIds, chunkSize).map((chunk) =>
-    JSON.stringify({
-      type: 'subscribe',
-      assets_ids: chunk,
-      channels: ['price_change', 'trade', 'book', 'tick_size_change'],
-    }),
+    JSON.stringify({ type: 'subscribe', assets_ids: chunk, channels: ['price_change', 'trade', 'book', 'tick_size_change'] }),
   );
 }
 
@@ -119,14 +104,9 @@ export function buildChunkedSubscribePayloads(
  * Monotonic tick-size precision resolver: WebSocket `tick_size_change` precision
  * (e.g. `1_000` or `100` micro) is never overwritten by a coarser REST poll (`10_000` micro).
  */
-export function resolveAuthoritativeTickSizeMicro(
-  wsTickSizeMicro: number | undefined,
-  restTickSizeMicro: number | undefined,
-): number {
+export function resolveAuthoritativeTickSizeMicro(wsTickSizeMicro: number | undefined, restTickSizeMicro: number | undefined): number {
   const wsValid = wsTickSizeMicro !== undefined && wsTickSizeMicro > 0 ? wsTickSizeMicro : undefined;
   const restValid = restTickSizeMicro !== undefined && restTickSizeMicro > 0 ? restTickSizeMicro : undefined;
-  if (wsValid !== undefined && restValid !== undefined) {
-    return Math.min(wsValid, restValid);
-  }
+  if (wsValid !== undefined && restValid !== undefined) return Math.min(wsValid, restValid);
   return wsValid ?? restValid ?? 10_000;
 }

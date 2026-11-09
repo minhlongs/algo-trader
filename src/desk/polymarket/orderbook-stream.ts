@@ -54,14 +54,8 @@ export class OrderBookStream extends EventEmitter {
 
   /** Apply a REST-polled tick size while preserving any finer WebSocket tick-size precision. */
   applyRestTickSize(tokenId: string, restTickSize: number): number {
-    const restMicro =
-      Number.isFinite(restTickSize) && restTickSize > 0
-        ? Math.max(1, Math.round(restTickSize * 1_000_000))
-        : undefined;
-    const authoritative = resolveAuthoritativeTickSizeMicro(
-      this.wsTickSizeMicroByToken.get(tokenId),
-      restMicro,
-    );
+    const restMicro = Number.isFinite(restTickSize) && restTickSize > 0 ? Math.max(1, Math.round(restTickSize * 1_000_000)) : undefined;
+    const authoritative = resolveAuthoritativeTickSizeMicro(this.wsTickSizeMicroByToken.get(tokenId), restMicro);
     this.tickSizeMicroByToken.set(tokenId, authoritative);
     return authoritative;
   }

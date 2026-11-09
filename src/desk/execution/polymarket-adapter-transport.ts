@@ -14,9 +14,7 @@ export interface NormalizedPolymarketFeeRate {
 
 /** Recursively sort object keys so JSON serialization is deterministic regardless of key insertion order. */
 function sortJsonValueRecursively(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortJsonValueRecursively);
-  }
+  if (Array.isArray(value)) return value.map(sortJsonValueRecursively);
   if (value !== null && typeof value === 'object') {
     const sorted: Record<string, unknown> = {};
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
@@ -32,30 +30,20 @@ function sortJsonValueRecursively(value: unknown): unknown {
  * so the L2 HMAC-SHA256 preimage and HTTP/2 wire payload are byte-identical.
  */
 export function canonicalizePolymarketJsonBody(body?: Record<string, unknown>): string {
-  if (!body) return '';
-  return JSON.stringify(sortJsonValueRecursively(body));
+  return body ? JSON.stringify(sortJsonValueRecursively(body)) : '';
 }
 
 /**
  * Normalize CLOB `/fee-rate` responses: ignore legacy `base_fee: 1000` fields and
  * coerce empty (`""`) or missing `fee_rate_bps` to `0`.
  */
-export function normalizePolymarketFeeRateResponse(
-  raw: Record<string, unknown> | null | undefined,
-): NormalizedPolymarketFeeRate {
-  if (!raw || typeof raw !== 'object') {
-    return { feeRateBps: 0, ignoredLegacyBaseFee: false };
-  }
+export function normalizePolymarketFeeRateResponse(raw: Record<string, unknown> | null | undefined): NormalizedPolymarketFeeRate {
+  if (!raw || typeof raw !== 'object') return { feeRateBps: 0, ignoredLegacyBaseFee: false };
   const ignoredLegacyBaseFee = 'base_fee' in raw && raw.base_fee !== undefined;
   const rawBps = raw.fee_rate_bps;
-  if (rawBps === undefined || rawBps === null || String(rawBps).trim() === '') {
-    return { feeRateBps: 0, ignoredLegacyBaseFee };
-  }
+  if (rawBps === undefined || rawBps === null || String(rawBps).trim() === '') return { feeRateBps: 0, ignoredLegacyBaseFee };
   const parsed = Number(rawBps);
-  return {
-    feeRateBps: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0,
-    ignoredLegacyBaseFee,
-  };
+  return { feeRateBps: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0, ignoredLegacyBaseFee };
 }
 
 /** Serialize a signed order into the payload expected by CLOB POST /order */

@@ -16,7 +16,8 @@ import {
   canonicalizePolymarketJsonBody,
   computePolymarketSignature,
   normalizePolymarketFeeRateResponse,
-} from '../../src/desk/execution/polymarket-adapter-transport';
+  PolymarketAdapter,
+} from '../../src/desk/execution/polymarket-adapter';
 import {
   submitAndTrackOrder,
   submitOnlyOrder,
@@ -104,7 +105,7 @@ describe('Monotonic Tick-Size Precision Guard', () => {
     expect(stream.applyRestTickSize('tok-fine', 0)).toBe(10_000);
     expect(stream.applyRestTickSize('tok-fine', -0.01)).toBe(10_000);
 
-    // WebSocket emits tick_size_change to 0.001 (1,000 micro)
+    // WebSocket emits tick_size_change to 0.001 (1,000 micro), then finer 0.0001 (100 micro)
     stream.onMessage(
       JSON.stringify({
         event_type: 'tick_size_change',
@@ -114,13 +115,23 @@ describe('Monotonic Tick-Size Precision Guard', () => {
     );
     expect(stream.getTickSizeMicro('tok-fine')).toBe(1_000);
 
-    // Subsequent Gamma REST poll tries to overwrite back to 0.01 -> blocked by monotonic guard
-    expect(stream.applyRestTickSize('tok-fine', 0.01)).toBe(1_000);
-    expect(stream.getTickSizeMicro('tok-fine')).toBe(1_000);
+    stream.onMessage(
+      JSON.stringify({
+        event_type: 'tick_size_change',
+        asset_id: 'tok-fine',
+        tick_size: '0.0001',
+      }),
+    );
+    expect(stream.getTickSizeMicro('tok-fine')).toBe(100);
 
-    // Direct helper verification
+    // Subsequent Gamma REST poll tries to overwrite back to 0.01 -> blocked by monotonic guard
+    expect(stream.applyRestTickSize('tok-fine', 0.01)).toBe(100);
+    expect(stream.getTickSizeMicro('tok-fine')).toBe(100);
+
+    // Direct helper verification including undefined fallbacks
     expect(resolveAuthoritativeTickSizeMicro(1_000, 10_000)).toBe(1_000);
     expect(resolveAuthoritativeTickSizeMicro(100, 1_000)).toBe(100);
+    expect(resolveAuthoritativeTickSizeMicro(undefined, undefined)).toBe(10_000);
   });
 });
 
@@ -138,14 +149,16 @@ describe('CLOB Transport & Order Submission Hardening', () => {
     resetExecutionModeCache();
   });
 
-  it('canonicalizes JSON body with sorted keys and compact separators for identical HMAC signatures regardless of key insertion order', () => {
+  it('canonicalizes JSON body with sorted keys, arrays, and compact separators for identical HMAC signatures regardless of key insertion order', () => {
     const bodyA = {
       side: 'BUY',
       tokenID: '0x123',
       makerAmount: '1000000',
       nested: { z: 1, a: 2 },
+      tags: [{ b: 2, a: 1 }],
     };
     const bodyB = {
+      tags: [{ a: 1, b: 2 }],
       nested: { a: 2, z: 1 },
       makerAmount: '1000000',
       tokenID: '0x123',
@@ -155,7 +168,8 @@ describe('CLOB Transport & Order Submission Hardening', () => {
     const canonicalA = canonicalizePolymarketJsonBody(bodyA);
     const canonicalB = canonicalizePolymarketJsonBody(bodyB);
     expect(canonicalA).toBe(canonicalB);
-    expect(canonicalA).toBe('{"makerAmount":"1000000","nested":{"a":2,"z":1},"side":"BUY","tokenID":"0x123"}');
+    expect(canonicalA).toBe('{"makerAmount":"1000000","nested":{"a":2,"z":1},"side":"BUY","tags":[{"a":1,"b":2}],"tokenID":"0x123"}');
+    expect(canonicalizePolymarketJsonBody(undefined)).toBe('');
 
     const sigA = computePolymarketSignature('secret-key', '1700000000', 'POST', '/order', bodyA);
     const sigB = computePolymarketSignature('secret-key', '1700000000', 'POST', '/order', bodyB);
@@ -163,6 +177,11 @@ describe('CLOB Transport & Order Submission Hardening', () => {
   });
 
   it('normalizes /fee-rate responses by ignoring legacy base_fee:1000 and coercing empty or missing fee_rate_bps to 0', () => {
+    expect(normalizePolymarketFeeRateResponse(null)).toEqual({
+      feeRateBps: 0,
+      ignoredLegacyBaseFee: false,
+    });
+
     expect(
       normalizePolymarketFeeRateResponse({ base_fee: 1000, fee_rate_bps: '' }),
     ).toEqual({ feeRateBps: 0, ignoredLegacyBaseFee: true });
@@ -182,6 +201,21 @@ describe('CLOB Transport & Order Submission Hardening', () => {
     expect(
       normalizePolymarketFeeRateResponse({ fee_rate_bps: 200 }),
     ).toEqual({ feeRateBps: 200, ignoredLegacyBaseFee: false });
+  });
+
+  it('PolymarketAdapter.getFeeRate fetches /fee-rate and normalizes the response', async () => {
+    const fakePool = {
+      warmConnections: vi.fn().mockResolvedValue(undefined),
+      getSession: vi.fn(),
+      releaseSession: vi.fn(),
+    };
+    const adapter = new PolymarketAdapter({ signOrder: vi.fn() } as never, 'https://clob.polymarket.com', fakePool as never);
+    vi.spyOn(adapter as unknown as { request: () => Promise<unknown> }, 'request').mockResolvedValueOnce({
+      base_fee: 1000,
+      fee_rate_bps: '',
+    });
+    const res = await adapter.getFeeRate('tok-zero');
+    expect(res).toEqual({ feeRateBps: 0, ignoredLegacyBaseFee: true });
   });
 
   it('submitAndTrackOrder and submitOnlyOrder reject responses with empty or whitespace-only orderID', async () => {
@@ -265,7 +299,7 @@ describe('Maker Reward Dilution & 1.5x Markout Kill Criterion', () => {
         yesAskTokens: 500,
         noAskTokens: 500,
         queueAheadShares: 10,
-        leg2Reject: false,
+        leg2Reject: true,
       },
       25,
       0.01,
@@ -274,6 +308,25 @@ describe('Maker Reward Dilution & 1.5x Markout Kill Criterion', () => {
       { competitiveDilutionFactor: 0.50 },
     );
     expect(epHigh.discountedLiquidityReward!).toBeGreaterThan(epLow.discountedLiquidityReward!);
+
+    // Default competitiveDilutionFactor fallback and minNetSpread rejection
+    const epDefault = simulateMakerEpisode(
+      {
+        yesBid: 0.48,
+        yesAsk: 0.52,
+        noBid: 0.48,
+        noAsk: 0.52,
+        yesAskTokens: 500,
+        noAskTokens: 500,
+        queueAheadShares: 10,
+        leg2Reject: false,
+      },
+      25,
+      0.99,
+      'politics',
+      { s: 12345 },
+    );
+    expect(epDefault.traded).toBe(false);
   });
 
   it('reports makerMarkoutCoverageRatio and passesMakerMarkoutKillCriterion in walk-forward OOS report', () => {
