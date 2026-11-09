@@ -9,6 +9,7 @@ import type { ClobClient } from '../../polymarket/clob-client';
 import type { OrderManager } from '../../polymarket/order-manager';
 import type { EventBus } from '../../events/event-bus';
 import type { GammaMarketGroup } from '../../polymarket/gamma-client';
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import {
   type HedgePosition,
@@ -90,13 +91,16 @@ export async function checkExitsFor(
       try {
         // Exit primary leg
         const exitSide = pos.primaryLeg.side === 'yes' ? 'sell' : 'buy';
-        await ctx.orderManager.placeOrder({
+        const exitShares = Math.round(pos.sizeUsdc / currentPrice);
+        const exitOrder = await ctx.orderManager.placeOrder({
           tokenId: pos.primaryLeg.tokenId,
           side: exitSide,
           price: currentPrice.toFixed(4),
-          size: String(Math.round(pos.sizeUsdc / currentPrice)),
+          size: String(exitShares),
           orderType: 'IOC',
         });
+        const category = pos.category ?? classifyMarketCategory(pos.primaryLeg.conditionId);
+        const feeUsdc = calcQuadraticTakerFeeV2(category, currentPrice, exitShares) * currentPrice;
 
         // Exit hedge leg if present
         if (pos.hedgeLeg) {
@@ -134,7 +138,7 @@ export async function checkExitsFor(
             side: exitSide,
             fillPrice: String(currentPrice),
             fillSize: String(pos.sizeUsdc),
-            fees: '0',
+            fees: exitOrder?.fees ?? feeUsdc.toFixed(6),
             timestamp: Date.now(),
             strategy: STRATEGY_NAME,
           },
