@@ -1,0 +1,117 @@
+use crate::settings::Settings;
+use anyhow::{bail, Result};
+use pb_store::ParquetRecordWriter;
+use pb_types::{AssetId, PersistedRecord, ReplayMode};
+
+pub async fn run(
+    settings: Settings,
+    token: String,
+    at_us: u64,
+    mode: String,
+    validate: bool,
+) -> Result<()> {
+    let replay_mode = parse_mode(&mode)?;
+    tracing::info!(
+        token = %token,
+        at_us,
+        mode = %replay_mode,
+        validate,
+        "replaying orderbook state"
+    );
+
+    let asset_id = AssetId::new(token);
+
+    let (store, base_path) =
+        super::pipeline::build_object_store(&settings.storage.parquet_base_path)?;
+    let reader = pb_replay::ParquetReader::from_store(store, base_path);
+    let engine = pb_replay::ReplayEngine::new(reader);
+    let replay = engine.reconstruct_at(&asset_id, at_us, replay_mode).await?;
+    let validation = if validate {
+        engine
+            .replay_validation(&asset_id, at_us, replay_mode)
+            .await?
+    } else {
+        None
+    };
+    if let Some(validation) = validation.as_ref() {
+        persist_validation_parquet(&settings, validation.clone()).await?;
+    }
+    print_book(&replay, validation.as_ref());
+
+    Ok(())
+}
+
+fn parse_mode(mode: &str) -> Result<ReplayMode> {
+    match mode {
+        "recv_time" => Ok(ReplayMode::RecvTime),
+        "exchange_time" => Ok(ReplayMode::ExchangeTime),
+        other => bail!("unknown replay mode: {other}. Use 'recv_time' or 'exchange_time'"),
+    }
+}
+
+async fn persist_validation_parquet(
+    settings: &Settings,
+    validation: pb_types::ReplayValidation,
+) -> Result<()> {
+    let (store, base_path) =
+        super::pipeline::build_object_store(&settings.storage.parquet_base_path)?;
+    let writer = ParquetRecordWriter::new(store, base_path);
+    writer
+        .write_record(PersistedRecord::Validation(validation))
+        .await?;
+    Ok(())
+}
+
+fn print_book(replay: &pb_replay::ReplayResult, validation: Option<&pb_types::ReplayValidation>) {
+    let book = &replay.book;
+    println!("Reconstructed L2Book for {}", book.asset_id);
+    println!("  Mode: {}", replay.mode);
+    println!("  Used checkpoint: {}", replay.used_checkpoint);
+    println!("  Continuity events: {}", replay.continuity_events.len());
+    println!("  Sequence: {}", book.sequence);
+    println!("  Bid levels: {}", book.bid_depth());
+    println!("  Ask levels: {}", book.ask_depth());
+
+    if let Some((price, size)) = book.best_bid() {
+        println!("  Best bid: {} @ {}", price, size);
+    }
+    if let Some((price, size)) = book.best_ask() {
+        println!("  Best ask: {} @ {}", price, size);
+    }
+    if let Some(mid) = book.mid_price() {
+        println!("  Mid price: {mid:.4}");
+    }
+    if let Some(spread) = book.spread() {
+        println!("  Spread: {spread:.4}");
+    }
+    if let Some(validation) = validation {
+        println!("  Validation matched: {}", validation.matched);
+        if let Some(summary) = &validation.mismatch_summary {
+            println!("  Validation summary: {summary}");
+        }
+    }
+
+    if !replay.continuity_events.is_empty() {
+        println!("\nContinuity:");
+        for event in &replay.continuity_events {
+            let asset = event
+                .asset_id
+                .as_ref()
+                .map(|value| value.as_str())
+                .unwrap_or("global");
+            println!(
+                "  {} @ {} [{}]",
+                event.kind, event.provenance.recv_timestamp_us, asset
+            );
+        }
+    }
+
+    println!("\nBids:");
+    for (price, size) in book.bids_sorted() {
+        println!("  {} | {}", price, size);
+    }
+    println!("\nAsks:");
+    for (price, size) in book.asks_sorted() {
+        println!("  {} | {}", price, size);
+    }
+}

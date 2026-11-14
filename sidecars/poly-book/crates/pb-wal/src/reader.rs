@@ -1,0 +1,461 @@
+use std::io::Write;
+use std::path::PathBuf;
+
+use tracing::warn;
+
+use crate::error::WalError;
+use crate::segment;
+use crate::WalConfig;
+
+/// Durable reader position within the WAL.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WalPosition {
+    pub segment_id: u64,
+    pub offset: usize,
+}
+
+/// WAL consumer that reads records with independent position tracking.
+pub struct WalReader {
+    config: WalConfig,
+    consumer_name: String,
+    /// Current segment being read.
+    current_segment_id: u64,
+    /// Byte offset within the current segment.
+    current_offset: usize,
+    /// Cached data of the current segment.
+    current_data: Option<Vec<u8>>,
+    /// Sorted list of available segment IDs (refreshed on segment advance).
+    available_segments: Vec<u64>,
+}
+
+impl WalReader {
+    /// Open a WAL reader for the given consumer. Resumes from the last
+    /// committed position if one exists.
+    pub fn open(config: WalConfig, consumer_name: &str) -> Result<Self, WalError> {
+        let available = segment::list_segment_ids(&config.base_path)?;
+
+        let (start_seg, start_offset) = Self::load_position(&config.base_path, consumer_name)?
+            .unwrap_or_else(|| {
+                // Start from the earliest available segment.
+                let first = available.first().copied().unwrap_or(0);
+                (first, 0)
+            });
+
+        let mut reader = Self {
+            config,
+            consumer_name: consumer_name.to_string(),
+            current_segment_id: start_seg,
+            current_offset: start_offset,
+            current_data: None,
+            available_segments: available,
+        };
+
+        // Load the starting segment data.
+        reader.load_segment(start_seg)?;
+        Ok(reader)
+    }
+
+    /// Open at the earliest retained segment, ignoring any committed consumer
+    /// position. Offline recovery uses this to inspect the entire retained WAL
+    /// without mutating or trusting a previous maintenance cursor.
+    pub fn open_from_start(config: WalConfig, consumer_name: &str) -> Result<Self, WalError> {
+        let available = segment::list_segment_ids(&config.base_path)?;
+        let start_seg = available.first().copied().unwrap_or(0);
+        let mut reader = Self {
+            config,
+            consumer_name: consumer_name.to_string(),
+            current_segment_id: start_seg,
+            current_offset: 0,
+            current_data: None,
+            available_segments: available,
+        };
+        reader.load_segment(start_seg)?;
+        Ok(reader)
+    }
+
+    /// Open a WAL reader at an explicit position instead of the last committed
+    /// consumer position. This is useful for handing off from checkpoint/WAL
+    /// hydration directly into live tailing without replaying already-applied
+    /// records.
+    pub fn open_at(
+        config: WalConfig,
+        consumer_name: &str,
+        position: WalPosition,
+    ) -> Result<Self, WalError> {
+        let available = segment::list_segment_ids(&config.base_path)?;
+        let mut reader = Self {
+            config,
+            consumer_name: consumer_name.to_string(),
+            current_segment_id: position.segment_id,
+            current_offset: position.offset,
+            current_data: None,
+            available_segments: available,
+        };
+        reader.load_segment(position.segment_id)?;
+        Ok(reader)
+    }
+
+    /// Read the next record, or `None` if no more records are available.
+    /// Automatically advances across segment boundaries.
+    /// Skips corrupt records (CRC mismatch) with a warning log.
+    #[allow(clippy::should_implement_trait)]
+    pub fn next(&mut self) -> Result<Option<Vec<u8>>, WalError> {
+        loop {
+            if let Some(data) = &self.current_data {
+                match segment::read_record_at(data, self.current_offset, self.current_segment_id) {
+                    Ok(Some((payload, next_offset))) => {
+                        self.current_offset = next_offset;
+                        return Ok(Some(payload));
+                    }
+                    Ok(None) => {
+                        // End of this segment — try advancing.
+                        if !self.advance_segment()? {
+                            return Ok(None);
+                        }
+                        continue;
+                    }
+                    Err(WalError::CrcMismatch {
+                        segment_id,
+                        offset,
+                        expected,
+                        actual,
+                    }) => {
+                        warn!(
+                            segment_id,
+                            offset,
+                            expected = format!("{expected:#010x}"),
+                            actual = format!("{actual:#010x}"),
+                            "CRC mismatch, skipping corrupt record"
+                        );
+                        // Skip past the corrupt record.
+                        let len = u32::from_le_bytes(
+                            data[self.current_offset..self.current_offset + 4]
+                                .try_into()
+                                .unwrap(),
+                        ) as usize;
+                        self.current_offset += crate::FRAME_HEADER_LEN + len;
+                        continue;
+                    }
+                    Err(WalError::TruncatedRecord { .. }) => {
+                        // An incomplete frame at the tail. Leave `current_offset`
+                        // at the START of this frame (do NOT jump to end-of-cache):
+                        // that way, when the writer later completes the frame the
+                        // reader parses it in place, and after a torn-tail recovery
+                        // truncates+rewrites the tail the reader resumes from this
+                        // boundary instead of a stale end-of-cache offset that the
+                        // truncation invalidated. The infinite-reload
+                        // guard lives in `top_up_current_segment`, which keys growth
+                        // off the cached data length (not `current_offset`), so this
+                        // cannot spin.
+                        if !self.advance_segment()? {
+                            return Ok(None);
+                        }
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                }
+            } else {
+                // The current segment is not loaded — either an empty-dir
+                // startup before the writer created segment 0, or the segment
+                // was pruned out from under us. Try to (re)load before giving
+                // up so the live tail recovers instead of stalling forever
+                //.
+                if self.reload_when_unloaded()? {
+                    continue;
+                }
+                return Ok(None);
+            }
+        }
+    }
+
+    /// Read the next record without skipping corruption or internal segment gaps.
+    ///
+    /// Live readers deliberately tolerate and surface some damage so they can
+    /// continue serving. Recovery must be stricter: publishing a partition from
+    /// a stream with a missing frame would make that incomplete stream
+    /// authoritative and permanently delete valid history.
+    pub fn next_strict(&mut self) -> Result<Option<Vec<u8>>, WalError> {
+        loop {
+            if let Some(data) = &self.current_data {
+                if self.current_offset < data.len()
+                    && data.len() - self.current_offset < crate::FRAME_HEADER_LEN
+                {
+                    return Err(WalError::TruncatedRecord {
+                        segment_id: self.current_segment_id,
+                        offset: self.current_offset as u64,
+                    });
+                }
+                if self.current_offset < data.len() {
+                    let len = u32::from_le_bytes(
+                        data[self.current_offset..self.current_offset + 4]
+                            .try_into()
+                            .expect("strict reader checked the complete frame header"),
+                    );
+                    if len == 0 {
+                        return Err(WalError::TruncatedRecord {
+                            segment_id: self.current_segment_id,
+                            offset: self.current_offset as u64,
+                        });
+                    }
+                }
+                match segment::read_record_at(data, self.current_offset, self.current_segment_id) {
+                    Ok(Some((payload, next_offset))) => {
+                        self.current_offset = next_offset;
+                        return Ok(Some(payload));
+                    }
+                    Ok(None) => {
+                        if !self.advance_segment_strict()? {
+                            return Ok(None);
+                        }
+                    }
+                    Err(error) => return Err(error),
+                }
+            } else if !self.reload_when_unloaded()? {
+                return Ok(None);
+            }
+        }
+    }
+
+    /// Commit the current read position atomically to disk so it survives
+    /// restarts. Uses write-to-temp + rename for crash safety.
+    pub fn commit_position(&self) -> Result<(), WalError> {
+        let path = self.position_file_path();
+        let content = format!("{}:{}", self.current_segment_id, self.current_offset);
+        let tmp_path = path.with_extension("pos.tmp");
+        let mut file = std::fs::File::create(&tmp_path).map_err(|e| WalError::io(&tmp_path, e))?;
+        file.write_all(content.as_bytes())
+            .map_err(|e| WalError::io(&tmp_path, e))?;
+        file.sync_all().map_err(|e| WalError::io(&tmp_path, e))?;
+        std::fs::rename(&tmp_path, &path).map_err(|e| WalError::io(&path, e))?;
+        if let Some(parent) = path.parent() {
+            std::fs::File::open(parent)
+                .and_then(|dir| dir.sync_all())
+                .map_err(|e| WalError::io(parent, e))?;
+        }
+        Ok(())
+    }
+
+    /// Returns the current read position as (segment_id, offset).
+    pub fn position(&self) -> (u64, usize) {
+        (self.current_segment_id, self.current_offset)
+    }
+
+    /// Returns the current read position as a typed value.
+    pub fn current_position(&self) -> WalPosition {
+        WalPosition {
+            segment_id: self.current_segment_id,
+            offset: self.current_offset,
+        }
+    }
+
+    /// Check if the reader's committed position references a segment that has
+    /// been pruned. Uses the cached segment list from the most recent
+    /// `advance_segment` or `open` call to avoid redundant directory scans.
+    /// Returns true if the reader needs to re-hydrate from checkpoint.
+    pub fn needs_resync(&self) -> bool {
+        if let Some(&earliest) = self.available_segments.first() {
+            return self.current_segment_id < earliest;
+        }
+        false
+    }
+
+    /// Returns the byte lag between the reader's current position and the
+    /// latest data on disk. Uses the cached segment list and only stats the
+    /// files for size information.
+    pub fn lag_bytes(&self) -> Option<u64> {
+        if self.available_segments.is_empty() {
+            return Some(0);
+        }
+
+        let mut lag: u64 = 0;
+
+        for &seg_id in &self.available_segments {
+            if seg_id < self.current_segment_id {
+                continue;
+            }
+            let path = segment::segment_path(&self.config.base_path, seg_id);
+            let file_size = std::fs::metadata(&path).ok()?.len();
+
+            if seg_id == self.current_segment_id {
+                lag += file_size.saturating_sub(self.current_offset as u64);
+            } else {
+                lag += file_size;
+            }
+        }
+        Some(lag)
+    }
+
+    /// Refresh the cached list of available segments from disk.
+    pub fn refresh_segments(&mut self) -> Result<(), WalError> {
+        self.available_segments = segment::list_segment_ids(&self.config.base_path)?;
+        Ok(())
+    }
+
+    fn position_file_path(&self) -> PathBuf {
+        self.config
+            .base_path
+            .join(format!("consumer_{}.pos", self.consumer_name))
+    }
+
+    fn load_position(
+        base_path: &std::path::Path,
+        consumer_name: &str,
+    ) -> Result<Option<(u64, usize)>, WalError> {
+        let path = base_path.join(format!("consumer_{consumer_name}.pos"));
+        if !path.exists() {
+            return Ok(None);
+        }
+        let content = std::fs::read_to_string(&path).map_err(|e| WalError::io(&path, e))?;
+        let trimmed = content.trim();
+        if let Some((seg_str, off_str)) = trimmed.split_once(':') {
+            if let (Ok(seg), Ok(off)) = (seg_str.parse::<u64>(), off_str.parse::<usize>()) {
+                return Ok(Some((seg, off)));
+            }
+        }
+        Ok(None)
+    }
+
+    fn load_segment(&mut self, segment_id: u64) -> Result<bool, WalError> {
+        let path = segment::segment_path(&self.config.base_path, segment_id);
+        if !path.exists() {
+            self.current_data = None;
+            return Ok(false);
+        }
+        let data = std::fs::read(&path).map_err(|e| WalError::io(&path, e))?;
+        self.current_data = Some(data);
+        self.current_segment_id = segment_id;
+        Ok(true)
+    }
+
+    fn advance_segment(&mut self) -> Result<bool, WalError> {
+        // Refresh available segments in case new ones appeared.
+        self.available_segments = segment::list_segment_ids(&self.config.base_path)?;
+
+        // Find the next segment after current.
+        let next = self
+            .available_segments
+            .iter()
+            .find(|&&id| id > self.current_segment_id);
+
+        match next {
+            Some(&next_id) => {
+                self.current_offset = 0;
+                self.load_segment(next_id)
+            }
+            // No later segment exists yet: the active segment may have grown
+            // since we last read it. Top it up incrementally.
+            None => self.top_up_current_segment(),
+        }
+    }
+
+    fn advance_segment_strict(&mut self) -> Result<bool, WalError> {
+        self.available_segments = segment::list_segment_ids(&self.config.base_path)?;
+        let next = self
+            .available_segments
+            .iter()
+            .find(|&&id| id > self.current_segment_id)
+            .copied();
+
+        match next {
+            Some(next_id) if next_id != self.current_segment_id + 1 => Err(WalError::SegmentGap {
+                consumer: self.consumer_name.clone(),
+                committed_segment: self.current_segment_id,
+                earliest_available: next_id,
+            }),
+            Some(next_id) => {
+                self.current_offset = 0;
+                self.load_segment(next_id)
+            }
+            None => self.top_up_current_segment(),
+        }
+    }
+
+    /// Incrementally pick up bytes appended to the current (active) segment
+    /// since it was last read.
+    ///
+    /// This stats the file first and returns `false` without reading anything
+    /// when it has not grown — so a caught-up reader polling every 50 ms does
+    /// O(0) I/O instead of re-reading the entire (up to 64 MB) segment on every
+    /// poll. When the file has grown, only the new suffix
+    /// `[prev_len, file_len)` is read and appended to the cached buffer, never
+    /// the whole file.
+    ///
+    /// Growth is compared against the previously loaded data length (not
+    /// `current_offset`) so a zero-length record or other mid-file `Ok(None)`
+    /// from corruption cannot cause an infinite reload loop.
+    fn top_up_current_segment(&mut self) -> Result<bool, WalError> {
+        let path = segment::segment_path(&self.config.base_path, self.current_segment_id);
+        let file_len = match std::fs::metadata(&path) {
+            Ok(m) => m.len(),
+            // Segment disappeared (pruned). Leave state as-is; the caller's
+            // resync detection handles the gap.
+            Err(_) => return Ok(false),
+        };
+        let prev_len = self.current_data.as_ref().map_or(0, |d| d.len()) as u64;
+        if file_len < prev_len {
+            // The segment is SHORTER than what we cached: it was truncated under
+            // us (a writer's torn-tail recovery in a multi-process/replica setup).
+            // Reading only the suffix past the now-invalid `prev_len` would splice
+            // stale bytes onto bytes the writer has since rewritten, corrupting the
+            // parse. Discard the cache and reload the whole segment so it matches
+            // the file, and clamp the parse offset if it landed past the new EOF
+            //.
+            let reloaded = self.load_segment(self.current_segment_id)?;
+            if self.current_offset as u64 > file_len {
+                self.current_offset = file_len as usize;
+            }
+            return Ok(reloaded);
+        }
+        if file_len == prev_len {
+            // Stat-only fast path: nothing new to read.
+            return Ok(false);
+        }
+
+        use std::io::{Read, Seek, SeekFrom};
+        let mut file = std::fs::File::open(&path).map_err(|e| WalError::io(&path, e))?;
+        file.seek(SeekFrom::Start(prev_len))
+            .map_err(|e| WalError::io(&path, e))?;
+        let mut suffix = Vec::with_capacity((file_len - prev_len) as usize);
+        file.read_to_end(&mut suffix)
+            .map_err(|e| WalError::io(&path, e))?;
+        match self.current_data {
+            Some(ref mut d) => d.extend_from_slice(&suffix),
+            None => self.current_data = Some(suffix),
+        }
+        Ok(true)
+    }
+
+    /// Recover when `current_data` is `None`: either an empty WAL directory at
+    /// startup (the writer has not created segment 0 yet) or the current
+    /// segment was pruned. Refreshes the listing and reloads, rather than
+    /// returning `Ok(None)` forever.
+    fn reload_when_unloaded(&mut self) -> Result<bool, WalError> {
+        self.available_segments = segment::list_segment_ids(&self.config.base_path)?;
+        let path = segment::segment_path(&self.config.base_path, self.current_segment_id);
+        if path.exists() {
+            // The segment now exists (or reappeared) — load and resume.
+            return self.load_segment(self.current_segment_id);
+        }
+        // The current segment is gone. If later segments exist, jump to the
+        // earliest available one; `needs_resync()` will report the gap so the
+        // caller can re-hydrate from a checkpoint.
+        if let Some(&earliest) = self.available_segments.first() {
+            if earliest > self.current_segment_id {
+                self.current_segment_id = earliest;
+                self.current_offset = 0;
+                return self.load_segment(earliest);
+            }
+        }
+        Ok(false)
+    }
+}
+
+impl std::fmt::Debug for WalReader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WalReader")
+            .field("consumer", &self.consumer_name)
+            .field("segment_id", &self.current_segment_id)
+            .field("offset", &self.current_offset)
+            .finish()
+    }
+}

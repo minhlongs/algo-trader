@@ -1,0 +1,135 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pb-api",
+    "crates/pb-types",
+    "crates/pb-book",
+    "crates/pb-feed",
+    "crates/pb-store",
+    "crates/pb-replay",
+    "crates/pb-metrics",
+    "crates/pb-wal",
+    "crates/pb-service",
+    "crates/pb-bin",
+    "tests/integration",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.94"
+authors = ["Weiming Long <longweiming665@gmail.com>"]
+repository = "https://github.com/weiminglong/poly-book"
+homepage = "https://github.com/weiminglong/poly-book"
+
+[workspace.dependencies]
+# Internal crates
+pb-types = { path = "crates/pb-types" }
+pb-api = { path = "crates/pb-api" }
+pb-book = { path = "crates/pb-book" }
+pb-feed = { path = "crates/pb-feed" }
+pb-store = { path = "crates/pb-store" }
+pb-replay = { path = "crates/pb-replay" }
+pb-metrics = { path = "crates/pb-metrics" }
+pb-wal = { path = "crates/pb-wal" }
+pb-service = { path = "crates/pb-service" }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+# rustls (no openssl/native-tls C dependency).
+tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
+# Direct rustls dep so the WS connector can pin an explicit crypto provider.
+# The graph contains both `ring` (WS stack) and `aws-lc-rs` (metrics exporter's
+# hyper-rustls), and rustls panics at TLS setup when neither is selected.
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+    "logging",
+    "std",
+    "tls12",
+] }
+webpki-roots = "1.0"
+
+# HTTP — rustls instead of the default native-tls; keep the other defaults
+# (charset, http2, system-proxy) that `default-features = false` would drop.
+reqwest = { version = "0.13", default-features = false, features = [
+    "json",
+    "charset",
+    "http2",
+    "system-proxy",
+    "rustls",
+] }
+
+# Static file serving for the optional bundled-SPA fallback in pb-api
+tower-http = { version = "0.6", features = ["fs"] }
+
+# Serialization
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+bincode = "1"
+
+# Storage
+arrow = { version = "59", features = ["prettyprint"] }
+parquet = { version = "59", features = ["async", "object_store", "zstd"] }
+object_store = { version = "0.13", features = ["aws"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.18"
+axum = { version = "0.8", features = ["ws"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Config
+config = "0.15"
+
+# Benchmarks
+criterion = { version = "0.8", features = ["html_reports"] }
+
+# Property-based testing
+proptest = "1"
+
+# Performance
+mimalloc = { version = "0.1", default-features = false }
+rustc-hash = "2"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+url = "2"
+tokio-util = "0.7"
+futures-util = "0.3"
+governor = "0.10"
+
+# Workspace-wide lint policy: unsafe code is forbidden in every crate.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+# Keep line-table debug info and do not strip, so a production crash produces a
+# symbolizable file:line backtrace instead of raw addresses. Triageability beats
+# binary size for a system whose bar is correctness under failure.
+# See docs/adr/0007-release-profile.md.
+strip = "none"
+debug = "line-tables-only"
+panic = "abort"
+# Trap integer overflow in release too. For a fixed-point orderbook system a
+# silent wrap is data corruption, not a performance win worth taking.
+overflow-checks = true
+
+[profile.release-full]
+inherits = "release"
+lto = "fat"
+
+[profile.bench]
+lto = "thin"
+codegen-units = 1
+overflow-checks = true

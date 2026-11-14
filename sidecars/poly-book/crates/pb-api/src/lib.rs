@@ -1,0 +1,18 @@
+//! Read-only HTTP API and live read model for workstation clients. See [README](../README.md).
+
+pub mod dto;
+pub mod error;
+pub mod hydration;
+pub mod live_state;
+pub mod server;
+pub mod streaming;
+
+pub use dto::{
+    ActiveAssetSummary, ApiErrorResponse, AssetRef, AssetResolveResponse, BookUpdateMessage,
+    CompletenessLabel, ContinuityWarning, FeedMode, FeedStatusResponse, IntegritySummaryResponse,
+    LiveOrderBookSnapshot, PriceLevelView, ReplayReconstructionResponse, SessionStatus,
+};
+pub use error::ApiError;
+pub use live_state::{LiveReadModel, SnapshotLookupError};
+pub use server::{router, serve, ApiConfig, AppState, DEFAULT_HTTP_REQUEST_TIMEOUT_SECS};
+pub use streaming::{BookBroadcast, PerAssetBroadcast};

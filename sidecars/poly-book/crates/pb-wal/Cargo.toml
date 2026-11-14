@@ -1,0 +1,32 @@
+[package]
+name = "pb-wal"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Embedded write-ahead log with append-only segments for durable event streaming"
+
+[lints]
+workspace = true
+
+[dependencies]
+crc32c = "0.6"
+bincode = { workspace = true }
+pb-types = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# Advisory flock for single-writer mutual exclusion on the WAL directory. flock
+# auto-releases on process exit, so it is crash-safe (no stale lock file).
+rustix = { version = "1", features = ["fs"] }
+
+[dev-dependencies]
+tempfile = "3"
+proptest = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "wal_append"
+harness = false

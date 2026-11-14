@@ -1,0 +1,44 @@
+[package]
+name = "pb-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Browser-facing API and live read model for the poly-book workstation"
+
+[lints]
+workspace = true
+
+[dependencies]
+pb-types = { workspace = true }
+pb-book = { workspace = true }
+pb-replay = { workspace = true }
+pb-wal = { workspace = true }
+pb-service = { workspace = true }
+pb-metrics = { workspace = true }
+rustc-hash = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+axum = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+pb-store = { workspace = true }
+object_store = { workspace = true }
+tempfile = "3"
+tower = "0.5"
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
+hyper = "1"
+criterion = { workspace = true }
+
+[[bench]]
+name = "read_model"
+harness = false

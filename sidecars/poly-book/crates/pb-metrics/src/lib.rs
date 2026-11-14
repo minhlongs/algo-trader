@@ -1,0 +1,9 @@
+//! Prometheus metrics helpers and HTTP scrape endpoint. See [README](../README.md).
+
+pub mod error;
+pub mod recorder;
+pub mod server;
+
+pub use error::MetricsError;
+pub use recorder::*;
+pub use server::{install_recorder, serve_metrics_on_listener, spawn_upkeep};

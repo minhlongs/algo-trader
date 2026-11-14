@@ -1,0 +1,45 @@
+[package]
+name = "pb-bin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "CLI entrypoint for the poly-book Polymarket ingestion and replay workspace"
+
+[[bin]]
+name = "poly-book"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+pb-types = { workspace = true }
+pb-api = { workspace = true }
+pb-feed = { workspace = true }
+pb-store = { workspace = true }
+pb-replay = { workspace = true }
+pb-metrics = { workspace = true }
+pb-wal = { workspace = true }
+pb-service = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+config = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+object_store = { workspace = true }
+futures-util = { workspace = true }
+url = { workspace = true }
+reqwest = { workspace = true }
+rustls = { workspace = true }
+mimalloc = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
