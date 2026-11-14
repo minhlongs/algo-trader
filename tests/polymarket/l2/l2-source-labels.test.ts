@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   L2_SOURCE_LABELS,
   L2_SOURCE_DATA_API_V2,
+  L2_SOURCE_POLY_BOOK_PARQUET,
+  L2_SOURCE_POLY_BOOK_WAL,
   L2_SOURCE_PRICES_HISTORY,
   L2_SOURCE_RECORDED,
   assertL2SourceLabel,
@@ -11,16 +13,35 @@ import {
 } from '../../../src/desk/polymarket/l2/l2-source-labels';
 
 describe('l2 source labels', () => {
-  it('exposes exactly the three allowed labels', () => {
-    expect([...L2_SOURCE_LABELS]).toEqual(['recorded-l2', 'data-api-v2', 'prices-history']);
+  it('exposes the five allowed observed provenance labels including poly-book', () => {
+    expect([...L2_SOURCE_LABELS]).toEqual([
+      'recorded-l2',
+      'poly-book-wal',
+      'poly-book-parquet',
+      'data-api-v2',
+      'prices-history',
+    ]);
     expect(L2_SOURCE_RECORDED).toBe('recorded-l2');
+    expect(L2_SOURCE_POLY_BOOK_WAL).toBe('poly-book-wal');
+    expect(L2_SOURCE_POLY_BOOK_PARQUET).toBe('poly-book-parquet');
     expect(L2_SOURCE_DATA_API_V2).toBe('data-api-v2');
     expect(L2_SOURCE_PRICES_HISTORY).toBe('prices-history');
   });
 
-  it('accepts known labels and rejects everything else', () => {
+  it('accepts known labels and rejects synthetic/unknown labels', () => {
     for (const label of L2_SOURCE_LABELS) expect(isL2SourceLabel(label)).toBe(true);
-    for (const bad of ['simulated', 'recorded', 'RECORDED-L2', '', null, undefined, 42, {}]) {
+    for (const bad of [
+      'simulated',
+      'synthetic-regime',
+      'ohlcv-store',
+      'recorded',
+      'RECORDED-L2',
+      '',
+      null,
+      undefined,
+      42,
+      {},
+    ]) {
       expect(isL2SourceLabel(bad)).toBe(false);
     }
   });
