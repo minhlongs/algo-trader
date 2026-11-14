@@ -80,17 +80,19 @@ export class StrategyRunner {
         ...baseClob,
         getOrderBook: async (tokenId: string) => {
           const book = await baseClob.getOrderBook(tokenId);
-          this.orchestrator.recordMarketObservation(Date.now());
+          if (Array.isArray(book?.bids) && book.bids.length > 0 && Array.isArray(book?.asks) && book.asks.length > 0) {
+            this.orchestrator.recordMarketObservation(Date.now());
+          }
           return book;
         },
         getPrice: async (tokenId: string, side?: string) => {
           const price = await baseClob.getPrice(tokenId, side);
-          if (Number.isFinite(price)) this.orchestrator.recordMarketObservation(Date.now());
+          if (Number.isFinite(price) && price > 0) this.orchestrator.recordMarketObservation(Date.now());
           return price;
         },
         getMidPrice: async (tokenId: string) => {
           const mid = await baseClob.getMidPrice(tokenId);
-          if (Number.isFinite(mid)) this.orchestrator.recordMarketObservation(Date.now());
+          if (Number.isFinite(mid) && mid > 0) this.orchestrator.recordMarketObservation(Date.now());
           return mid;
         },
       };

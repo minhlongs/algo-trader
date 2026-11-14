@@ -6,15 +6,13 @@
 
 import { logger } from '@shared/utils/logger';
 import type { PriceUpdatePayload } from '../events/trading-event-bus';
-import type { BasePolymarketStrategy, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import type { BasePolymarketStrategy } from '@desk/strategies/polymarket/base-polymarket-strategy';
 import { clobClient } from './clob-client';
 import type { FeeScheduleResolver } from './fee-schedule-resolver';
-import { GammaClientImpl } from './strategy-runner-types';
+import { GammaClientImpl, type RunnerStrategyDeps } from './strategy-runner-types';
 import type { LiveOrderManagerProxy } from './live-order-manager-proxy';
 
-export interface RunnerStrategyDeps extends StrategyDeps {
-  feeResolver?: FeeScheduleResolver;
-}
+export type { RunnerStrategyDeps };
 
 export interface StrategyExecutionContext {
   status: 'stopped' | 'running' | 'error';

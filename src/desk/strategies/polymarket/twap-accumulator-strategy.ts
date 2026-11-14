@@ -76,9 +76,9 @@ export class TwapAccumulatorStrategy extends BasePolymarketStrategy {
         if (ba.mid <= 0 || ba.mid >= 1) continue;
 
         const dir = getAccumulationDirection(ba.mid, this.cfg.maxSlippage * 2);
-        if (!dir) continue;
+        if (!dir || (dir === 'no' && !market.noTokenId)) continue;
 
-        const tokenId = dir === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = dir === 'yes' ? market.yesTokenId : market.noTokenId!;
         const entryPrice = dir === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 
@@ -121,7 +121,7 @@ export class TwapAccumulatorStrategy extends BasePolymarketStrategy {
         }
       }
 
-      await this.enterPosition(acc.yesTokenId, acc.conditionId, side, entryPrice, sliceSize);
+      await this.enterPosition(acc.marketId, acc.conditionId, side, entryPrice, sliceSize);
       acc.slicesFilled++;
       acc.entryPrices.push(entryPrice);
       acc.lastSliceAt = Date.now();

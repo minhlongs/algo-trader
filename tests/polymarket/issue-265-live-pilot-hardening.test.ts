@@ -7,7 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { calculateLegFee } from '../../src/desk/arbitrage/profitability/fee-calculator';
+import { calculateLegFee, calculatePolymarketFee } from '../../src/desk/arbitrage/profitability/fee-calculator';
 import { tradingEventBus } from '../../src/desk/events/trading-event-bus';
 import { computePolymarketSignature } from '../../src/desk/execution/polymarket-adapter-transport';
 import { LiveExecutionGuard } from '../../src/desk/execution/live-execution-guard';
@@ -224,12 +224,12 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
         }),
       ).rejects.toThrow(/UNRESOLVED_STATE/);
 
-      // Real two-sided PRICE_UPDATE refreshes market observation and unblocks PolyRisk
+      // Real two-sided PRICE_UPDATE (including minor <=1s server clock skew) refreshes market observation and unblocks PolyRisk
       tradingEventBus.emit('PRICE_UPDATE', {
         tokenId: 'tok-live-obs',
         bid: 0.49,
         ask: 0.51,
-        timestamp: Date.now(),
+        timestamp: Date.now() + 500,
       });
       const placed = await orch.placeOrder({
         tokenId: 'tok-live-obs',
@@ -278,6 +278,14 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
         executeStrategyTick: async (_k: string, fn: () => Promise<void>) => fn(),
       } as unknown as LiveTradingOrchestrator;
 
+      let bookSnapshot: { bids: Array<{ price: string; size: string }>; asks: Array<{ price: string; size: string }>; timestamp: number } = {
+        bids: [{ price: '0.48', size: '50' }],
+        asks: [{ price: '0.52', size: '50' }],
+        timestamp: Date.now(),
+      };
+      let nextPrice = 0.5;
+      let nextMid = 0.5;
+
       const liveRunner = new StrategyRunner(
         ProbeStrategy as never,
         {
@@ -292,10 +300,11 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
           },
           tradingConfig: { paperTrading: false, capitalUsdc: 1_000, feeScheduleResolver: resolver },
           deps: {
+            feeResolver: resolver,
             clob: {
-              getOrderBook: async () => ({ bids: [{ price: '0.48', size: '50' }], asks: [{ price: '0.52', size: '50' }], timestamp: Date.now() }),
-              getPrice: async () => 0.5,
-              getMidPrice: async () => 0.5,
+              getOrderBook: async () => bookSnapshot,
+              getPrice: async () => nextPrice,
+              getMidPrice: async () => nextMid,
             },
           },
         },
@@ -304,6 +313,15 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
 
       await liveRunner.start();
       expect(capturedClob).not.toBeNull();
+      await capturedClob!.getOrderBook('tok-1');
+      await capturedClob!.getPrice('tok-1');
+      await capturedClob!.getMidPrice('tok-1');
+      expect(recordMarketObservation).toHaveBeenCalledTimes(3);
+
+      // Empty/outage orderbooks and zero/NaN prices must NOT mask a CLOB outage by refreshing market observation
+      bookSnapshot = { bids: [], asks: [], timestamp: Date.now() };
+      nextPrice = 0;
+      nextMid = Number.NaN;
       await capturedClob!.getOrderBook('tok-1');
       await capturedClob!.getPrice('tok-1');
       await capturedClob!.getMidPrice('tok-1');
@@ -332,6 +350,22 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
       });
       await expect(corruptNoFlag.resolve('tok-corrupt')).rejects.toThrow(/unparsable feeSchedule/);
 
+      for (const invalidSchedule of [
+        { rate: '   ' },
+        { rate: [] },
+        { rate: 0.04, exponent: 0 },
+        { rate: 0.04, exponent: -1 },
+        { rate: 0.04, rebateRate: -0.1 },
+        { rate: 0.04, rebateRate: 1.5 },
+        { rate: 0.04, rebateRate: true },
+      ]) {
+        const badResolver = createGammaFeeScheduleResolver({
+          fetchImpl: (async () =>
+            new Response(JSON.stringify([{ feesEnabled: true, feeSchedule: invalidSchedule }]), { status: 200 })) as unknown as typeof fetch,
+        });
+        await expect(badResolver.resolve('tok-invalid')).rejects.toThrow(/feesEnabled=true/);
+      }
+
       const bareMarket = createGammaFeeScheduleResolver({
         fetchImpl: (async () =>
           new Response(JSON.stringify([{ question: 'anything' }]), { status: 200 })) as unknown as typeof fetch,
@@ -339,7 +373,7 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
       await expect(bareMarket.resolve('tok-bare')).resolves.toBeNull();
     });
 
-    it('fails closed in calculateLegFee when PolymarketFeeSchedule fields are NaN or Infinity', () => {
+    it('fails closed in calculateLegFee and guards calculatePolymarketFee when PolymarketFeeSchedule fields are NaN or Infinity', () => {
       for (const badSchedule of [
         { exponent: 1, rate: Number.NaN, takerOnly: true, rebateRate: 0.2 },
         { exponent: Number.NaN, rate: 0.04, takerOnly: true, rebateRate: 0.2 },
@@ -357,7 +391,10 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
           5,
         );
         expect(res).toEqual({ available: false, venue: 'polymarket', symbol: 'tok-bad-sched' });
+        expect(calculatePolymarketFee(badSchedule, 0.5, 100)).toEqual({ rate: 0, feeUsd: 0, rebateUsd: 0 });
       }
+      expect(calculatePolymarketFee(SCHEDULE, Number.NaN, 100)).toEqual({ rate: 0, feeUsd: 0, rebateUsd: 0 });
+      expect(calculatePolymarketFee(SCHEDULE, 0.5, Number.NaN)).toEqual({ rate: 0, feeUsd: 0, rebateUsd: 0 });
     });
   });
 
@@ -370,6 +407,7 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
       'POLY_API_SECRET',
       'POLYMARKET_PASSPHRASE',
       'POLY_PASSPHRASE',
+      'POLY_CLOB_HOST',
     ];
 
     afterEach(() => {
@@ -452,6 +490,52 @@ describe('Issue #265 — Live-Pilot Hardening Follow-ups', () => {
           guard,
         ),
       ).rejects.toThrow(/KILL_SWITCH_ACTIVE/);
+    });
+
+    it('honours POLY_CLOB_HOST with base path prefix and fails closed with explicit error when live credentials are missing', async () => {
+      for (const key of envKeys) savedEnv[key] = process.env[key];
+      process.env['POLY_CLOB_HOST'] = 'https://gateway.internal/clob/';
+      process.env['POLY_API_KEY'] = 'gw-key';
+      process.env['POLY_API_SECRET'] = 'gw-secret';
+      process.env['POLY_PASSPHRASE'] = 'gw-pass';
+
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async () => new Response('{"canceled":[]}', { status: 200 }));
+      vi.spyOn(Date, 'now').mockReturnValue(1_700_000_300_000);
+
+      const gwRuntime = createOrchestratorPolyRiskRuntime({
+        config: { paperTrading: false, capitalUsdc: 5_000 },
+        getOrderManager: () => null,
+        getPositionTracker: () => new LivePositionTracker(5_000),
+        getReconciler: () => new PolymarketOrderReconciler(5_000),
+        getJournal: () => new LiveTradingJournal(),
+      });
+      await gwRuntime.killSwitch.fire('gateway halt');
+      const [gwUrl, gwInit] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(gwUrl).toBe('https://gateway.internal/clob/cancel-all');
+      const gwHeaders = gwInit.headers as Record<string, string>;
+      expect(gwHeaders['POLY-SIGNATURE']).toBe(
+        computePolymarketSignature('gw-secret', '1700000300', 'DELETE', '/clob/cancel-all'),
+      );
+
+      // Missing credentials: still latches fail-closed and records explicit credential error
+      delete process.env['POLYMARKET_API_KEY'];
+      delete process.env['POLY_API_KEY'];
+      delete process.env['POLYMARKET_API_SECRET'];
+      delete process.env['POLY_API_SECRET'];
+      const unauthRuntime = createOrchestratorPolyRiskRuntime({
+        config: { paperTrading: false, capitalUsdc: 5_000 },
+        getOrderManager: () => null,
+        getPositionTracker: () => new LivePositionTracker(5_000),
+        getReconciler: () => new PolymarketOrderReconciler(5_000),
+        getJournal: () => new LiveTradingJournal(),
+      });
+      const unauthRes = await unauthRuntime.killSwitch.fire('missing creds halt');
+      expect(unauthRes.issued).toBe(true);
+      expect(unauthRes.result?.ok).toBe(false);
+      expect(unauthRuntime.isKillSwitchFired()).toBe(true);
+      expect(unauthRuntime.killSwitch.getAudit()[0]?.error).toMatch(/Missing Polymarket L2 API credentials/);
     });
   });
 });

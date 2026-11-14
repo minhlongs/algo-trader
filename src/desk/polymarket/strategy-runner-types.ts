@@ -7,9 +7,14 @@
 import type { GammaClient, GammaMarket } from '../polymarket/gamma-client';
 import type { StrategyName } from '../core/types';
 import type { BasePolymarketStrategy, BaseStrategyConfig, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import type { FeeScheduleResolver } from './fee-schedule-resolver';
 import type { LiveTradingConfig } from './live-trading-orchestrator';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+export interface RunnerStrategyDeps extends StrategyDeps {
+  feeResolver?: FeeScheduleResolver;
+}
 
 export interface StrategyRunnerConfig {
   /** Strategy-specific config (passed to strategy constructor) */
@@ -24,8 +29,8 @@ export interface StrategyRunnerConfig {
   minExecutionIntervalMs?: number;
   /** Auto-start endgame scanner (default: false) */
   autoScan?: boolean;
-  /** Optional dependency overrides (clob, gamma, eventBus) for testing / shadow feed injection */
-  deps?: Partial<StrategyDeps>;
+  /** Optional dependency overrides (clob, gamma, eventBus, feeResolver) for testing / shadow feed injection */
+  deps?: Partial<RunnerStrategyDeps>;
 }
 
 export interface RunnerStatus {

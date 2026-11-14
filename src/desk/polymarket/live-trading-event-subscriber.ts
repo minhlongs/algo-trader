@@ -40,7 +40,9 @@ export class LiveTradingEventSubscriber {
       prices.set(tokenId, { bid, ask });
       this.positionTracker.updatePrices(prices);
       if (tokenId !== 'tick-trigger') {
-        this.onMarketObservation?.(payload.timestamp || Date.now());
+        const now = Date.now();
+        const rawTs = payload.timestamp || now;
+        this.onMarketObservation?.(rawTs > now && rawTs - now <= 1_000 ? now : rawTs);
       }
     }
   }

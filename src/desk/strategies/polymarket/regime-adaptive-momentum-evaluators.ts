@@ -5,6 +5,7 @@
 import type { RawOrderBook } from '../../polymarket/clob-client';
 import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { OpenPosition } from './base-polymarket-strategy';
+import { computePositionGain } from './base-polymarket-strategy-exits';
 import { calcSMA, calcATR } from './strategy-math-helpers';
 import type {
   Regime,
@@ -35,9 +36,7 @@ export function evaluateRegimeExit(
   longPrices: number[],
   cfg: RegimeAdaptiveMomentumConfig
 ): { shouldExit: boolean; reason: string } {
-  const gain = pos.side === 'yes'
-    ? (currentPrice - pos.entryPrice) / pos.entryPrice
-    : (pos.entryPrice - currentPrice) / pos.entryPrice;
+  const gain = computePositionGain(pos, currentPrice);
 
   const regimeTp = getRegimeTpPct(entryRegime, cfg);
 
@@ -57,9 +56,10 @@ export function evaluateRegimeExit(
     const currentDir = calcTrendDirection(smaShort, smaLong);
 
     if (currentRegime !== entryRegime) {
-      const againstPosition =
-        (pos.side === 'yes' && currentDir === 'down') ||
-        (pos.side === 'no' && currentDir === 'up');
+      const againstPosition = pos.holdsOutcomeToken
+        ? currentDir === 'down'
+        : (pos.side === 'yes' && currentDir === 'down') ||
+          (pos.side === 'no' && currentDir === 'up');
       if (againstPosition) {
         return {
           shouldExit: true,

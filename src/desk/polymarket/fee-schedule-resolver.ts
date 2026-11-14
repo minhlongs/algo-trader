@@ -41,6 +41,15 @@ interface CacheEntry {
   schedule: PolymarketFeeSchedule | null;
 }
 
+function parseFiniteNumber(raw: unknown): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 /**
  * The API returns `feeSchedule` either as a JSON object or (older payloads) as
  * a JSON-encoded string. Both shapes carry the same four fields.
@@ -56,11 +65,14 @@ function parseFeeSchedule(raw: unknown): PolymarketFeeSchedule | null {
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const obj = value as Record<string, unknown>;
-  if (obj['rate'] === null || obj['rate'] === '' || typeof obj['rate'] === 'boolean') return null;
-  const rate = Number(obj['rate']);
-  const exponent = Number(obj['exponent'] ?? 1);
-  const rebateRate = Number(obj['rebateRate'] ?? 0);
-  if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(exponent) || !Number.isFinite(rebateRate)) {
+  const rate = parseFiniteNumber(obj['rate']);
+  const exponent = obj['exponent'] === undefined ? 1 : parseFiniteNumber(obj['exponent']);
+  const rebateRate = obj['rebateRate'] === undefined ? 0 : parseFiniteNumber(obj['rebateRate']);
+  if (
+    rate === null || rate < 0 ||
+    exponent === null || exponent <= 0 ||
+    rebateRate === null || rebateRate < 0 || rebateRate > 1
+  ) {
     return null;
   }
   return {

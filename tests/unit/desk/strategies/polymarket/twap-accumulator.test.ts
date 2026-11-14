@@ -185,14 +185,25 @@ describe('TwapAccumulatorStrategy', () => {
     );
   });
 
-  it('accumulates NO for an expensive market', async () => {
-    const strat = new TwapAccumulatorStrategy(makeDeps(() => 0.99));
+  it('accumulates NO on noTokenId for an expensive market and skips NO when noTokenId is absent', async () => {
+    const deps = makeDeps(() => 0.99);
+    const strat = new TwapAccumulatorStrategy(deps);
     // @ts-expect-error - call protected method for test
     await strat.scanEntries([makeMarket()]);
     // @ts-expect-error - reach into private field
     const acc = Array.from(strat.accumulators.values())[0]!;
     expect(acc.direction).toBe('no');
+    expect(acc.marketId).toBe('no-1');
     expect(acc.slicesFilled).toBe(1);
+    expect(deps.orderManager.placeOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenId: 'no-1', side: 'buy' }),
+    );
+
+    const noTokenMissingDeps = makeDeps(() => 0.99);
+    const stratMissingNo = new TwapAccumulatorStrategy(noTokenMissingDeps);
+    // @ts-expect-error - call protected method for test
+    await stratMissingNo.scanEntries([makeMarket({ conditionId: 'c-missing-no', noTokenId: undefined })]);
+    expect(noTokenMissingDeps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('does not execute a second slice before sliceIntervalMs elapses', async () => {
