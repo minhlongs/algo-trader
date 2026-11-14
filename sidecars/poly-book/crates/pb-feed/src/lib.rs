@@ -1,0 +1,17 @@
+//! WebSocket ingest, REST discovery, and dispatch pipeline. See [README](../README.md).
+
+pub mod dispatcher;
+pub mod error;
+pub mod rate_limiter;
+pub mod resnapshot;
+pub mod rest;
+pub mod ws;
+
+pub use dispatcher::Dispatcher;
+pub use error::FeedError;
+pub use rate_limiter::RateLimiter;
+pub use resnapshot::run_resnapshot_worker;
+pub use rest::{RestClient, RestConfig};
+pub use ws::{
+    probe_ws, FeedMessage, WsClient, WsConfig, WsLifecycleEvent, WsLifecycleKind, WsRawMessage,
+};

@@ -11,7 +11,11 @@
  */
 
 import type { L2SourceLabel } from './l2-source-labels';
-import { L2_SOURCE_RECORDED } from './l2-source-labels';
+import {
+  L2_SOURCE_POLY_BOOK_PARQUET,
+  L2_SOURCE_POLY_BOOK_WAL,
+  L2_SOURCE_RECORDED,
+} from './l2-source-labels';
 
 export interface L2PriceLevel {
   price: string;
@@ -20,10 +24,21 @@ export interface L2PriceLevel {
 
 export type L2EventType = 'book' | 'price_change';
 
+export type RecordedL2Source =
+  | typeof L2_SOURCE_RECORDED
+  | typeof L2_SOURCE_POLY_BOOK_WAL
+  | typeof L2_SOURCE_POLY_BOOK_PARQUET;
+
+const RECORDED_L2_SOURCES: readonly RecordedL2Source[] = [
+  L2_SOURCE_RECORDED,
+  L2_SOURCE_POLY_BOOK_WAL,
+  L2_SOURCE_POLY_BOOK_PARQUET,
+];
+
 export interface RecordedL2Row {
   /** Epoch milliseconds, from the exchange event timestamp when present. */
   t: number;
-  source: 'recorded-l2';
+  source: RecordedL2Source;
   assetId: string;
   eventType: L2EventType;
   bids: L2PriceLevel[];
@@ -34,6 +49,10 @@ export interface RecordedL2Row {
   hash?: string;
   tickSize?: string;
   lastTradePrice?: string;
+  recvTimestampUs?: number;
+  exchangeTimestampUs?: number;
+  sequence?: number;
+  ingestOrdinal?: number;
 }
 
 /** A book reconstructed by replay, in exchange order (descending price on both sides). */
@@ -46,6 +65,10 @@ export interface ReplayedL2Book {
   asks: L2PriceLevel[];
   tickSize?: string;
   lastTradePrice?: string;
+  recvTimestampUs?: number;
+  exchangeTimestampUs?: number;
+  sequence?: number;
+  ingestOrdinal?: number;
 }
 
 /** Narrow an untrusted object (e.g. a parsed JSONL line) into a recorded row. */
@@ -54,7 +77,8 @@ export function isRecordedL2Row(value: unknown): value is RecordedL2Row {
   const row = value as Partial<RecordedL2Row>;
   return (
     typeof row.t === 'number' &&
-    row.source === L2_SOURCE_RECORDED &&
+    typeof row.source === 'string' &&
+    (RECORDED_L2_SOURCES as readonly string[]).includes(row.source) &&
     typeof row.assetId === 'string' &&
     (row.eventType === 'book' || row.eventType === 'price_change') &&
     Array.isArray(row.bids) &&

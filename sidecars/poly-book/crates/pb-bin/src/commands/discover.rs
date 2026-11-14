@@ -1,0 +1,141 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::settings::Settings;
+use anyhow::Result;
+use pb_types::SlugRegistry;
+
+use super::market_discovery::{extract_discovery, populate_registry};
+
+/// Compute the slug for the current live BTC 5-minute market.
+/// These markets use slug `btc-updown-5m-{ts}` where `ts` is the current
+/// unix timestamp floored to the nearest 300-second boundary.
+fn current_btc_5m_slug() -> String {
+    // Saturate to 0 on a pre-epoch clock rather than panic (matches
+    // pipeline::now_micros). A broken clock yields a bogus slug that simply finds
+    // no market — strictly better than crashing the discover command.
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let bucket = now - (now % 300);
+    format!("btc-updown-5m-{bucket}")
+}
+
+fn print_events(events: &[pb_types::wire::GammaEvent], registry: &SlugRegistry) -> u64 {
+    let discovery = extract_discovery(events);
+    populate_registry(registry, &discovery);
+
+    let mut found = 0u64;
+    for event in events {
+        let title = event.title.as_deref().unwrap_or("");
+        println!("Event: {title}");
+        if let Some(markets) = &event.markets {
+            for market in markets {
+                let question = market.question.as_deref().unwrap_or("N/A");
+                let token_ids = market.clob_token_ids.as_deref().unwrap_or("N/A");
+                let slug = market.slug.as_deref().or(event.slug.as_deref());
+                let active = market.active.unwrap_or(false);
+                println!("  Market: {question}");
+                if let Some(slug) = slug {
+                    println!("    Slug: {slug}");
+                }
+                println!("    Token IDs: {token_ids}");
+                println!("    Active: {active}");
+            }
+        }
+        found += 1;
+    }
+    found
+}
+
+pub async fn run(
+    settings: Settings,
+    filter: Option<String>,
+    limit: u64,
+    slug_registry: SlugRegistry,
+) -> Result<()> {
+    tracing::info!(limit, "Discovering active BTC 5-minute markets...");
+
+    let rest = settings.rest_client()?;
+    let keyword = filter.as_deref().unwrap_or("btc").to_lowercase();
+
+    // For BTC queries, first try to find the live 5-minute market by slug
+    if keyword == "btc" {
+        let slug = current_btc_5m_slug();
+        tracing::info!(slug, "looking up live BTC 5-minute market");
+        let events = rest.discover_by_slug(&slug).await?;
+        if !events.is_empty() {
+            println!("--- Live BTC 5-minute market ---");
+            print_events(&events, &slug_registry);
+            println!();
+        } else {
+            tracing::warn!(slug, "no live BTC 5-minute market found for current window");
+        }
+    }
+
+    // Then paginate through general crypto events with keyword filter
+    let page_size: u64 = 100;
+    let mut offset: u64 = 0;
+    let mut found = 0u64;
+
+    loop {
+        if offset >= limit {
+            break;
+        }
+
+        let batch_size = page_size.min(limit - offset);
+        let events = rest.discover_markets(offset, batch_size).await?;
+        let page_count = events.len() as u64;
+
+        tracing::debug!(offset, page_count, "fetched event page");
+
+        // Populate registry from this page
+        let page_discovery = extract_discovery(&events);
+        populate_registry(&slug_registry, &page_discovery);
+
+        for event in &events {
+            let title = event.title.as_deref().unwrap_or("");
+            let title_matches = title.to_lowercase().contains(&keyword);
+
+            let market_matches = event.markets.as_ref().is_some_and(|markets| {
+                markets.iter().any(|m| {
+                    m.question
+                        .as_deref()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains(&keyword)
+                })
+            });
+
+            if !title_matches && !market_matches {
+                continue;
+            }
+
+            println!("Event: {title}");
+            if let Some(markets) = &event.markets {
+                for market in markets {
+                    let question = market.question.as_deref().unwrap_or("N/A");
+                    let token_ids = market.clob_token_ids.as_deref().unwrap_or("N/A");
+                    let slug = market.slug.as_deref().or(event.slug.as_deref());
+                    let active = market.active.unwrap_or(false);
+                    println!("  Market: {question}");
+                    if let Some(slug) = slug {
+                        println!("    Slug: {slug}");
+                    }
+                    println!("    Token IDs: {token_ids}");
+                    println!("    Active: {active}");
+                }
+            }
+            found += 1;
+        }
+
+        offset += page_count;
+
+        if page_count < batch_size {
+            break;
+        }
+    }
+
+    tracing::info!(found, offset, "discovery complete");
+    Ok(())
+}

@@ -1,0 +1,21 @@
+//! Shared fixed-point, wire, and persisted event types for the poly-book workspace. See [README](../README.md).
+
+pub mod error;
+pub mod event;
+pub mod fixed;
+pub mod newtype;
+pub mod slug;
+pub mod storage;
+pub mod time;
+pub mod wire;
+
+pub use error::TypesError;
+pub use event::{
+    BookCheckpoint, BookEvent, BookEventKind, DataSource, EventProvenance, IngestEvent,
+    IngestEventKind, MarketDataWindow, PersistedRecord, PriceLevel, ReplayMode, ReplayValidation,
+    Side, TradeEvent, TradeFidelity,
+};
+pub use fixed::{FixedPrice, FixedSize};
+pub use newtype::{AssetId, Sequence};
+pub use slug::SlugRegistry;
+pub use storage::ParquetRecoveryManifest;

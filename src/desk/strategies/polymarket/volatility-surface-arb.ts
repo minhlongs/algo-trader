@@ -13,6 +13,7 @@
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { RawOrderBook } from '../../polymarket/clob-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import type { OpenPosition } from './base-polymarket-strategy';
 import { logger } from '../../core/logger';
@@ -115,7 +116,8 @@ export class VolatilitySurfaceArbStrategy extends BasePolymarketStrategy {
         if (volRatio < this.cfg.minVolRatio) continue;
 
         const dir = marketIV < referenceIV ? 'yes' : 'no';
-        const tokenId = dir === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, dir);
+        if (!tokenId) continue;
         const entryPrice = dir === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 

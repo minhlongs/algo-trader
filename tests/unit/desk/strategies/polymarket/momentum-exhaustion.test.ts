@@ -396,8 +396,7 @@ describe('MomentumExhaustionStrategy', () => {
       expect(strat.positions.length).toBe(0);
     });
 
-    it('falls back to yesTokenId when noTokenId is not present in market on "no" side', async () => {
-      // Up-trend exhaustion -> signal 'no' (buys noTokenId, or falls back to yesTokenId if noTokenId missing)
+    it('skips NO entry when noTokenId is not present in market', async () => {
       const strat = new MomentumExhaustionStrategy(makeDeps((_t, i) => 0.50 + 0.01 * i - Math.max(0, i - 5) * 0.009));
       const marketAt = (i: number) => makeMarket({ volume: 2000 + 100 * i, noTokenId: undefined });
       for (let i = 0; i < 8; i++) {
@@ -405,11 +404,8 @@ describe('MomentumExhaustionStrategy', () => {
         await strat.scanEntries([marketAt(i)]);
       }
       // @ts-expect-error - access private
-      expect(strat.positions.length).toBe(1);
-      // @ts-expect-error - access private
-      expect(strat.positions[0]!.tokenId).toBe('yes-1');
-      // @ts-expect-error - access private
-      expect(strat.positions[0]!.side).toBe('no');
+      expect(strat.positions.length).toBe(0);
+      expect(strat.deps.orderManager.placeOrder).not.toHaveBeenCalled();
     });
 
     it('breaks market loop when max positions is reached during iteration', async () => {

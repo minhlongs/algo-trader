@@ -478,7 +478,7 @@ describe('herd-behavior-detector-v2::scanEntries — position entry', () => {
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(4);
   });
 
-  it('falls back to yesTokenId when noTokenId is absent (line 150)', async () => {
+  it('skips NO fade entry when noTokenId is absent', async () => {
     const deps = mockDeps();
     const strategy = makeStrategy(deps);
     // Markets without noTokenId
@@ -492,10 +492,7 @@ describe('herd-behavior-detector-v2::scanEntries — position entry', () => {
     await setupHerdEma(strategy, markets);
     await (strategy as any).scanEntries(markets);
 
-    // fadeSide = 'no' but noTokenId undefined → falls back to yesTokenId
-    expect(deps.orderManager.placeOrder).toHaveBeenCalled();
-    const call = deps.orderManager.placeOrder.mock.calls[0][0];
-    expect(call.tokenId).toBe('t0');
+    expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('catches enterPosition errors and continues (line 166-170)', async () => {

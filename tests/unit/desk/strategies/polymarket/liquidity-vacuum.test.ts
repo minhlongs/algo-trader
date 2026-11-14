@@ -231,9 +231,7 @@ describe('LiquidityVacuumStrategy', () => {
     expect(strat.positions[0]!.tokenId).toBe('no-1');
   });
 
-  it('falls back to yesTokenId on the no-side when market has no noTokenId', async () => {
-    // Bid-dominated thin book -> 'no' direction. Without a noTokenId the
-    // strategy falls back to yesTokenId (liquidity-vacuum.ts line 148).
+  it('skips NO entry when market has no noTokenId', async () => {
     const strat = new LiquidityVacuumStrategy(makeDeps());
     const m = makeMarket({ noTokenId: undefined });
     // @ts-expect-error - reach into private field
@@ -242,11 +240,8 @@ describe('LiquidityVacuumStrategy', () => {
     // @ts-expect-error - call protected method for test
     await strat.scanEntries([m]);
     // @ts-expect-error - reach into private field
-    expect(strat.positions.length).toBe(1);
-    // @ts-expect-error - reach into private field
-    expect(strat.positions[0]!.side).toBe('no');
-    // @ts-expect-error - reach into private field
-    expect(strat.positions[0]!.tokenId).toBe('yes-1'); // fallback
+    expect(strat.positions.length).toBe(0);
+    expect(strat.deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('logs and swallows order-book failures in scan', async () => {

@@ -8,6 +8,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import type { OpenPosition } from './base-polymarket-strategy';
 import { logger } from '../../core/logger';
@@ -99,7 +100,8 @@ export class ExpiryThetaDecayStrategy extends BasePolymarketStrategy {
         const edge = computeThetaEdge(ba.mid, hrs, this.cfg.thetaRate);
         if (edge < this.cfg.minEdge) continue;
 
-        const tokenId = favSide === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, favSide);
+        if (!tokenId) continue;
         const entryPrice = favSide === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 

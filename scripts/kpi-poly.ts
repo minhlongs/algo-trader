@@ -9,20 +9,24 @@
 import { collectPolymarketKpiInput } from '../src/desk/cli/kpi-poly-collector';
 import { evaluatePolymarketKpis } from '../src/desk/cli/kpi-poly-evaluators';
 import { formatKpiEvaluationReport } from '../src/desk/cli/kpi-poly-formatter';
+import { buildStressModeSummary } from '../src/desk/cli/kpi-poly-stress-shocks';
 
 interface CliFlags {
   days?: number;
   recordMs?: number;
   l2Dir?: string;
   json: boolean;
+  stress: boolean;
 }
 
 function parseCliFlags(argv: readonly string[]): CliFlags {
-  const flags: CliFlags = { json: false };
+  const flags: CliFlags = { json: false, stress: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') {
       flags.json = true;
+    } else if (arg === '--stress') {
+      flags.stress = true;
     } else if (arg === '--days' && argv[i + 1]) {
       flags.days = Number(argv[++i]);
     } else if (arg === '--record-ms' && argv[i + 1]) {
@@ -42,8 +46,12 @@ async function main(): Promise<void> {
       ? { recordMs: flags.recordMs }
       : {}),
     ...(flags.l2Dir ? { l2Dir: flags.l2Dir } : {}),
+    stress: flags.stress,
   });
-  const report = evaluatePolymarketKpis(input);
+  const baseReport = evaluatePolymarketKpis(input);
+  const report = flags.stress
+    ? { ...baseReport, stressMode: buildStressModeSummary(true) }
+    : baseReport;
 
   if (flags.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

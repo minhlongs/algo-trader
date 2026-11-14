@@ -7,11 +7,12 @@
  * timer expiry, and replays every JSONL file in `l2Dir` via `replayL2Log`.
  */
 
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import { createL2Recorder } from '../polymarket/l2/l2-recorder';
 import { replayL2Log, type ReplayedBookStep } from '../polymarket/l2/l2-replay';
+import { readPolyBookWalDirectory } from '../polymarket/l2/poly-book-wal-bridge';
 import { WS_URL } from '../polymarket/orderbook-stream-types';
 import { logger } from '../../shared/utils/logger';
 
@@ -84,9 +85,9 @@ export async function captureLiveL2Window(options: CaptureOrLoadL2Options): Prom
 
 export async function loadAllReplayedL2Steps(l2Dir: string): Promise<ReplayedBookStep[]> {
   if (!existsSync(l2Dir)) return [];
-  const files = readdirSync(l2Dir)
+  const entries = readdirSync(l2Dir).sort();
+  const files = entries
     .filter((name) => name.endsWith('.jsonl'))
-    .sort()
     .map((name) => join(l2Dir, name));
 
   const allSteps: ReplayedBookStep[] = [];
@@ -94,6 +95,18 @@ export async function loadAllReplayedL2Steps(l2Dir: string): Promise<ReplayedBoo
     const steps = await replayL2Log(file);
     allSteps.push(...steps);
   }
+
+  // Also load any `poly-book` CRC32C WAL v3 segments in `l2Dir` or `l2Dir/wal`
+  const walCandidateDirs = [l2Dir, join(l2Dir, 'wal')];
+  for (const candidate of walCandidateDirs) {
+    if (!existsSync(candidate) || !statSync(candidate).isDirectory()) continue;
+    const hasWal = readdirSync(candidate).some((n) => /^segment_\d+\.wal$/.test(n));
+    if (hasWal) {
+      const walResult = await readPolyBookWalDirectory(candidate);
+      allSteps.push(...walResult.steps);
+    }
+  }
+
   allSteps.sort((a, b) => a.t - b.t);
   return allSteps;
 }

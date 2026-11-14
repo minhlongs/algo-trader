@@ -7,6 +7,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
@@ -118,7 +119,8 @@ export class EventDeadlineScalperStrategy extends BasePolymarketStrategy {
         if (urgencyScore < this.cfg.urgencyThreshold) continue;
 
         const side = determineDirection(ba.mid);
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
         await this.enterPosition(tokenId, market.conditionId, side, entryPrice,

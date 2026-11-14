@@ -1,0 +1,39 @@
+[package]
+name = "pb-feed"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "WebSocket ingest, REST discovery, and dispatch pipeline for poly-book"
+
+[lints]
+workspace = true
+
+[dependencies]
+pb-types = { workspace = true }
+pb-book = { workspace = true }
+pb-metrics = { path = "../pb-metrics" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tokio-tungstenite = { workspace = true }
+rustls = { workspace = true }
+webpki-roots = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures-util = { workspace = true }
+governor = { workspace = true }
+url = { workspace = true }
+rustc-hash = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "dispatcher"
+harness = false

@@ -10,6 +10,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
@@ -121,7 +122,8 @@ export class VolatilityTargetingStrategy extends BasePolymarketStrategy {
 
         const volRatio = calcVolRatio(this.cfg.targetVol, realizedVol, this.cfg.maxScaling);
         const side: 'yes' | 'no' = momentum > 0 ? 'yes' : 'no';
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
         const posSize = adjustPositionSize(parseFloat(this.cfg.positionSize), volRatio);
 

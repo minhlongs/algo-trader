@@ -14,6 +14,7 @@ import type { FeeScheduleResolver } from '../polymarket/fee-schedule-resolver';
 import type { GammaEvent } from '../polymarket/gamma-client';
 import type { ReplayedBookStep } from '../polymarket/l2/l2-replay';
 import { evaluatePolyRisk } from '../risk/poly-fail-closed-risk-engine';
+import type { PolyKillSwitchState } from '../risk/poly-risk-types';
 import { ToxicityAwareMarketMakerStrategy } from '../strategies/polymarket/quant-alpha/toxicity-aware-market-maker';
 import { NegRiskBundleArbitrageStrategy } from '../strategies/polymarket/quant-alpha/negrisk-bundle-arbitrage';
 import { PrimarySourceNewsLatencyStrategy } from '../strategies/polymarket/quant-alpha/primary-source-news-latency';
@@ -44,6 +45,8 @@ export async function runObservedQuantAlphaReplay(params: {
   feeResolver: FeeScheduleResolver;
   capitalUsdc: number;
   tokenToCluster: ReadonlyMap<string, string>;
+  killSwitch?: PolyKillSwitchState;
+  currentDrawdownPct?: number;
 }): Promise<ObservedReplayOutput> {
   const realDateNow = Date.now.bind(Date);
   const perCap = params.capitalUsdc / 3;
@@ -52,18 +55,22 @@ export async function runObservedQuantAlphaReplay(params: {
   const markPrices = new Map<string, number>();
   const latestMarkets = snapshotMarketsToGamma(params.snapshots[params.snapshots.length - 1]);
   const sampleToken = latestMarkets[0]?.yesTokenId || 'kpi-preflight-token';
-  const lastObs = params.l2Steps.length > 0 ? params.l2Steps[params.l2Steps.length - 1]!.t : 'unknown';
-  evaluatePolyRisk(
+  const lastObs = params.l2Steps.length > 0 ? params.l2Steps[params.l2Steps.length - 1]!.t : undefined;
+  const preflightNowMs = lastObs ?? realDateNow();
+  const preflightVerdict = evaluatePolyRisk(
     { tokenId: sampleToken, side: 'buy', price: 0.5, size: 10, orderType: 'GTC' },
     {
-      nowMs: typeof lastObs === 'number' ? lastObs : realDateNow(),
-      killSwitch: 'inactive',
-      marketData: { observedAtMs: lastObs },
+      nowMs: preflightNowMs,
+      killSwitch: params.killSwitch ?? 'inactive',
+      marketData: { observedAtMs: preflightNowMs },
       feeSchedule: { tokenId: sampleToken, rate: 0.04, exponent: 1 },
-      positionReconciliation: { reconciled: true, reconciledAtMs: realDateNow(), openPositionCount: 0 },
-      riskBudget: { maxNotionalUsd: params.capitalUsdc * 0.25, currentDrawdownPct: 0 },
+      positionReconciliation: { reconciled: true, reconciledAtMs: preflightNowMs, openPositionCount: 0 },
+      riskBudget: { maxNotionalUsd: params.capitalUsdc * 0.25, currentDrawdownPct: params.currentDrawdownPct ?? 0 },
     },
   );
+  if (!preflightVerdict.allowed) {
+    throw new Error(`Polymarket KPI replay preflight blocked (${preflightVerdict.reason}): ${preflightVerdict.detail}`);
+  }
 
   const clob = buildObservedClobClient(bookByAsset, () => nowMs);
   const gamma = buildObservedGammaClient(latestMarkets, params.liveEvents);

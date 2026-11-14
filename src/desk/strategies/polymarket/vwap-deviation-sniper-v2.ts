@@ -7,6 +7,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
@@ -108,7 +109,8 @@ export class VwapDeviationSniperStrategy extends BasePolymarketStrategy {
         if (signal === null) continue;
 
         const side: 'yes' | 'no' = signal;
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
         if (entryPrice <= 0 || entryPrice >= 1) continue;

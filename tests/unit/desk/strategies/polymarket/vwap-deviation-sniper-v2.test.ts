@@ -406,7 +406,7 @@ describe('VwapDeviationSniperStrategy', () => {
       );
     });
 
-    it('falls back to yesTokenId when buying NO if noTokenId is missing', async () => {
+    it('skips NO entry when noTokenId is missing', async () => {
       const markets = [makeMockMarket({ conditionId: 'cond-1', volume: 10000, noTokenId: undefined })];
       deps.clob.getOrderBook
         .mockResolvedValueOnce({ bids: [{ price: '0.48', size: '100' }], asks: [{ price: '0.52', size: '100' }] })
@@ -420,11 +420,7 @@ describe('VwapDeviationSniperStrategy', () => {
         await strategy.scanEntries(markets);
       }
 
-      expect(deps.orderManager.placeOrder).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tokenId: 'yes-1',
-        })
-      );
+      expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
     });
 
     it('skips entry when market already has open position or is on cooldown', async () => {

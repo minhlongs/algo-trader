@@ -1,0 +1,32 @@
+[package]
+name = "pb-store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Parquet storage sink and writer for the poly-book workspace"
+
+[lints]
+workspace = true
+
+[dependencies]
+pb-types = { workspace = true }
+pb-metrics = { path = "../pb-metrics" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+arrow = { workspace = true }
+parquet = { workspace = true }
+object_store = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+bytes = "1"
+futures-util = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["full", "test-util"] }

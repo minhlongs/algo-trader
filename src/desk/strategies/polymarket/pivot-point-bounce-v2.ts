@@ -6,6 +6,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
@@ -107,7 +108,8 @@ export class PivotPointBounceStrategy extends BasePolymarketStrategy {
 
         // Resistance reversal → BUY NO
         if (detectBounce(prices, r1, 'down', this.cfg.bounceConfirmTicks)) {
-          const tokenId = market.noTokenId ?? market.yesTokenId;
+          const tokenId = resolveOutcomeTokenId(market, 'no');
+          if (!tokenId) continue;
           await this.enterPosition(tokenId, market.conditionId, 'no', 1 - ba.bid,
             parseFloat(this.cfg.positionSize));
           logger.debug('R1 reversal entry', this.strategyName, {

@@ -79,3 +79,9 @@ dump.rdb
 patch-vps-origin.py
 .nyc_output/
 .tmp-*
+
+# Rust sidecar build artifacts & local WAL/Parquet captures
+sidecars/**/target/
+sidecars/poly-book/data/
+sidecars/ghost-guard/data/
+

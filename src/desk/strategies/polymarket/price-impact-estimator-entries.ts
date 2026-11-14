@@ -3,6 +3,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import {
@@ -69,7 +70,8 @@ export async function scanPriceImpactEntries(
       const side = determineSide(buyImpact, sellImpact);
       if (side === null) continue;
 
-      const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+      const tokenId = resolveOutcomeTokenId(market, side);
+      if (!tokenId) continue;
 
       // Calculate entry price and size
       const entryPrice = side === 'yes' ? ba.ask : ba.bid;

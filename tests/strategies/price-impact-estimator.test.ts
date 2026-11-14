@@ -911,7 +911,7 @@ describe('createPriceImpactEstimatorTick', () => {
     }
   });
 
-  it('uses yesTokenId as fallback when noTokenId is null for no side', async () => {
+  it('skips NO entry when noTokenId is null', async () => {
     const deps = makeDeps({
       clob: {
         getOrderBook: vi.fn().mockResolvedValue(makeBook(
@@ -931,10 +931,7 @@ describe('createPriceImpactEstimatorTick', () => {
     const tick = createPriceImpactEstimatorTick(deps);
     await tick();
 
-    if ((deps.orderManager.placeOrder as any).mock.calls.length > 0) {
-      const call = (deps.orderManager.placeOrder as any).mock.calls[0][0];
-      expect(call.tokenId).toBe('yes-1');
-    }
+    expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('does not enter duplicate position for same token', async () => {

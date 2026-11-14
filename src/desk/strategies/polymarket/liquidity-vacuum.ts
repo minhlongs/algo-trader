@@ -11,6 +11,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import type { OpenPosition } from './base-polymarket-strategy';
 import { logger } from '../../core/logger';
@@ -101,7 +102,8 @@ export class LiquidityVacuumStrategy extends BasePolymarketStrategy {
         const dir = getVacuumDirection(book);
         if (!dir) continue;
 
-        const tokenId = dir === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, dir);
+        if (!tokenId) continue;
         const entryPrice = dir === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 

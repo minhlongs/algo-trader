@@ -1,19 +1,15 @@
 /**
- * Primary-Source News-to-Probability Latency — parameter surface
- * (report: "Strategy 4").
+ * Primary-Source News-to-Probability Latency — parameter surface (Strategy 4).
  *
- * The strategy waits for a primary-source bulletin that satisfies a market's
- * pre-parsed arbitration terms, verifies it through two independent
- * classification streams, and only then sweeps the short-deadline ladder.
- * Every number the report pins lives here as a field: the 800 ms dual-stream
- * window, the 2.5 s detection budget, the p_max entry ceiling, the 0.94–0.97
- * recycling band, the 70/30 split, the 24 h hold window, the 15-event shadow
- * gate and the 500 ms clock-offset lock. Nothing is baked into the scan path.
+ * Pre-parsed primary-source arbitration check verified through two independent
+ * classification streams plus an optional 3rd arbiter stream on split verdicts,
+ * and optional sealed Market-Blind posterior ceiling integration (`p_post - theta`).
  *
- * `BaseStrategyConfig` fields stay last so a caller overrides them unchanged.
+ * `BaseStrategyConfig` fields stay last so callers override them unchanged.
  */
 
 import type { StrategyName } from '../../../core/types';
+import type { SealedForecastReceipt } from '../../../polymarket/market-blind/market-blind-types';
 import type { BaseStrategyConfig } from '../base-polymarket-strategy';
 
 /** One item off a primary-source feed, with the wire timestamp it carries. */
@@ -22,29 +18,19 @@ export interface Bulletin {
   id: string;
   title: string;
   body: string;
-  /** Host that published it — the whitelist check reads exactly this. */
+  /** Host that published it — the whitelist check reads this. */
   sourceHost: string;
   /** Publication time on the wire, not the time this process saw it. */
   publishedAtMs: number;
   url?: string;
 }
 
-/**
- * One market compiled into a deterministic check, built offline from the
- * market's `resolutionSource` and arbitration terms because `GammaMarket`
- * carries neither. A check that cannot name its terms, numbers and allowed
- * hosts is not a check: the strategy declines to trade rather than guess.
- */
+/** Deterministic market arbitration check compiled from resolution terms. */
 export interface MarketCheck {
-  /** Identity of the compiled check, normally the event slug. */
   key: string;
-  /** Every term the bulletin must contain, normalised. */
   requiredTerms: string[];
-  /** Any term that disqualifies the bulletin (denials, retractions). */
   forbiddenTerms: string[];
-  /** Numeric facts the bulletin must state, within tolerance. */
   requiredNumbers: Array<{ value: number; tolerance: number }>;
-  /** Hosts allowed to publish a matching bulletin. */
   allowedSourceHosts: string[];
 }
 
@@ -56,15 +42,17 @@ export interface NewsStreamVerdict {
   reason: string;
 }
 
-/** The two independent streams the report cross-verifies. */
+export type NewsClassifier = (
+  bulletin: Bulletin,
+  check: MarketCheck,
+) => Promise<NewsStreamVerdict> | NewsStreamVerdict;
+
+/** Two independent primary streams + optional 3rd arbiter on disagreement. */
 export interface NewsStreams {
   term: NewsClassifier;
   numeric: NewsClassifier;
+  arbiter?: NewsClassifier;
 }
-
-export type NewsClassifier = (bulletin: Bulletin, check: MarketCheck) =>
-  | Promise<NewsStreamVerdict>
-  | NewsStreamVerdict;
 
 /** Compiles one event into its arbitration check, or null when impossible. */
 export type ArbitrationCheckFn = (event: {
@@ -73,54 +61,52 @@ export type ArbitrationCheckFn = (event: {
   slug: string;
 }) => MarketCheck | null;
 
+/** Sealed Market-Blind posterior supplied to cap Strategy 4 ladder entry price. */
+export interface MarketBlindEventPosterior {
+  receipt: SealedForecastReceipt;
+  pPost: number;
+  wSkill: number;
+  thetaSafety?: number;
+}
+
+export type MarketBlindPosteriorEvaluator = (context: {
+  event: { id: string; title: string; slug: string };
+  bulletin: Bulletin;
+  nowMs: number;
+}) => Promise<MarketBlindEventPosterior | null> | MarketBlindEventPosterior | null;
+
 export interface PrimarySourceNewsLatencyConfig extends BaseStrategyConfig {
-  /** Bulletins kept from one poll, newest first. */
   bulletinPollLimit: number;
-  /** Ignore a bulletin older than this at the moment it is seen. */
   maxBulletinAgeMs: number;
-  /** Both classification streams must finish inside this window (report: 800 ms). */
+  /** Streams (including arbiter tiebreak) must finish inside this window (800 ms). */
   dualVerifyWindowMs: number;
-  /** Total wire-to-order latency allowed (report: 2.5 s). */
+  /** Total wire-to-order latency allowed (2.5 s). */
   detectionBudgetMs: number;
-  /** Minimum evidence coverage a stream needs to count as a match. */
   minStreamConfidence: number;
-  /** How many events one scan asks Gamma for. */
+  /** Opt-in 3rd arbiter resolution when exactly one primary stream matches. */
+  requireArbiterOnSplit: boolean;
+  /** Alias for `requireArbiterOnSplit` when opting in arbiter tiebreak. */
+  allowArbiterTiebreak?: boolean;
+  /** Default safety margin `theta_safety` subtracted from `p_post(E)` when wired. */
+  posteriorSafetyMarginPusd: number;
   eventScanLimit: number;
-  /** Smallest ladder that is worth sweeping. */
   minLadderLegs: number;
-  /** Largest ladder that is worth sweeping. */
   maxLadderLegs: number;
-  /** Only contracts resolving inside this horizon belong to the ladder. */
   ladderMaxHorizonMs: number;
-  /** Entry ceiling p_max — the highest price the sweep will pay. */
   maxEntryPricePusd: number;
-  /** Ladder legs priced below this are dust and are skipped. */
   minEntryPricePusd: number;
-  /** Market price tick. No desk-layer API exposes it, so it is parameterised. */
   tickSize: number;
-  /** Capital allocated across one event cluster. */
   clusterCapitalPusd: number;
-  /** Report capacity envelope, lower bound. */
   minClusterCapitalPusd: number;
-  /** Report capacity envelope, upper bound. */
   maxClusterCapitalPusd: number;
-  /** Order type for the ladder sweep. The venue has no FAK; IOC is its enum. */
   legOrderType: 'IOC' | 'FOK';
-  /** Fraction of each fill recycled early in the profit band (report: 0.70). */
   recycleFraction: number;
-  /** Lower edge of the recycling band. */
   recycleBandLowPusd: number;
-  /** Upper edge of the recycling band. */
   recycleBandHighPusd: number;
-  /** Hold the remainder to resolution only when it resolves inside this window. */
   holdToResolutionMaxWindowMs: number;
-  /** Observe and grade only; never place an order. */
   shadowMode: boolean;
-  /** Detections the shadow gate requires before live use (report: 15). */
   shadowMinDetections: number;
-  /** False-positive rate the shadow gate tolerates (report: 0.0). */
   shadowMaxFalsePositiveRate: number;
-  /** Clock offset that hard-locks the module (report: 500 ms). */
   maxNtpOffsetMs: number;
 }
 
@@ -130,6 +116,8 @@ export const DEFAULT_CONFIG: PrimarySourceNewsLatencyConfig = {
   dualVerifyWindowMs: 800,
   detectionBudgetMs: 2_500,
   minStreamConfidence: 1,
+  requireArbiterOnSplit: false,
+  posteriorSafetyMarginPusd: 0.03,
   eventScanLimit: 30,
   minLadderLegs: 1,
   maxLadderLegs: 20,
@@ -149,8 +137,6 @@ export const DEFAULT_CONFIG: PrimarySourceNewsLatencyConfig = {
   shadowMinDetections: 15,
   shadowMaxFalsePositiveRate: 0,
   maxNtpOffsetMs: 500,
-  // Base TP/SL are inert here: this strategy implements its own exits, so the
-  // generic take-profit must never fire first inside the recycling band.
   minVolume: 5_000,
   takeProfitPct: 10,
   stopLossPct: 0.9,
@@ -167,22 +153,16 @@ export interface LadderLeg {
   tokenId: string;
   conditionId: string;
   outcome: string;
-  /** Best ask, 0 when the side is empty — never a guess. */
   askPrice: number;
-  /** Size resting exactly at `askPrice`. */
   displayedShares: number;
-  /** Taker fee per share from the market's own schedule, 0 when exempt. */
   takerFeePerShare: number;
-  /** Market expiry, so the exit path knows the resolution horizon. */
   expiryMs: number;
 }
 
-/** A whole event ladder the sweep will cross. */
 export interface LadderPlan {
   eventId: string;
   eventTitle: string;
   bulletinId: string;
-  /** Capital split evenly across `legs`. */
   clusterCapitalPusd: number;
   legs: LadderLeg[];
 }

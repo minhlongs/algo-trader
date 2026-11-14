@@ -3,6 +3,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import { BasePolymarketStrategy } from './base-polymarket-strategy';
 import {
@@ -85,9 +86,8 @@ export class CrossCorrelationLagStrategy extends BasePolymarketStrategy {
           const followerInfo = marketPrices.get(followerTokenId)!;
           const effectiveMove = correlation > 0 ? predicted : -predicted;
           const side: 'yes' | 'no' = effectiveMove > 0 ? 'yes' : 'no';
-          const tokenId = side === 'yes'
-            ? followerTokenId
-            : (followerInfo.market.noTokenId ?? followerTokenId);
+          const tokenId = resolveOutcomeTokenId(followerInfo.market, side);
+          if (!tokenId) continue;
           const entryPrice = side === 'yes' ? followerInfo.ask : (1 - followerInfo.bid);
 
           try {

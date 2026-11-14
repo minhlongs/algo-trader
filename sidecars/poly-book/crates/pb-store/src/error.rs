@@ -1,0 +1,25 @@
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum StoreError {
+    #[error("Parquet write/read error: {0}")]
+    Parquet(#[from] parquet::errors::ParquetError),
+
+    #[error("Arrow schema/conversion error: {0}")]
+    Arrow(#[from] arrow::error::ArrowError),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("object store error: {0}")]
+    ObjectStore(#[from] object_store::Error),
+
+    #[error("unsafe parquet recovery refused: {0}")]
+    UnsafeRecovery(String),
+
+    #[error("JSON serialization error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    #[error("{0}")]
+    Other(String),
+}

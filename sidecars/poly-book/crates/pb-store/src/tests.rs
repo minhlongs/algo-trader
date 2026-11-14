@@ -1,0 +1,1056 @@
+use std::sync::Arc;
+use std::time::Duration;
+
+use arrow::datatypes::DataType;
+use futures_util::StreamExt;
+use object_store::local::LocalFileSystem;
+use object_store::ObjectStore;
+use object_store::ObjectStoreExt;
+use object_store::PutPayload;
+use parquet::basic::Compression;
+use parquet::file::reader::FileReader;
+use tempfile::TempDir;
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
+
+use pb_types::event::{
+    BookCheckpoint, BookEvent, BookEventKind, DataSource, EventProvenance, IngestEvent,
+    IngestEventKind, PersistedRecord, ReplayMode, ReplayValidation, Side, TradeEvent,
+};
+use pb_types::{AssetId, FixedPrice, FixedSize, PriceLevel, Sequence, TradeFidelity};
+
+use crate::schema::*;
+use crate::writer::ParquetRecordWriter;
+use crate::{ParquetSink, StoreError};
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
+
+fn test_provenance(recv_ts: u64) -> EventProvenance {
+    EventProvenance {
+        recv_timestamp_us: recv_ts,
+        exchange_timestamp_us: recv_ts + 100,
+        source: DataSource::WebSocket,
+        source_event_id: Some("evt-1".into()),
+        source_session_id: Some("sess-1".into()),
+        sequence: Some(Sequence::new(1)),
+        ingest_ordinal: None,
+    }
+}
+
+fn test_asset_id() -> AssetId {
+    AssetId::new("BTC-5M-YES")
+}
+
+fn make_book_event(recv_ts: u64) -> BookEvent {
+    make_book_event_for_asset(test_asset_id(), recv_ts)
+}
+
+fn make_book_event_for_asset(asset_id: AssetId, recv_ts: u64) -> BookEvent {
+    BookEvent {
+        asset_id,
+        kind: BookEventKind::Delta,
+        side: Side::Bid,
+        price: FixedPrice::new(5000).unwrap(),
+        size: FixedSize::new(1_000_000),
+        provenance: test_provenance(recv_ts),
+    }
+}
+
+fn make_trade_event(recv_ts: u64) -> TradeEvent {
+    TradeEvent {
+        asset_id: test_asset_id(),
+        price: FixedPrice::new(5100).unwrap(),
+        size: Some(FixedSize::new(500_000)),
+        side: Some(Side::Ask),
+        trade_id: Some("trade-001".into()),
+        fidelity: TradeFidelity::Full,
+        provenance: test_provenance(recv_ts),
+    }
+}
+
+fn make_ingest_event(recv_ts: u64) -> IngestEvent {
+    IngestEvent {
+        asset_id: Some(test_asset_id()),
+        kind: IngestEventKind::ReconnectStart,
+        provenance: test_provenance(recv_ts),
+        expected_sequence: Some(10),
+        observed_sequence: Some(12),
+        details: Some("test gap".into()),
+    }
+}
+
+fn make_checkpoint(checkpoint_ts: u64) -> BookCheckpoint {
+    BookCheckpoint {
+        asset_id: test_asset_id(),
+        checkpoint_timestamp_us: checkpoint_ts,
+        provenance: test_provenance(checkpoint_ts),
+        bids: vec![PriceLevel {
+            price: FixedPrice::new(5000).unwrap(),
+            size: FixedSize::new(1_000_000),
+        }],
+        asks: vec![PriceLevel {
+            price: FixedPrice::new(5100).unwrap(),
+            size: FixedSize::new(2_000_000),
+        }],
+        wal_offset: Some(42),
+    }
+}
+
+fn make_validation(persisted_at: u64) -> ReplayValidation {
+    ReplayValidation {
+        asset_id: test_asset_id(),
+        mode: ReplayMode::RecvTime,
+        replay_timestamp_us: persisted_at - 1000,
+        reference_timestamp_us: persisted_at - 500,
+        matched: true,
+        mismatch_summary: None,
+        persisted_at_us: persisted_at,
+    }
+}
+
+fn local_store(dir: &TempDir) -> Arc<dyn ObjectStore> {
+    Arc::new(LocalFileSystem::new_with_prefix(dir.path()).unwrap())
+}
+
+// 2025-06-15 12:30:00 UTC in microseconds
+const FIXED_TS_US: u64 = 1_750_000_200_000_000;
+
+// ---------------------------------------------------------------------------
+// Schema field tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn book_event_schema_has_correct_fields() {
+    let schema = book_event_schema();
+    assert_eq!(schema.fields().len(), 12);
+    assert_eq!(schema.field(0).name(), "recv_timestamp_us");
+    assert_eq!(schema.field(0).data_type(), &DataType::UInt64);
+    assert!(!schema.field(0).is_nullable());
+    assert_eq!(schema.field(3).name(), "event_kind");
+    assert_eq!(schema.field(3).data_type(), &DataType::UInt8);
+    assert!(schema.field(7).is_nullable()); // sequence
+    assert_eq!(schema.field(11).name(), "ingest_ordinal");
+    assert!(schema.field(11).is_nullable());
+}
+
+#[test]
+fn trade_event_schema_has_correct_fields() {
+    let schema = trade_event_schema();
+    assert_eq!(schema.fields().len(), 12);
+    assert_eq!(schema.field(3).name(), "price");
+    assert_eq!(schema.field(4).name(), "size");
+    assert!(schema.field(4).is_nullable()); // size is nullable for trades
+}
+
+#[test]
+fn ingest_event_schema_has_correct_fields() {
+    let schema = ingest_event_schema();
+    assert_eq!(schema.fields().len(), 11);
+    assert!(schema.field(2).is_nullable()); // asset_id nullable
+    assert_eq!(schema.field(3).name(), "event_kind");
+    assert_eq!(schema.field(3).data_type(), &DataType::Utf8);
+}
+
+#[test]
+fn checkpoint_schema_has_correct_fields() {
+    let schema = checkpoint_schema();
+    assert_eq!(schema.fields().len(), 10);
+    assert_eq!(schema.field(0).name(), "checkpoint_timestamp_us");
+    assert_eq!(schema.field(7).name(), "bids_json");
+    assert_eq!(schema.field(8).name(), "asks_json");
+    assert!(schema.field(9).is_nullable()); // wal_offset
+}
+
+#[test]
+fn replay_validation_schema_has_correct_fields() {
+    let schema = replay_validation_schema();
+    assert_eq!(schema.fields().len(), 7);
+    assert_eq!(schema.field(4).name(), "matched");
+    assert_eq!(schema.field(4).data_type(), &DataType::Boolean);
+    assert!(schema.field(5).is_nullable()); // mismatch_summary
+}
+
+#[test]
+fn schema_for_record_dispatches_correctly() {
+    let book = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    assert_eq!(schema_for_record(&book).fields().len(), 12);
+
+    let trade = PersistedRecord::Trade(make_trade_event(FIXED_TS_US));
+    assert_eq!(schema_for_record(&trade).fields().len(), 12);
+
+    let ingest = PersistedRecord::Ingest(make_ingest_event(FIXED_TS_US));
+    assert_eq!(schema_for_record(&ingest).fields().len(), 11);
+
+    let checkpoint = PersistedRecord::Checkpoint(make_checkpoint(FIXED_TS_US));
+    assert_eq!(schema_for_record(&checkpoint).fields().len(), 10);
+
+    let validation = PersistedRecord::Validation(make_validation(FIXED_TS_US));
+    assert_eq!(schema_for_record(&validation).fields().len(), 7);
+}
+
+// ---------------------------------------------------------------------------
+// Record batch conversion tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn book_event_record_batch_roundtrip() {
+    let record = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    let batch = records_to_record_batch(&[&record]).unwrap();
+    assert_eq!(batch.num_rows(), 1);
+    assert_eq!(batch.num_columns(), 12);
+}
+
+#[test]
+fn trade_event_record_batch_roundtrip() {
+    let record = PersistedRecord::Trade(make_trade_event(FIXED_TS_US));
+    let batch = records_to_record_batch(&[&record]).unwrap();
+    assert_eq!(batch.num_rows(), 1);
+    assert_eq!(batch.num_columns(), 12);
+}
+
+#[test]
+fn ingest_event_record_batch_roundtrip() {
+    let record = PersistedRecord::Ingest(make_ingest_event(FIXED_TS_US));
+    let batch = records_to_record_batch(&[&record]).unwrap();
+    assert_eq!(batch.num_rows(), 1);
+    assert_eq!(batch.num_columns(), 11);
+}
+
+#[test]
+fn checkpoint_record_batch_roundtrip() {
+    let record = PersistedRecord::Checkpoint(make_checkpoint(FIXED_TS_US));
+    let batch = records_to_record_batch(&[&record]).unwrap();
+    assert_eq!(batch.num_rows(), 1);
+    assert_eq!(batch.num_columns(), 10);
+}
+
+#[test]
+fn validation_record_batch_roundtrip() {
+    let record = PersistedRecord::Validation(make_validation(FIXED_TS_US));
+    let batch = records_to_record_batch(&[&record]).unwrap();
+    assert_eq!(batch.num_rows(), 1);
+    assert_eq!(batch.num_columns(), 7);
+}
+
+#[test]
+fn multiple_book_events_in_single_batch() {
+    let r1 = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    let r2 = PersistedRecord::Book(make_book_event(FIXED_TS_US + 1_000_000));
+    let r3 = PersistedRecord::Book(make_book_event(FIXED_TS_US + 2_000_000));
+    let batch = records_to_record_batch(&[&r1, &r2, &r3]).unwrap();
+    assert_eq!(batch.num_rows(), 3);
+}
+
+#[test]
+fn mixed_record_types_rejected() {
+    let book = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    let trade = PersistedRecord::Trade(make_trade_event(FIXED_TS_US));
+    let result = records_to_record_batch(&[&book, &trade]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn empty_record_batch_rejected() {
+    let empty: Vec<&PersistedRecord> = vec![];
+    let result = records_to_record_batch(&empty);
+    assert!(result.is_err());
+}
+
+// ---------------------------------------------------------------------------
+// ParquetRecordWriter tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn writer_empty_batch_no_files() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    writer.write_batch(&[]).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert!(entries.is_empty(), "empty batch should not create files");
+}
+
+#[tokio::test]
+async fn writer_single_book_event_creates_file() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let record = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    writer.write_record(record).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(entries.len(), 1);
+    assert!(entries[0].location.as_ref().ends_with(".parquet"));
+}
+
+#[tokio::test]
+async fn writer_different_content_same_timestamp_does_not_overwrite() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    // Two book events at the same timestamp (so same asset/hour/first_ts) but
+    // different content must produce two distinct files, not silently overwrite
+    // each other.
+    let mut ev_a = make_book_event(FIXED_TS_US);
+    ev_a.price = FixedPrice::new(5000).unwrap();
+    let mut ev_b = make_book_event(FIXED_TS_US);
+    ev_b.price = FixedPrice::new(6000).unwrap();
+
+    writer
+        .write_record(PersistedRecord::Book(ev_a))
+        .await
+        .unwrap();
+    writer
+        .write_record(PersistedRecord::Book(ev_b))
+        .await
+        .unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(
+        entries.len(),
+        2,
+        "different content at the same timestamp must not overwrite"
+    );
+}
+
+#[tokio::test]
+async fn writer_path_includes_date_partition() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let record = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    writer.write_record(record).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    let path = entries[0].location.as_ref();
+    assert!(
+        path.contains("book_events"),
+        "path should contain dataset: {path}"
+    );
+    assert!(
+        path.contains("BTC-5M-YES"),
+        "path should contain asset: {path}"
+    );
+}
+
+#[test]
+fn partition_hour_key_formats_valid_timestamp() {
+    // FIXED_TS_US is mid-2025; the key must be a real YYYY/MM/DD/HH path.
+    let key = crate::writer::partition_hour_key(FIXED_TS_US);
+    assert!(
+        key.starts_with("2025/"),
+        "expected 2025 partition, got {key}"
+    );
+    assert_ne!(key, "invalid_timestamp");
+}
+
+#[test]
+fn partition_hour_key_quarantines_out_of_range_timestamps() {
+    // Zero / unstamped and absurd far-future values must NOT silently land in the
+    // 1970 partition — they go to a dedicated quarantine partition.
+    assert_eq!(crate::writer::partition_hour_key(0), "invalid_timestamp");
+    assert_eq!(crate::writer::partition_hour_key(1), "invalid_timestamp");
+    assert_eq!(
+        crate::writer::partition_hour_key(u64::MAX),
+        "invalid_timestamp"
+    );
+}
+
+#[tokio::test]
+async fn writer_routes_invalid_timestamp_to_quarantine_partition() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    // A book event with an unstamped (zero) partition timestamp.
+    writer
+        .write_record(PersistedRecord::Book(make_book_event(0)))
+        .await
+        .unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    let path = entries[0].location.as_ref();
+    assert!(
+        path.contains("invalid_timestamp"),
+        "out-of-range timestamp should be quarantined, got {path}"
+    );
+    assert!(
+        !path.contains("1970"),
+        "must not be misfiled into the 1970 partition: {path}"
+    );
+}
+
+#[tokio::test]
+async fn writer_groups_by_dataset_and_hour() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let records = vec![
+        PersistedRecord::Book(make_book_event(FIXED_TS_US)),
+        PersistedRecord::Trade(make_trade_event(FIXED_TS_US)),
+    ];
+    writer.write_batch(&records).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(entries.len(), 2, "should produce one file per dataset");
+}
+
+#[tokio::test]
+async fn writer_zstd_compression_applied() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let record = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    writer.write_record(record).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    let data = store
+        .get(&entries[0].location)
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let reader =
+        parquet::file::reader::SerializedFileReader::new(bytes::Bytes::from(data.to_vec()))
+            .unwrap();
+    let row_group = reader.metadata().row_group(0);
+    let has_zstd = (0..row_group.num_columns())
+        .any(|i| matches!(row_group.column(i).compression(), Compression::ZSTD(_)));
+    assert!(
+        has_zstd,
+        "expected at least one column with ZSTD compression"
+    );
+}
+
+#[tokio::test]
+async fn writer_multiple_flushes_produce_separate_files() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+
+    let writer1 = ParquetRecordWriter::new(store.clone(), "data");
+    let r1 = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    writer1.write_record(r1).await.unwrap();
+
+    let writer2 = ParquetRecordWriter::new(store.clone(), "data");
+    let r2 = PersistedRecord::Book(make_book_event(FIXED_TS_US + 1_000_000));
+    writer2.write_record(r2).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(entries.len(), 2, "two flushes should produce two files");
+}
+
+#[tokio::test]
+async fn reconcile_replaces_hour_partitions_idempotently() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    async fn count_parquet_files(store: &Arc<dyn ObjectStore>) -> usize {
+        store
+            .list(None)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .filter_map(|r| r.ok())
+            .filter(|meta| {
+                meta.location
+                    .filename()
+                    .is_some_and(|name| name.ends_with(".parquet"))
+            })
+            .count()
+    }
+
+    let hour_start = FIXED_TS_US / 3_600_000_000 * 3_600_000_000;
+    let coverage =
+        crate::writer::RecoveryCoverage::new(hour_start - 1, hour_start + 3_600_000_000).unwrap();
+
+    // Two separate live flushes for the same (asset, hour) produce two files
+    // that, read together, would double-count the window (the double-count hazard).
+    let r1 = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    let r2 = PersistedRecord::Book(make_book_event(FIXED_TS_US + 1_000_000));
+    writer.write_record(r1.clone()).await.unwrap();
+    writer.write_record(r2.clone()).await.unwrap();
+    assert_eq!(count_parquet_files(&store).await, 2);
+
+    // Reconciling from the authoritative WAL stream rebuilds the hour as one
+    // complete file, replacing the fragmented live-sink files.
+    let report = writer
+        .write_batch_replacing(&[r1.clone(), r2.clone()], coverage)
+        .await
+        .unwrap();
+    assert_eq!(report.cleanup_failures, 0);
+    assert_eq!(
+        count_parquet_files(&store).await,
+        1,
+        "reconcile should collapse the hour to a single authoritative file"
+    );
+
+    // Re-running is idempotent: the same single file, no duplication.
+    writer
+        .write_batch_replacing(&[r1, r2], coverage)
+        .await
+        .unwrap();
+    assert_eq!(
+        count_parquet_files(&store).await,
+        1,
+        "reconcile must be idempotent"
+    );
+}
+
+#[tokio::test]
+async fn reconcile_collects_an_abandoned_pre_manifest_stage() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+    let r1 = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    let r2 = PersistedRecord::Book(make_book_event(FIXED_TS_US + 1_000_000));
+    writer.write_record(r1.clone()).await.unwrap();
+
+    let normal = store
+        .list(Some(&object_store::path::Path::from("data/book_events")))
+        .next()
+        .await
+        .unwrap()
+        .unwrap();
+    let bytes = store
+        .get(&normal.location)
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let hour_key = crate::writer::partition_hour_key(FIXED_TS_US);
+    let abandoned = object_store::path::Path::parse(format!(
+        "data/{}/book_events/{hour_key}/{}",
+        pb_types::storage::PARQUET_RECOVERY_OBJECT_PREFIX,
+        normal.location.filename().unwrap()
+    ))
+    .unwrap();
+    store
+        .put(&abandoned, PutPayload::from(bytes))
+        .await
+        .unwrap();
+
+    let hour_start = FIXED_TS_US / 3_600_000_000 * 3_600_000_000;
+    let coverage =
+        crate::writer::RecoveryCoverage::new(hour_start - 1, hour_start + 3_600_000_000).unwrap();
+    writer
+        .write_batch_replacing(&[r1, r2], coverage)
+        .await
+        .unwrap();
+
+    let hidden = store
+        .list(Some(&object_store::path::Path::from(format!(
+            "data/{}",
+            pb_types::storage::PARQUET_RECOVERY_OBJECT_PREFIX
+        ))))
+        .collect::<Vec<_>>()
+        .await;
+    assert!(
+        hidden.is_empty(),
+        "abandoned recovery stages must be collected"
+    );
+}
+
+#[test]
+fn recovery_coverage_requires_a_record_before_the_hour_boundary() {
+    let hour_start = FIXED_TS_US / 3_600_000_000 * 3_600_000_000;
+    let ends_after_hour = hour_start + 3_600_000_000;
+
+    let boundary_only = crate::writer::RecoveryCoverage::new(hour_start, ends_after_hour).unwrap();
+    assert!(!boundary_only.contains_complete_hour(hour_start));
+
+    let proven = crate::writer::RecoveryCoverage::new(hour_start - 1, ends_after_hour).unwrap();
+    assert!(proven.contains_complete_hour(hour_start));
+}
+
+#[tokio::test]
+async fn reconcile_refuses_partial_hour_without_deleting_existing_data() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+    let record = PersistedRecord::Book(make_book_event(FIXED_TS_US));
+    writer.write_record(record.clone()).await.unwrap();
+
+    let coverage =
+        crate::writer::RecoveryCoverage::new(FIXED_TS_US - 1_000_000, FIXED_TS_US + 1_000_000)
+            .unwrap();
+    let error = writer
+        .write_batch_replacing(&[record], coverage)
+        .await
+        .unwrap_err();
+    assert!(matches!(error, StoreError::UnsafeRecovery(_)));
+
+    let parquet_files = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|meta| {
+            meta.location
+                .filename()
+                .is_some_and(|name| name.ends_with(".parquet"))
+        })
+        .count();
+    assert_eq!(parquet_files, 1, "existing parquet must remain untouched");
+}
+
+#[tokio::test]
+async fn reconcile_delete_matches_asset_component_exactly() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let foo = PersistedRecord::Book(make_book_event_for_asset(AssetId::new("foo"), FIXED_TS_US));
+    let foo_bar = PersistedRecord::Book(make_book_event_for_asset(
+        AssetId::new("foo_bar"),
+        FIXED_TS_US,
+    ));
+
+    writer.write_record(foo.clone()).await.unwrap();
+    writer.write_record(foo_bar).await.unwrap();
+
+    let hour_start = FIXED_TS_US / 3_600_000_000 * 3_600_000_000;
+    let coverage =
+        crate::writer::RecoveryCoverage::new(hour_start - 1, hour_start + 3_600_000_000).unwrap();
+    let report = writer
+        .write_batch_replacing(&[foo], coverage)
+        .await
+        .unwrap();
+    assert_eq!(report.cleanup_failures, 0);
+
+    let file_names: Vec<String> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .filter(|meta| {
+            meta.location
+                .filename()
+                .is_some_and(|name| name.ends_with(".parquet"))
+        })
+        .map(|meta| meta.location.filename().unwrap_or_default().to_string())
+        .collect();
+
+    assert_eq!(
+        file_names.len(),
+        2,
+        "foo_bar partition must survive replacing foo"
+    );
+    assert!(file_names
+        .iter()
+        .any(|name| pb_types::newtype::storage_file_matches_asset(name, "foo")));
+    assert!(file_names
+        .iter()
+        .any(|name| pb_types::newtype::storage_file_matches_asset(name, "foo_bar")));
+}
+
+#[tokio::test]
+async fn reconcile_rejects_manifest_that_widens_cleanup_scope() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let foo = PersistedRecord::Book(make_book_event_for_asset(AssetId::new("foo"), FIXED_TS_US));
+    let foo_bar = PersistedRecord::Book(make_book_event_for_asset(
+        AssetId::new("foo_bar"),
+        FIXED_TS_US,
+    ));
+    writer.write_record(foo.clone()).await.unwrap();
+    writer.write_record(foo_bar).await.unwrap();
+
+    let foo_bar_path = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(Result::ok)
+        .map(|meta| meta.location)
+        .find(|path| {
+            path.filename()
+                .is_some_and(|name| pb_types::newtype::storage_file_matches_asset(name, "foo_bar"))
+        })
+        .unwrap();
+    let hour_key = crate::writer::partition_hour_key(FIXED_TS_US);
+    let hour_start = FIXED_TS_US / 3_600_000_000 * 3_600_000_000;
+    let manifest = pb_types::ParquetRecoveryManifest {
+        version: pb_types::storage::PARQUET_RECOVERY_MANIFEST_VERSION,
+        dataset: "book_events".to_string(),
+        asset_key: "foo".to_string(),
+        hour_key: hour_key.clone(),
+        covered_start_us: hour_start,
+        covered_end_us: hour_start + 3_600_000_000,
+        // This is valid JSON metadata but deliberately points at a different
+        // asset's normal object, which must never enter reconcile's cleanup set.
+        active_objects: vec![foo_bar_path.to_string()],
+        superseded_objects: Vec::new(),
+    };
+    let manifest_path = object_store::path::Path::from(format!(
+        "data/{}/book_events/{hour_key}/foo.json",
+        pb_types::storage::PARQUET_RECOVERY_MANIFEST_PREFIX
+    ));
+    store
+        .put(
+            &manifest_path,
+            PutPayload::from(serde_json::to_vec(&manifest).unwrap()),
+        )
+        .await
+        .unwrap();
+
+    let coverage =
+        crate::writer::RecoveryCoverage::new(hour_start - 1, hour_start + 3_600_000_000).unwrap();
+    let error = writer
+        .write_batch_replacing(&[foo], coverage)
+        .await
+        .unwrap_err();
+    assert!(matches!(error, StoreError::UnsafeRecovery(_)));
+    assert!(
+        store.head(&foo_bar_path).await.is_ok(),
+        "out-of-scope object must survive a corrupt manifest"
+    );
+}
+
+#[tokio::test]
+async fn writer_all_record_types_produce_valid_parquet() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let records = vec![
+        PersistedRecord::Book(make_book_event(FIXED_TS_US)),
+        PersistedRecord::Trade(make_trade_event(FIXED_TS_US)),
+        PersistedRecord::Ingest(make_ingest_event(FIXED_TS_US)),
+        PersistedRecord::Checkpoint(make_checkpoint(FIXED_TS_US)),
+        PersistedRecord::Validation(make_validation(FIXED_TS_US)),
+    ];
+    writer.write_batch(&records).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(entries.len(), 5, "five datasets should produce five files");
+
+    for entry in &entries {
+        let data = store
+            .get(&entry.location)
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+        let reader =
+            parquet::file::reader::SerializedFileReader::new(bytes::Bytes::from(data.to_vec()))
+                .unwrap();
+        assert!(reader.metadata().num_row_groups() > 0);
+    }
+}
+
+#[tokio::test]
+async fn writer_large_batch_succeeds() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let records: Vec<PersistedRecord> = (0..1000)
+        .map(|i| PersistedRecord::Book(make_book_event(FIXED_TS_US + i * 1000)))
+        .collect();
+    writer.write_batch(&records).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(entries.len(), 1, "same hour partition should be one file");
+}
+
+#[tokio::test]
+async fn writer_checkpoint_schema_has_bids_asks_json() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    writer
+        .write_record(PersistedRecord::Checkpoint(make_checkpoint(FIXED_TS_US)))
+        .await
+        .unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    let data = store
+        .get(&entries[0].location)
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let reader =
+        parquet::file::reader::SerializedFileReader::new(bytes::Bytes::from(data.to_vec()))
+            .unwrap();
+    let schema = reader.metadata().file_metadata().schema_descr();
+    let col_names: Vec<_> = schema.columns().iter().map(|c| c.name()).collect();
+    assert!(col_names.contains(&"bids_json"));
+    assert!(col_names.contains(&"asks_json"));
+    assert!(col_names.contains(&"wal_offset"));
+}
+
+#[tokio::test]
+async fn writer_parquet_row_count_matches_input() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let writer = ParquetRecordWriter::new(store.clone(), "data");
+
+    let n = 50;
+    let records: Vec<PersistedRecord> = (0..n)
+        .map(|i| PersistedRecord::Trade(make_trade_event(FIXED_TS_US + i * 1000)))
+        .collect();
+    writer.write_batch(&records).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    let data = store
+        .get(&entries[0].location)
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let reader =
+        parquet::file::reader::SerializedFileReader::new(bytes::Bytes::from(data.to_vec()))
+            .unwrap();
+    assert_eq!(reader.metadata().file_metadata().num_rows(), n as i64);
+}
+
+// ---------------------------------------------------------------------------
+// ParquetSink lifecycle tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn parquet_sink_flushes_on_channel_close() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let (tx, rx) = mpsc::channel::<PersistedRecord>(32);
+
+    let sink = ParquetSink::new(rx, store.clone(), "data".into())
+        .with_flush_interval(Duration::from_secs(300));
+
+    tx.send(PersistedRecord::Book(make_book_event(FIXED_TS_US)))
+        .await
+        .unwrap();
+    drop(tx);
+
+    sink.run().await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(
+        entries.len(),
+        1,
+        "should flush buffered records on channel close"
+    );
+}
+
+#[tokio::test]
+async fn parquet_sink_flushes_on_cancellation() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let (tx, rx) = mpsc::channel::<PersistedRecord>(32);
+    let token = CancellationToken::new();
+
+    let sink = ParquetSink::new(rx, store.clone(), "data".into())
+        .with_flush_interval(Duration::from_secs(300));
+
+    tx.send(PersistedRecord::Book(make_book_event(FIXED_TS_US)))
+        .await
+        .unwrap();
+
+    let token_clone = token.clone();
+    let handle = tokio::spawn(async move { sink.run_with_token(token_clone).await });
+
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Model the production shutdown sequence: the upstream drops the sink's sender
+    // (the fanout task ends) AND the token is cancelled. The sink drains to
+    // completion (recv -> None) rather than blocking on a live-but-idle sender,
+    // which would now (correctly) be reported as an incomplete-shutdown error.
+    drop(tx);
+    token.cancel();
+
+    handle.await.unwrap().unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(
+        entries.len(),
+        1,
+        "should flush buffered records on cancellation"
+    );
+}
+
+#[tokio::test]
+async fn parquet_sink_drains_queued_records_on_shutdown() {
+    // Records sitting in the channel when shutdown is requested must be drained
+    // and flushed, not abandoned.
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let (tx, rx) = mpsc::channel::<PersistedRecord>(32);
+
+    // Enqueue several same-hour records, then close the sender (upstream stopping)
+    // and pre-cancel so the sink takes its shutdown path with a non-empty channel.
+    for i in 0..5u64 {
+        tx.send(PersistedRecord::Book(make_book_event(
+            FIXED_TS_US + i * 1_000_000,
+        )))
+        .await
+        .unwrap();
+    }
+    drop(tx);
+    let token = CancellationToken::new();
+    token.cancel();
+
+    let sink = ParquetSink::new(rx, store.clone(), "data".into())
+        .with_flush_interval(Duration::from_secs(300));
+    sink.run_with_token(token).await.unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert!(
+        !entries.is_empty(),
+        "queued records must be flushed on shutdown, not abandoned"
+    );
+
+    let mut total_rows = 0i64;
+    for entry in &entries {
+        let data = store
+            .get(&entry.location)
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+        let reader =
+            parquet::file::reader::SerializedFileReader::new(bytes::Bytes::from(data.to_vec()))
+                .unwrap();
+        total_rows += reader.metadata().file_metadata().num_rows();
+    }
+    assert_eq!(total_rows, 5, "all queued records must be persisted");
+}
+
+#[tokio::test]
+async fn parquet_sink_empty_channel_no_files() {
+    let dir = TempDir::new().unwrap();
+    let store = local_store(&dir);
+    let (tx, rx) = mpsc::channel::<PersistedRecord>(32);
+    let token = CancellationToken::new();
+
+    let sink = ParquetSink::new(rx, store.clone(), "data".into())
+        .with_flush_interval(Duration::from_secs(300));
+
+    let token_clone = token.clone();
+    let handle = tokio::spawn(async move { sink.run_with_token(token_clone).await });
+
+    // Drop the sender (production drops it on shutdown) so the drain completes
+    // instead of blocking on a live-but-idle sender.
+    drop(tx);
+    token.cancel();
+    handle.await.unwrap().unwrap();
+
+    let entries: Vec<_> = store
+        .list(None)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert!(entries.is_empty(), "no records sent, no files should exist");
+}

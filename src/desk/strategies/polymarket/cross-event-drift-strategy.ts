@@ -5,6 +5,7 @@
 
 import type { GammaMarket, GammaMarketGroup } from '../../polymarket/gamma-client';
 import type { KellyPositionSizer } from '../../polymarket/kelly-position-sizer';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
@@ -120,7 +121,8 @@ export class CrossEventDriftStrategy extends BasePolymarketStrategy {
         if (calcCorrelation(leaderHistory, laggardHistory) < this.cfg.minCorrelation) continue;
 
         const side: 'yes' | 'no' = leader.ret > 0 ? 'yes' : 'no';
-        const tokenId = side === 'yes' ? laggardId : (laggardMarket.noTokenId ?? laggardId);
+        const tokenId = resolveOutcomeTokenId(laggardMarket, side);
+        if (!tokenId) continue;
         try {
           const book = await this.deps.clob.getOrderBook(tokenId);
           const ba = this.bestBidAsk(book);

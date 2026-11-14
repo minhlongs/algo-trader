@@ -29,6 +29,7 @@ import type {
 } from './negrisk-bundle-arbitrage-types';
 import {
   bestAskPrice,
+  bestBidPrice,
   bundleNetEdge,
   frankWolfeProjection,
   makerOptimisationApplies,
@@ -159,7 +160,15 @@ async function priceLeg(
   if (!(askPrice > 0)) return null;
   const displayedShares = sizeAtLevel(book.asks, askPrice);
   if (!(displayedShares > 0)) return null;
-  return { tokenId, conditionId, outcome, askPrice, displayedShares };
+  const bidPrice = book.bids.length > 0 ? bestBidPrice(book.bids) : 0;
+  return {
+    tokenId,
+    conditionId,
+    outcome,
+    askPrice,
+    ...(bidPrice > 0 ? { bidPrice } : {}),
+    displayedShares,
+  };
 }
 
 function clampProbability(value: number): number {

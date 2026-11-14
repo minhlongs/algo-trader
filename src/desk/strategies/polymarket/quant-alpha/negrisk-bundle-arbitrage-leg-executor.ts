@@ -26,7 +26,14 @@ import type {
   BundleQuote,
   NegRiskBundleConfig,
 } from './negrisk-bundle-arbitrage-types';
-import { snapToTick, shrinkToFirstFill, sizeAtLevel, sortLegsByLiquidity } from './negrisk-bundle-arbitrage-math';
+import {
+  bestAskPrice,
+  bestBidPrice,
+  passiveMakerBidPrice,
+  shrinkToFirstFill,
+  sizeAtLevel,
+  sortLegsByLiquidity,
+} from './negrisk-bundle-arbitrage-math';
 import type { BundleBook, BundleFill } from './negrisk-bundle-arbitrage-state';
 
 export interface BundleLegExecutorOptions {
@@ -53,7 +60,8 @@ export class BundleLegExecutor {
 
     for (const leg of ordered) {
       const aggressive = leg.displayedShares >= this.opts.config.thinLegMaxDisplayedShares;
-      const available = await this.crossableShares(leg);
+      const book = await this.readBook(leg.tokenId);
+      const available = sizeAtLevel(book.asks, leg.askPrice);
       const shares = this.sharesFor(leg, available, firstFill);
 
       if (!(shares > 0)) {
@@ -64,7 +72,7 @@ export class BundleLegExecutor {
         continue;
       }
 
-      const filledShares = await this.placeLeg(quote.eventId, leg, shares, aggressive, nowMs);
+      const filledShares = await this.placeLeg(quote.eventId, leg, book, shares, aggressive, nowMs);
       if (filledShares > 0 && firstFill === 0) firstFill = filledShares;
 
       // A thin maker leg that rested unfilled means the bundle cannot be
@@ -84,12 +92,6 @@ export class BundleLegExecutor {
     return aggressiveFailures;
   }
 
-  /** Displayed size at the quoted ask, re-read now. 0 when the ask moved away. */
-  private async crossableShares(leg: BundleLeg): Promise<number> {
-    const book = await this.readBook(leg.tokenId);
-    return sizeAtLevel(book.asks, leg.askPrice);
-  }
-
   /** Requested size, capped by the live book and by the first leg's fill. */
   private sharesFor(leg: BundleLeg, available: number, firstFill: number): number {
     const byNotional = Math.floor(this.opts.config.legNotionalPusd / leg.askPrice);
@@ -102,6 +104,7 @@ export class BundleLegExecutor {
   private async placeLeg(
     eventId: string,
     leg: BundleLeg,
+    book: RawOrderBook,
     shares: number,
     aggressive: boolean,
     nowMs: number,
@@ -110,9 +113,22 @@ export class BundleLegExecutor {
       ? this.opts.config.thickLegOrderType
       : this.opts.config.thinLegOrderType;
     const tick = this.opts.config.tickSize;
-    const limitPrice = aggressive
-      ? leg.askPrice
-      : Math.max(tick, snapToTick(leg.askPrice - tick, tick));
+    let limitPrice: number;
+    if (aggressive) {
+      limitPrice = leg.askPrice;
+    } else {
+      const rawBid = book.bids.length > 0 ? bestBidPrice(book.bids) : 0;
+      const liveBestBid = rawBid > 0 ? rawBid : (leg.bidPrice ?? 0);
+      const liveBestAsk = bestAskPrice(book.asks, tick);
+      limitPrice = passiveMakerBidPrice(
+        this.opts.config.legPlacement,
+        liveBestBid,
+        liveBestAsk,
+        leg.askPrice,
+        tick,
+      );
+      if (!(limitPrice > 0)) return 0;
+    }
 
     let order: Awaited<ReturnType<OrderManager['placeOrder']>>;
     try {

@@ -216,9 +216,7 @@ describe('SessionVolSniperStrategy', () => {
     expect(strat.deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to yesTokenId on the no-side when market has no noTokenId', async () => {
-    // Prices are high then crash: short window ends below its start -> 'no'
-    // direction. With no noTokenId the strategy must fall back to yesTokenId.
+  it('skips NO entry when market has no noTokenId', async () => {
     const strat = new SessionVolSniperStrategy(makeDeps(() => makeBook(0.5, 100, 100)));
     const m = makeMarket({ noTokenId: undefined });
     // @ts-expect-error - reach into private field
@@ -226,11 +224,8 @@ describe('SessionVolSniperStrategy', () => {
     // @ts-expect-error - call protected method for test
     await strat.scanEntries([m]);
     // @ts-expect-error - reach into private field
-    expect(strat.positions.length).toBe(1);
-    // @ts-expect-error - reach into private field
-    expect(strat.positions[0]!.side).toBe('no');
-    // @ts-expect-error - reach into private field
-    expect(strat.positions[0]!.tokenId).toBe('yes-1'); // fallback
+    expect(strat.positions.length).toBe(0);
+    expect(strat.deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('skips entry when ATR is within the neutral band', async () => {

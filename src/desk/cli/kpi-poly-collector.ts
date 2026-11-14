@@ -21,6 +21,7 @@ import {
 } from './kpi-poly-book-metrics';
 import { captureOrLoadL2Steps, loadAllReplayedL2Steps } from './kpi-poly-l2-capture';
 import { runObservedQuantAlphaReplay } from './kpi-poly-observed-replay';
+import { applyIcStressShocks } from './kpi-poly-stress-shocks';
 import type { KpiEvaluationInput } from './kpi-poly-types';
 
 const QUANT_ALPHA_TRIALS = 3;
@@ -50,6 +51,8 @@ export interface CollectKpiInputOptions {
   /** Capture window (ms) when `--record-ms` passed or no JSONL exists yet. */
   recordMs?: number;
   maxMarkets?: number;
+  /** When true (`--stress`), applies 1.5x slippage/cancel-latency + 50% Liquidity Reward haircut + 4.5%/yr carry. */
+  stress?: boolean;
 }
 
 async function fetchRetroactiveRows(
@@ -155,7 +158,7 @@ export async function collectPolymarketKpiInput(
   );
   const refMs = l2Steps.length > 0 ? l2Steps[l2Steps.length - 1]!.t : Date.now();
 
-  return {
+  const baseInput: KpiEvaluationInput = {
     provenance: { snapshots, priceRows, tradeRows, l2Steps },
     performance: {
       initialNavPusd: capitalUsdc,
@@ -191,4 +194,5 @@ export async function collectPolymarketKpiInput(
       onChainReconciled: false,
     },
   };
+  return options.stress ? applyIcStressShocks(baseInput) : baseInput;
 }

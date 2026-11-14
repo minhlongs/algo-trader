@@ -28,6 +28,7 @@ export interface KpiRowResult {
 
 export const KPI_THRESHOLDS = Object.freeze({
   LOCKED_CAPITAL_OPP_COST_ANNUAL: 0.045,
+  STRESS_LIQUIDITY_REWARD_HAIRCUT: 0.5,
   MIN_PAPER_SHADOW_DAYS: 21,
   MIN_SIM_DRAWDOWN_DAYS: 90,
   MIN_CLOSED_CYCLES_FOR_PF: 5,
@@ -154,8 +155,16 @@ export interface VerifiedProvenanceSummary {
   sourcesSeen: L2SourceLabel[];
 }
 
+export interface KpiStressModeSummary {
+  enabled: boolean;
+  slippageCancelLatencyMultiplier: number;
+  liquidityRewardHaircutFraction: number;
+  annualLockedCapitalCarryRate: number;
+}
+
 export interface KpiEvaluationReport {
   generatedAtIso: string;
   provenance: VerifiedProvenanceSummary;
   rows: KpiRowResult[];
+  stressMode?: KpiStressModeSummary;
 }

@@ -44,6 +44,8 @@ export interface GammaEvent {
   id: string;
   title: string;
   slug: string;
+  /** Optional on-chain `bytes32` NegRiskAdapter `_marketId` when supplied by Gamma/operator. */
+  negRiskMarketId?: string;
   markets: GammaMarket[];
 }
 
