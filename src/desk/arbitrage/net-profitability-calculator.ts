@@ -18,7 +18,7 @@ import {
 import { calculatePolymarketFee } from './profitability/fee-calculator';
 import { calculateVwapSlippage } from './profitability/slippage-calculator';
 import { evaluateNetProfitabilityCore } from './profitability/profitability-evaluator';
-import type { PolymarketFeeSchedule } from '../polymarket/polymarket-fee-calculator';
+import type { PolymarketCategory, PolymarketFeeSchedule } from '../polymarket/polymarket-fee-calculator';
 
 export * from './profitability/profitability-types';
 export * from './profitability/fee-calculator';
@@ -83,7 +83,7 @@ export class NetProfitabilityCalculator {
    * Helper: Calculate Polymarket dynamic fee rate and dollar amount.
    */
   calculatePolymarketFee(
-    schedule: PolymarketFeeSchedule,
+    schedule: PolymarketFeeSchedule | PolymarketCategory,
     probability: number,
     notionalUsd: number
   ): { rate: number; feeUsd: number; rebateUsd: number } {

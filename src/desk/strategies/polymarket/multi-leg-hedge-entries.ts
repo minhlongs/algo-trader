@@ -5,6 +5,7 @@
  * Body moved VERBATIM from scanEntries; closure-state references rewritten as `ctx.`.
  */
 import type { GammaMarketGroup } from '../../polymarket/gamma-client';
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import {
   type HedgePosition,
@@ -66,13 +67,16 @@ export async function scanEntriesFor(
         ? (primaryBook.asks.length > 0 ? parseFloat(primaryBook.asks[0].price) : primaryMid)
         : (1 - (primaryBook.bids.length > 0 ? parseFloat(primaryBook.bids[0].price) : primaryMid));
 
+      const primaryShares = Math.round(size / entryPrice);
       const primaryOrder = await ctx.orderManager.placeOrder({
         tokenId: primaryTokenId,
         side: 'buy',
         price: entryPrice.toFixed(4),
-        size: String(Math.round(size / entryPrice)),
+        size: String(primaryShares),
         orderType: 'GTC',
       });
+      const category = classifyMarketCategory(`${event.title} ${primaryMarket.question ?? primaryMarket.conditionId}`);
+      const feeUsdc = calcQuadraticTakerFeeV2(category, entryPrice, primaryShares) * entryPrice;
 
       let hedgeLeg: HedgePosition['hedgeLeg'] = null;
       if (ctx.cfg.enableHedge && hedgeMarket) {
@@ -121,6 +125,7 @@ export async function scanEntriesFor(
         sizeUsdc: size,
         entryDeviation: deviation,
         openedAt: Date.now(),
+        category,
       });
 
       logger.info('Entry position', STRATEGY_NAME, {
@@ -139,7 +144,7 @@ export async function scanEntriesFor(
           side: 'buy',
           fillPrice: String(entryPrice),
           fillSize: String(size),
-          fees: '0',
+          fees: primaryOrder?.fees ?? feeUsdc.toFixed(6),
           timestamp: Date.now(),
           strategy: STRATEGY_NAME,
         },

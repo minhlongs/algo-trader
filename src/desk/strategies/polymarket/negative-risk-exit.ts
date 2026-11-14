@@ -2,13 +2,18 @@
  * Negative Risk Scanner — exit evaluator.
  *
  * Evaluates open arb positions against take-profit, stop-loss, and max-hold
- * thresholds, and emits sell orders + events when conditions are met.
+ * thresholds, and emits sell orders + CLOB V2 taker fee events when conditions
+ * are met.
  */
 
 import { logger } from '../../core/logger';
 import { STRATEGY_NAME, setCooldown } from './negative-risk-types';
-import type { ScannerRuntime, ArbPosition } from './negative-risk-types';
+import type { ScannerRuntime } from './negative-risk-types';
 import { getBestBid, calcExitValue, usdcToTokens } from './order-book-utils';
+import {
+  calcQuadraticTakerFeeV2,
+  type PolymarketCategory,
+} from '../../polymarket/polymarket-fee-calculator';
 
 /**
  * Check all open positions and close those that meet exit criteria.
@@ -23,7 +28,6 @@ export async function evaluateExits(runtime: ScannerRuntime): Promise<void> {
     let reason = '';
 
     try {
-      // Fetch current order books for both tokens
       const [yesBook, noBook] = await Promise.all([
         runtime.clob.getOrderBook(pos.yesTokenId),
         runtime.clob.getOrderBook(pos.noTokenId),
@@ -32,7 +36,7 @@ export async function evaluateExits(runtime: ScannerRuntime): Promise<void> {
       const yesBid = getBestBid(yesBook);
       const noBid = getBestBid(noBook);
 
-      if (yesBid <= 0 || noBid <= 0) continue; // no liquidity
+      if (yesBid <= 0 || noBid <= 0) continue;
 
       const { pnlPct } = calcExitValue(
         yesBid,
@@ -40,48 +44,48 @@ export async function evaluateExits(runtime: ScannerRuntime): Promise<void> {
         pos.yesSizeUsdc,
         pos.noSizeUsdc,
         pos.yesEntryPrice,
-        pos.noEntryPrice
+        pos.noEntryPrice,
       );
 
-      // Take profit
       if (pnlPct >= (runtime.cfg.takeProfitPct ?? 0.02)) {
         shouldExit = true;
         reason = `take-profit (${(pnlPct * 100).toFixed(2)}%)`;
-      }
-      // Stop loss
-      else if (-pnlPct >= (runtime.cfg.stopLossPct ?? 0.015)) {
+      } else if (-pnlPct >= (runtime.cfg.stopLossPct ?? 0.015)) {
         shouldExit = true;
         reason = `stop-loss (${(pnlPct * 100).toFixed(2)}%)`;
-      }
-      // Max hold time
-      else if (runtime.cfg.maxHoldMs && now - pos.openedAt > runtime.cfg.maxHoldMs) {
+      } else if (runtime.cfg.maxHoldMs && now - pos.openedAt > runtime.cfg.maxHoldMs) {
         shouldExit = true;
         reason = 'max hold time';
       }
 
       if (shouldExit) {
-        // Place sell orders for both legs
-        const yesSizeTokens = usdcToTokens(pos.yesSizeUsdc, pos.yesEntryPrice);
-        const noSizeTokens = usdcToTokens(pos.noSizeUsdc, pos.noEntryPrice);
+        const yesSizeTokens = pos.yesTokens ?? usdcToTokens(pos.yesSizeUsdc, pos.yesEntryPrice);
+        const noSizeTokens = pos.noTokens ?? usdcToTokens(pos.noSizeUsdc, pos.noEntryPrice);
+        const category: PolymarketCategory = pos.category ?? 'politics';
 
-        if (yesSizeTokens > 0) {
-          await runtime.orderManager.placeOrder({
-            tokenId: pos.yesTokenId,
-            side: 'sell',
-            price: yesBid.toFixed(4),
-            size: String(yesSizeTokens),
-            orderType: 'IOC',
-          });
-        }
-        if (noSizeTokens > 0) {
-          await runtime.orderManager.placeOrder({
-            tokenId: pos.noTokenId,
-            side: 'sell',
-            price: noBid.toFixed(4),
-            size: String(noSizeTokens),
-            orderType: 'IOC',
-          });
-        }
+        const yesSellOrder =
+          yesSizeTokens > 0
+            ? await runtime.orderManager.placeOrder({
+                tokenId: pos.yesTokenId,
+                side: 'sell',
+                price: yesBid.toFixed(4),
+                size: String(yesSizeTokens),
+                orderType: 'IOC',
+              })
+            : undefined;
+        const noSellOrder =
+          noSizeTokens > 0
+            ? await runtime.orderManager.placeOrder({
+                tokenId: pos.noTokenId,
+                side: 'sell',
+                price: noBid.toFixed(4),
+                size: String(noSizeTokens),
+                orderType: 'IOC',
+              })
+            : undefined;
+
+        const yesFeeUsdc = calcQuadraticTakerFeeV2(category, yesBid, yesSizeTokens) * yesBid;
+        const noFeeUsdc = calcQuadraticTakerFeeV2(category, noBid, noSizeTokens) * noBid;
 
         logger.info('Exit arbitrage position', STRATEGY_NAME, {
           conditionId: pos.conditionId,
@@ -96,7 +100,7 @@ export async function evaluateExits(runtime: ScannerRuntime): Promise<void> {
             side: 'sell',
             fillPrice: String(yesBid),
             fillSize: String(pos.yesSizeUsdc),
-            fees: '0',
+            fees: yesSellOrder?.fees ?? yesFeeUsdc.toFixed(6),
             timestamp: now,
             strategy: STRATEGY_NAME,
           },
@@ -108,7 +112,7 @@ export async function evaluateExits(runtime: ScannerRuntime): Promise<void> {
             side: 'sell',
             fillPrice: String(noBid),
             fillSize: String(pos.noSizeUsdc),
-            fees: '0',
+            fees: noSellOrder?.fees ?? noFeeUsdc.toFixed(6),
             timestamp: now,
             strategy: STRATEGY_NAME,
           },
@@ -126,6 +130,6 @@ export async function evaluateExits(runtime: ScannerRuntime): Promise<void> {
 
   for (const conditionId of toClose) {
     runtime.positions.delete(conditionId);
-    setCooldown(runtime, conditionId); // apply cooldown after exit
+    setCooldown(runtime, conditionId);
   }
 }

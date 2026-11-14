@@ -2,33 +2,28 @@
  * Live Trading Orchestrator — Adapter & Component Factory
  *
  * Builds and wires the Polymarket adapter, position tracker, guard, journal,
- * risk manager, reconciler, and paper orderbook simulator from a LiveTradingConfig.
+ * risk manager, reconciler, microstructure tracker, and paper orderbook simulator
+ * from a LiveTradingConfig.
  */
 
 import { buildPolymarketAdapter } from '../execution/polymarket-execution-adapter';
 import { CircuitBreaker } from '../risk/circuit-breaker';
-import type { PolymarketAdapter, PolymarketOrderResponse } from '../execution/polymarket-adapter';
-import type { PolymarketOrder } from '../execution/polymarket-signer';
+import type { PolymarketAdapter } from '../execution/polymarket-adapter';
 import { LivePositionTracker } from '../execution/live-position-tracker';
 import { LiveExecutionGuard } from '../execution/live-execution-guard';
 import { LiveTradingJournal } from '../execution/live-trading-journal';
 import { RiskGateManager } from '../risk/risk-gate-manager';
 import { LiveOrderManager } from '../execution/live-order-manager';
 import { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
-import {
-  DEFAULT_PAPER_FEE_SCHEDULE,
-  extractPaperOrderParams,
-  sweepOrderBookLevels,
-  applyPaperOrderOutcome,
-  PaperLegDecayTracker,
-  type PaperOrderBookProvider,
-} from './paper-orderbook-simulator';
-import { EXEMPT_FEE_SCHEDULE, type PolymarketFeeSchedule } from './polymarket-fee-calculator';
-import type { FeeScheduleResolver } from './fee-schedule-resolver';
-import { saveReconcilerState, appendG2ShadowTelemetry } from './g2-shadow-telemetry';
+import { PolymarketV2PreTradeRiskGate } from '../execution/polymarket-v2-pretrade-risk-gate';
+import { PaperLegDecayTracker } from './paper-orderbook-simulator';
+import { PolymarketMicrostructureTracker } from './polymarket-microstructure-tracker';
 import { logger } from '../../shared/utils/logger';
 import type { LiveTradingConfig } from './live-trading-types';
 import { LiveTradingStrategyExecutor } from './live-trading-strategy-executor';
+
+export { validateOrchestratorOrderV2 } from '../execution/polymarket-v2-pretrade-bridge';
+export { executePaperOrderPlacement, recordPaperOrderCancel } from './live-trading-paper-execution';
 
 export interface OrchestratorComponents {
   adapter: PolymarketAdapter | null;
@@ -40,6 +35,8 @@ export interface OrchestratorComponents {
   strategyExecutor: LiveTradingStrategyExecutor;
   reconciler: PolymarketOrderReconciler;
   legDecayTracker: PaperLegDecayTracker;
+  polymarketV2Gate: PolymarketV2PreTradeRiskGate;
+  microstructureTracker: PolymarketMicrostructureTracker;
 }
 
 /** Normalize config with defaults and PAPER_MODE env fallback. */
@@ -59,6 +56,8 @@ export function normalizeConfig(raw: LiveTradingConfig): LiveTradingConfig {
     feeScheduleResolver: raw.feeScheduleResolver,
     enforcePolyRiskGate: raw.enforcePolyRiskGate ?? !paperTrading,
     killSwitchTransport: raw.killSwitchTransport,
+    allowCohortContinuation: raw.allowCohortContinuation ?? false,
+    preTradeRiskGateConfigV2: raw.preTradeRiskGateConfigV2,
   };
 }
 
@@ -83,6 +82,15 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
   );
   const reconciler = new PolymarketOrderReconciler(config.capitalUsdc);
   const legDecayTracker = new PaperLegDecayTracker();
+  const polymarketV2Gate = new PolymarketV2PreTradeRiskGate({
+    maxMarketExposureMicro: Math.max(7_500_000_000, Math.round(config.capitalUsdc * 1_000_000)),
+    maxConsecutiveBookErrors: 3,
+    ...config.preTradeRiskGateConfigV2,
+  });
+  const microstructureTracker = new PolymarketMicrostructureTracker(
+    undefined,
+    config.preTradeRiskGateConfigV2?.maxVpinThreshold ?? 0.70,
+  );
   return {
     adapter: null,
     positionTracker,
@@ -93,94 +101,18 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
     strategyExecutor,
     reconciler,
     legDecayTracker,
+    polymarketV2Gate,
+    microstructureTracker,
   };
-}
-
-/**
- * A paper fill must price its fee from the market's own schedule. Three states:
- *
- *   - no resolver configured  -> the paper default, so an unwired harness still
- *                                books a non-zero cost instead of a free trade
- *   - resolver returns null   -> the exchange does not charge this market
- *   - resolver throws         -> the cost is unknown, so the order is refused
- *                                rather than assumed free
- */
-async function resolvePaperFeeSchedule(
-  resolver: FeeScheduleResolver | null | undefined,
-  tokenId: string,
-): Promise<PolymarketFeeSchedule> {
-  if (!resolver) return DEFAULT_PAPER_FEE_SCHEDULE;
-  const resolved = await resolver.resolve(tokenId);
-  return resolved ?? EXEMPT_FEE_SCHEDULE;
-}
-
-export async function executePaperOrderPlacement(params: {
-  reconciler: PolymarketOrderReconciler;
-  positionTracker: LivePositionTracker;
-  journal: LiveTradingJournal;
-  legDecayTracker: PaperLegDecayTracker;
-  orderBookProvider: PaperOrderBookProvider | null;
-  /** Resolves the market's own schedule by token id. Absent => the paper default. */
-  feeScheduleResolver?: FeeScheduleResolver | null;
-  startedAtMs: number;
-  order: PolymarketOrder;
-  orderId: string;
-}): Promise<PolymarketOrderResponse> {
-  const { side, requestedSize, limitPrice } = extractPaperOrderParams(params.order);
-  let book: { bids: Array<{ price: string; size: string }>; asks: Array<{ price: string; size: string }> } | null = null;
-  if (params.orderBookProvider) {
-    try {
-      book = await params.orderBookProvider(params.order.tokenId);
-    } catch {
-      book = { bids: [], asks: [] };
-    }
-  }
-  const schedule = await resolvePaperFeeSchedule(params.feeScheduleResolver, params.order.tokenId);
-  const outcome = sweepOrderBookLevels({ book, side, requestedSize, limitPrice, schedule });
-  params.legDecayTracker.recordOrderOutcome(params.order.tokenId, side, outcome);
-  applyPaperOrderOutcome({
-    reconciler: params.reconciler,
-    positionTracker: params.positionTracker,
-    journal: params.journal,
-    order: params.order,
-    orderId: params.orderId,
-    side,
-    outcome,
-  });
-  const loopStartedAt = params.startedAtMs > 0 ? params.startedAtMs : Date.now();
-  const decayStats = params.legDecayTracker.getStats();
-  saveReconcilerState(params.reconciler, loopStartedAt, decayStats);
-  appendG2ShadowTelemetry({
-    loopStartedAtMs: loopStartedAt,
-    mode: 'PAPER',
-    event: 'fill',
-    positionSummary: params.positionTracker.getSummary(),
-    reconciliationSummary: params.reconciler.reconcile(),
-    leg2DecayStats: decayStats,
-  });
-  return {
-    orderID: params.orderId,
-    status: outcome.status,
-    filledSize: outcome.filledSize,
-    fillPrice: outcome.avgFillPrice,
-    feeUsdc: outcome.feeUsdc,
-    partial: outcome.partial,
-  };
-}
-
-export function recordPaperOrderCancel(reconciler: PolymarketOrderReconciler, orderId: string): void {
-  if (reconciler.getOrder(orderId)) {
-    reconciler.applyEvent({
-      eventId: `${orderId}:cancel:${Date.now()}`,
-      orderId,
-      type: 'CANCELLED',
-      timestamp: Date.now(),
-    });
-  }
 }
 
 /** Build the Polymarket adapter and wire an OrderManager (for start()). */
-export function buildStartComponents(config: LiveTradingConfig, core: OrchestratorComponents): void {
+export function buildStartComponents(
+  config: LiveTradingConfig,
+  core: OrchestratorComponents,
+  getTickSizeMicro?: (tokenId: string) => number,
+  getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number },
+): void {
   const exec = buildPolymarketAdapter({
     paperTrading: config.paperTrading,
     chainId: config.chainId,
@@ -189,7 +121,15 @@ export function buildStartComponents(config: LiveTradingConfig, core: Orchestrat
   if (exec.adapter) {
     core.adapter = exec.adapter;
     core.guard.setEnabled(true);
-    core.orderManager = new LiveOrderManager(exec.adapter, core.positionTracker);
+    core.orderManager = new LiveOrderManager(
+      exec.adapter,
+      core.positionTracker,
+      undefined,
+      core.riskManager,
+      core.polymarketV2Gate,
+      getTickSizeMicro,
+      getRiskContext,
+    );
   }
 }
 

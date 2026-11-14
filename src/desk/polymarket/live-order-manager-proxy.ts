@@ -1,23 +1,14 @@
 /**
  * Live Order Manager Proxy
  *
- * Implements the legacy OrderManager interface but routes all orders through
- * the LiveTradingOrchestrator via StrategyLiveBridge. This allows existing
- * V2 strategies to use the live trading pipeline without code changes —
- * just swap the OrderManager dependency.
- *
- * Usage:
- *   const orch = new LiveTradingOrchestrator({ paperTrading: false, ... });
- *   const bridge = new StrategyLiveBridge(orch);
- *   const orderMgr = new LiveOrderManagerProxy(bridge, 'my-strategy');
- *   // Pass orderMgr as a StrategyDeps.orderManager to any V2 strategy
+ * Implements the legacy OrderManager interface and routes all orders through
+ * LiveTradingOrchestrator via StrategyLiveBridge.
  */
 
 import type { OrderManager, PlaceOrderResult } from '../polymarket/order-manager';
 import type { StrategyLiveBridge, TradeSignal } from './strategy-live-bridge';
+import { calcQuadraticTakerFeeRateV2, type PolymarketCategory } from './polymarket-fee-calculator';
 import { logger } from '../../shared/utils/logger';
-
-// ── Proxy ────────────────────────────────────────────────────────────────────────
 
 export class LiveOrderManagerProxy implements OrderManager {
   private bridge: StrategyLiveBridge;
@@ -30,14 +21,14 @@ export class LiveOrderManagerProxy implements OrderManager {
     this.strategyName = strategyName;
   }
 
-  // ── OrderManager interface ──────────────────────────────────────────────────
-
   async placeOrder(params: {
     tokenId: string;
     side: 'buy' | 'sell';
     price: string | number;
     size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
+    /** Optional CLOB V2 market category when response omits `feeUsdc`. */
+    category?: PolymarketCategory;
   }): Promise<PlaceOrderResult> {
     this.orderCount++;
     const priceNum = parseFloat(String(params.price));
@@ -78,9 +69,12 @@ export class LiveOrderManagerProxy implements OrderManager {
         typeof result.response.filledSize === 'number' ? result.response.filledSize : sizeNum;
       const fillPriceNum =
         typeof result.response.fillPrice === 'number' ? result.response.fillPrice : priceNum;
-      // The proxy holds no token-resolved fee schedule, so a response that omits
-      // its fee is booked at no fee rather than priced from a category guess.
-      const feeUsdc = typeof result.response.feeUsdc === 'number' ? result.response.feeUsdc : 0;
+      const feeUsdc =
+        typeof result.response.feeUsdc === 'number'
+          ? result.response.feeUsdc
+          : params.category
+            ? calcQuadraticTakerFeeRateV2(params.category, fillPriceNum) * filledSizeNum * fillPriceNum
+            : 0;
       return {
         id: orderId,
         filled: filledSizeNum > 0,
@@ -124,8 +118,6 @@ export class LiveOrderManagerProxy implements OrderManager {
   async getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
     return this.bridge.getOpenOrders(tokenId);
   }
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
 
   getStats() {
     return {

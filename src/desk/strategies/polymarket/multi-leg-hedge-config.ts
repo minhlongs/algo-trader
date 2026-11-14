@@ -8,6 +8,7 @@ import type { ClobClient } from '../../polymarket/clob-client';
 import type { OrderManager } from '../../polymarket/order-manager';
 import type { EventBus } from '../../events/event-bus';
 import type { GammaClient } from '../../polymarket/gamma-client';
+import type { PolymarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import type { StrategyName } from '../../core/types';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ export interface HedgePosition {
   sizeUsdc: number;
   entryDeviation: number;
   openedAt: number;
+  category?: PolymarketCategory;
 }
 
 // ── Pure helpers (exported for testing) ──────────────────────────────────────

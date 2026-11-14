@@ -139,4 +139,35 @@ describe('evaluateExits', () => {
     expect(mockSetCooldown).toHaveBeenCalledWith(runtime, 'm-1');
     expect(mockSetCooldown).toHaveBeenCalledWith(runtime, 'm-2');
   });
+
+  it('emits real CLOB V2 taker sell fees on exit trade events instead of zero placeholders', async () => {
+    const runtime = makeRuntime(
+      new Map([['m-1', makePosition({ category: 'crypto', yesEntryPrice: 0.48, noEntryPrice: 0.48 })]]),
+    );
+    await evaluateExits(runtime);
+
+    const emitted = (runtime.eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => c[0] === 'trade.executed',
+    );
+    expect(emitted).toHaveLength(2);
+    for (const [, payload] of emitted) {
+      // 21 tokens sold @ 0.50 in crypto (rCat=0.07 => rate=0.0175): 21 * 0.0175 * 0.50 = 0.183750 USDC
+      expect(payload.trade.fees).toBe('0.183750');
+    }
+  });
+
+  it('emits zero exit fees for a fee-exempt category', async () => {
+    const runtime = makeRuntime(
+      new Map([['m-1', makePosition({ category: 'geopolitics', yesEntryPrice: 0.48, noEntryPrice: 0.48 })]]),
+    );
+    await evaluateExits(runtime);
+
+    const emitted = (runtime.eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => c[0] === 'trade.executed',
+    );
+    expect(emitted).toHaveLength(2);
+    for (const [, payload] of emitted) {
+      expect(payload.trade.fees).toBe('0.000000');
+    }
+  });
 });

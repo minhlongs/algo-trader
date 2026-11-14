@@ -4,14 +4,20 @@
  * Phase 35 — BYOK KYC for PRO+ tiers.
  */
 import { PoolClient } from 'pg';
+import { getDialect } from '../../../db/migration-sql-dialect';
 
 export const id = '056-add-kyc-verifications';
 export const description = 'Create kyc_verifications table for identity verification tracking';
 
 export async function up(client: PoolClient): Promise<void> {
+  const idDefault =
+    getDialect(client) === 'sqlite'
+      ? '(lower(hex(randomblob(16))))'
+      : 'gen_random_uuid()::text';
+
   await client.query(`
     CREATE TABLE IF NOT EXISTS kyc_verifications (
-      id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+      id TEXT PRIMARY KEY DEFAULT ${idDefault},
       tenant_id TEXT NOT NULL,
       provider TEXT NOT NULL DEFAULT 'persona',
       status TEXT NOT NULL DEFAULT 'pending'

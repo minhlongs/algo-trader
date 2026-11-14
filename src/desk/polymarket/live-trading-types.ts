@@ -6,14 +6,7 @@
 
 import type { FeeScheduleResolver } from './fee-schedule-resolver';
 import type { PolyCancelAllTransport } from '../risk/poly-kill-switch';
-
-// ---------------------------------------------------------------------------
-// Env-var validation (Zod)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Env-var validation
-// ---------------------------------------------------------------------------
+import type { PreTradeRiskGateConfigV2 } from '../execution/polymarket-v2-pretrade-risk-gate';
 
 const REQUIRED_LIVE_VARS: Array<{ envKey: string; legacyKey: string; label: string }> = [
   { envKey: 'POLYMARKET_API_KEY', legacyKey: 'POLY_API_KEY', label: 'Polymarket API Key' },
@@ -35,10 +28,6 @@ function validateLiveEnv(): void {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Config interface
-// ---------------------------------------------------------------------------
 
 /**
  * LiveTradingConfig — original interface from the orchestrator.
@@ -67,11 +56,11 @@ export interface LiveTradingConfig {
   enforcePolyRiskGate?: boolean;
   /** Optional cancel-all transport override for `PolyKillSwitch`. */
   killSwitchTransport?: PolyCancelAllTransport;
+  /** Preserve PAPER shadow cohort T0_G2 across >15m probe gaps when drift === 0. */
+  allowCohortContinuation?: boolean;
+  /** Optional CLOB V2 pre-trade risk gate configuration overrides. */
+  preTradeRiskGateConfigV2?: Partial<PreTradeRiskGateConfigV2>;
 }
-
-// ---------------------------------------------------------------------------
-// Risk limits
-// ---------------------------------------------------------------------------
 
 export interface RiskLimits {
   /** Max portfolio allocation % (0-1). */
@@ -94,10 +83,6 @@ export const DEFAULT_RISK_LIMITS: RiskLimits = {
   tradeCooldownMs: 30_000,
 };
 
-// ---------------------------------------------------------------------------
-// Orchestrator status
-// ---------------------------------------------------------------------------
-
 export type OrchestratorStatus =
   | 'stopped'
   | 'starting'
@@ -105,17 +90,9 @@ export type OrchestratorStatus =
   | 'stopping'
   | 'error';
 
-// ---------------------------------------------------------------------------
-// Paper trade stats
-// ---------------------------------------------------------------------------
-
 export interface PaperTradeStats {
   paperTrades: number;
   paperPnl: number;
 }
-
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 
 export { validateLiveEnv };

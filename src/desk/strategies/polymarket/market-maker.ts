@@ -3,22 +3,18 @@
  *
  * Provides two-sided liquidity on Polymarket markets by placing
  * bid/ask orders around a fair value estimate. Captures the spread
- * while managing inventory risk.
- *
- * Each market gets a bid at fairValue - halfSpread and an ask at
- * fairValue + halfSpread. The quoted spread widens when inventory
- * becomes skewed (too many YES or NO positions).
- *
- * Entry: place bid/ask when spread > minSpread
- * Exit: filled orders auto-close; stale quotes are refreshed
+ * while managing inventory risk, on-chain OFI/VPIN toxicity regime,
+ * and optional Log-Odds Avellaneda-Stoikov pricing (`POLY-ALPHA-HUNTER-V4` §3.3, §3.5).
  */
 
 import { EventEmitter } from 'events';
 import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client';
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import type { StrategyConfig } from '../../core/types';
 import { logger } from '../../core/logger';
 
 import {
+  type MakerQuoteEconomicsV2,
   type MarketMakerConfig,
   type MmMarket,
   type MmMarketState,
@@ -27,24 +23,34 @@ import {
   computeAskPrice,
   updateSkew,
   computeBestBidAsk,
+  computeMakerQuoteEconomicsV2,
 } from './market-maker-math';
+import {
+  LogOddsAvellanedaStoikovMarketMaker,
+  VolumeSynchronizedVpinEstimator,
+  resolveTickQuotesWithRegime,
+  type MarketMakerV2Telemetry,
+  type OnchainOrderFilledEvent,
+} from './market-maker-v2-quoting';
 
 export {
+  type MakerQuoteEconomicsV2,
   type MarketMakerConfig,
+  type MarketMakerV2Telemetry,
   type MmMarket,
   type MmMarketState,
   DEFAULT_CONFIG,
   computeBidPrice,
   computeAskPrice,
   updateSkew,
+  computeMakerQuoteEconomicsV2,
 };
-
-// ── Strategy class (keeps original constructor interface) ────────────────────
 
 export class MarketMakerStrategy extends EventEmitter {
   private readonly cfg: MarketMakerConfig;
   private readonly capital: string;
   private readonly markets = new Map<string, MmMarketState>();
+  private readonly logOddsMmEngine: LogOddsAvellanedaStoikovMarketMaker;
   private running = false;
 
   constructor(
@@ -55,11 +61,13 @@ export class MarketMakerStrategy extends EventEmitter {
     super();
     this.cfg = { ...DEFAULT_CONFIG, ...(cfg.params as Partial<MarketMakerConfig>) };
     this.capital = capital;
+    this.logOddsMmEngine = new LogOddsAvellanedaStoikovMarketMaker(this.cfg.logOddsConfig);
     this.running = true;
     logger.info('[market-maker] Strategy initialized', {
       baseSpread: this.cfg.baseSpread,
       quoteSize: this.cfg.quoteSizeUsdc,
       capital: this.capital,
+      useLogOddsAsQuoting: this.cfg.useLogOddsAsQuoting,
     });
   }
 
@@ -74,13 +82,36 @@ export class MarketMakerStrategy extends EventEmitter {
       bidPlaced: 0,
       askPlaced: 0,
       inventorySkew: 0,
+      category: classifyMarketCategory(opp.conditionId),
+      cumulativeRebateUsdc: 0,
+      cumulativeAvoidedTakerFeeUsdc: 0,
+      vpinEstimator: new VolumeSynchronizedVpinEstimator(
+        this.cfg.vpinBucketVolumeMicro ?? 100_000_000,
+        this.cfg.vpinRollingWindowBuckets ?? 50,
+      ),
+      haltedByToxicRegime: false,
     });
     logger.debug('[market-maker] Market added', { key });
   }
 
+  /** Retrieve tracked state and CLOB V2 maker economics for a conditionId. */
+  getMarketState(conditionId: string): MmMarketState | undefined {
+    return this.markets.get(conditionId);
+  }
+
+  /** Feed an on-chain OrderFilled event into a market's volume-synchronized VPIN estimator. */
+  recordOnchainFill(conditionId: string, event: OnchainOrderFilledEvent): void {
+    this.markets.get(conditionId)?.vpinEstimator?.addTrade(event);
+  }
+
+  /** Override VPIN reading for a market (or clear override with undefined). */
+  setMarketVpinOverride(conditionId: string, vpin?: number): void {
+    const state = this.markets.get(conditionId);
+    if (state) state.vpinOverride = vpin;
+  }
+
   /** Set fair value estimate from AI prediction loop. */
   setFairValue(tokenId: string, prob: number, confidence: number): void {
-    // Match by tokenId across all tracked markets
     for (const [, state] of this.markets) {
       if (state.info.yesTokenId === tokenId || state.info.noTokenId === tokenId) {
         state.fairValue = Math.max(0.01, Math.min(0.99, prob));
@@ -102,24 +133,45 @@ export class MarketMakerStrategy extends EventEmitter {
         const book = await this.clobClient.getOrderBook(state.info.yesTokenId);
         const ba = this.bestBidAsk(book);
 
-        // Skip markets with insufficient liquidity
+        const resolved = resolveTickQuotesWithRegime({
+          state,
+          book,
+          midPrice: ba.mid,
+          cfg: this.cfg,
+          mmEngine: this.logOddsMmEngine,
+        });
+        if (resolved.halted) {
+          this.emit('toxicKillSwitch', {
+            conditionId: key,
+            vpin: resolved.telemetry.currentVpin,
+            regime: resolved.telemetry.regime,
+          });
+          continue;
+        }
+
         const totalLiq = parseFloat(book.bids[0]?.size ?? '0') + parseFloat(book.asks[0]?.size ?? '0');
         if (totalLiq < this.cfg.minLiquidity) continue;
 
-        const bid = computeBidPrice(state.fairValue, this.cfg.baseSpread, state.inventorySkew, this.cfg.skewSpreadMultiplier);
-        const ask = computeAskPrice(state.fairValue, this.cfg.baseSpread, state.inventorySkew, this.cfg.skewSpreadMultiplier);
-
+        const { bid, ask } = resolved;
+        const category = state.category ?? classifyMarketCategory(key);
+        const econ = computeMakerQuoteEconomicsV2(bid, ask, this.cfg.quoteSizeUsdc, category);
+        state.lastQuoteEconomics = econ;
         state.bidPlaced = now;
         state.askPlaced = now;
 
-        // Detect fills via mid-price crossing
         if (ba.mid >= ask) {
-          // Ask filled — we sold, increase long skew
           state.inventorySkew = updateSkew(state.inventorySkew, 'ask');
+          state.cumulativeRebateUsdc = (state.cumulativeRebateUsdc ?? 0) + econ.askRebateUsdc;
+          state.cumulativeAvoidedTakerFeeUsdc =
+            (state.cumulativeAvoidedTakerFeeUsdc ?? 0) +
+            calcQuadraticTakerFeeV2(category, ask, econ.askContracts, false) * ask;
           logger.debug('[market-maker] Ask filled', { market: key, price: ask.toFixed(4) });
         } else if (ba.mid <= bid) {
-          // Bid filled — we bought, increase short skew
           state.inventorySkew = updateSkew(state.inventorySkew, 'bid');
+          state.cumulativeRebateUsdc = (state.cumulativeRebateUsdc ?? 0) + econ.bidRebateUsdc;
+          state.cumulativeAvoidedTakerFeeUsdc =
+            (state.cumulativeAvoidedTakerFeeUsdc ?? 0) +
+            calcQuadraticTakerFeeV2(category, bid, econ.bidContracts, false) * bid;
           logger.debug('[market-maker] Bid filled', { market: key, price: bid.toFixed(4) });
         }
       } catch {
@@ -133,8 +185,6 @@ export class MarketMakerStrategy extends EventEmitter {
     this.markets.clear();
     logger.info('[market-maker] Stopped');
   }
-
-  // ── Private ──────────────────────────────────────────────────────────────
 
   private bestBidAsk(book: RawOrderBook): { bid: number; ask: number; mid: number } {
     return computeBestBidAsk(book);

@@ -9,6 +9,8 @@ import { GlobalCircuitBreaker } from '../risk/global-circuit-breaker';
 import type { CircuitBreakerState, CircuitBreakerTier } from '../risk/portfolio-risk-types';
 import { LeverageExposureGuard } from '../risk/leverage-exposure-guard';
 import type { LiveExecutionGuard } from '../execution/live-execution-guard';
+import type { PolymarketV2PreTradeRiskGate } from '../execution/polymarket-v2-pretrade-risk-gate';
+import { validateIntentWithPolymarketV2Gate } from '../execution/polymarket-v2-pretrade-bridge';
 import type { UnifiedTradeIntent, EngineId, VenueId } from './orchestrator-types';
 import { logger } from '../../shared/utils/logger';
 import type { RiskGateVerdict, SynchronizedRiskGateOptions } from './risk-gate-types';
@@ -28,6 +30,7 @@ export class SynchronizedRiskGate {
   private readonly circuitBreaker: GlobalCircuitBreaker;
   private readonly leverageGuard: LeverageExposureGuard;
   private readonly liveGuard?: LiveExecutionGuard;
+  private readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
 
   private engineBudgets: Record<EngineId, number> = {
     arbitrage: 20000, marl: 20000, amm: 20000, 'alpha-lab': 20000,
@@ -54,6 +57,7 @@ export class SynchronizedRiskGate {
       options.leverageGuard ??
       new LeverageExposureGuard(this.maxGrossLeverage, this.maxSingleVenueConcentration);
     this.liveGuard = options.liveGuard;
+    this.polymarketV2Gate = options.polymarketV2Gate;
 
     if (options.initialBudgets) {
       this.engineBudgets = { ...this.engineBudgets, ...options.initialBudgets };
@@ -106,9 +110,11 @@ export class SynchronizedRiskGate {
   public getCircuitBreaker(): GlobalCircuitBreaker { return this.circuitBreaker; }
   public getLeverageGuard(): LeverageExposureGuard { return this.leverageGuard; }
   public getLiveGuard(): LiveExecutionGuard | undefined { return this.liveGuard; }
+  public getPolymarketV2Gate(): PolymarketV2PreTradeRiskGate | undefined { return this.polymarketV2Gate; }
 
   public validateOrder(intent: UnifiedTradeIntent, unitPrice?: number): RiskGateVerdict {
     const price = unitPrice ?? intent.price ?? 65000;
+    const allocatedCapitalUsd = this.engineBudgets[intent.engineId] ?? 0;
     const res = evaluateOrderRisk(intent, price, {
       currentTier: this.currentTier,
       currentNav: this.totalNavUsd,
@@ -116,24 +122,35 @@ export class SynchronizedRiskGate {
       minCashBufferRatio: this.minCashBufferRatio,
       maxGrossLeverage: this.maxGrossLeverage,
       maxSingleVenueConcentration: this.maxSingleVenueConcentration,
-      engineBudget: this.engineBudgets[intent.engineId] ?? 0,
+      engineBudget: allocatedCapitalUsd,
       committed: this.engineCommitted[intent.engineId] ?? 0,
       venuePositions: this.venuePositions,
     });
+    const baseVerdict = {
+      scaledQuantity: res.scaledQty,
+      originalQuantity: intent.quantity,
+      allocatedCapitalUsd,
+      currentNavUsd: this.totalNavUsd,
+      cashBufferRatio: res.postCashRatio,
+      grossLeverage: res.grossLev,
+      circuitBreakerTier: this.currentTier,
+    };
 
     if (!res.approved) {
       logger.debug(`[SynchronizedRiskGate] Order rejected: ${res.reason}`, { intentId: intent.intentId });
-      return {
-        approved: false,
-        reason: res.reason,
-        scaledQuantity: res.scaledQty,
-        originalQuantity: intent.quantity,
-        allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
-        currentNavUsd: this.totalNavUsd,
-        cashBufferRatio: res.postCashRatio,
-        grossLeverage: res.grossLev,
-        circuitBreakerTier: this.currentTier,
-      };
+      return { approved: false, reason: res.reason, ...baseVerdict };
+    }
+
+    if (this.polymarketV2Gate && intent.venue === 'polymarket_clob') {
+      const v2Res = validateIntentWithPolymarketV2Gate(this.polymarketV2Gate, intent, price, res.scaledQty, {
+        rawFreeBalanceUsd: this.liquidCashUsd,
+        currentMarketExposureUsd: this.venuePositions.polymarket_clob ?? 0,
+      });
+      if (!v2Res.allowed) {
+        const reason = `PolymarketV2PreTradeRiskGate: ${v2Res.reason ?? 'REJECTED'}`;
+        logger.debug(`[SynchronizedRiskGate] Order rejected: ${reason}`, { intentId: intent.intentId });
+        return { approved: false, reason, ...baseVerdict };
+      }
     }
 
     if (this.liveGuard) {
@@ -152,29 +169,10 @@ export class SynchronizedRiskGate {
         logger.debug(`[SynchronizedRiskGate] Order rejected by LiveExecutionGuard: ${reason}`, {
           intentId: intent.intentId,
         });
-        return {
-          approved: false,
-          reason,
-          scaledQuantity: res.scaledQty,
-          originalQuantity: intent.quantity,
-          allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
-          currentNavUsd: this.totalNavUsd,
-          cashBufferRatio: res.postCashRatio,
-          grossLeverage: res.grossLev,
-          circuitBreakerTier: this.currentTier,
-        };
+        return { approved: false, reason, ...baseVerdict };
       }
     }
 
-    return {
-      approved: true,
-      scaledQuantity: res.scaledQty,
-      originalQuantity: intent.quantity,
-      allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
-      currentNavUsd: this.totalNavUsd,
-      cashBufferRatio: res.postCashRatio,
-      grossLeverage: res.grossLev,
-      circuitBreakerTier: this.currentTier,
-    };
+    return { approved: true, ...baseVerdict };
   }
 }

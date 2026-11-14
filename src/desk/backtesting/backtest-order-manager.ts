@@ -5,18 +5,22 @@
 
 import type { OrderManager } from '../polymarket/order-manager';
 import type { FeeScheduleResolver } from '../polymarket/fee-schedule-resolver';
-import type { PolymarketFeeSchedule } from '../polymarket/polymarket-fee-calculator';
+import type { PolymarketCategory, PolymarketFeeSchedule } from '../polymarket/polymarket-fee-calculator';
 import type { BacktestTrade } from './types';
 import { applyVenueCosts, type BacktestLegOrderType } from './backtest-fee-application';
-import {
-  settleBacktestBundleConversion,
-  type BundleConversionParams,
-} from './backtest-bundle-conversion';
+import { settleBacktestBundleConversion, type BundleConversionParams } from './backtest-bundle-conversion';
+
+export interface BacktestVenueFeeOptions {
+  feeResolver?: FeeScheduleResolver;
+  clobV2Category?: PolymarketCategory;
+  postOnly?: boolean;
+}
 
 export interface FillCostDetail {
   grossPnlUsd: number;
   feeUsd: number;
   gasUsd: number;
+  rebateUsd?: number;
   netPnlUsd: number;
 }
 
@@ -28,6 +32,7 @@ interface OpenPosition {
 }
 
 const POSITION_DUST_EPSILON = 1e-9;
+const roundUsd = (v: number): number => Math.round(v * 100) / 100;
 
 export class BacktestOrderManager implements OrderManager {
   trades: BacktestTrade[] = [];
@@ -38,13 +43,15 @@ export class BacktestOrderManager implements OrderManager {
   private positions = new Map<string, OpenPosition>();
   private fillCosts: FillCostDetail[] = [];
   private readonly feeResolver?: FeeScheduleResolver;
+  private readonly feeOptions: BacktestVenueFeeOptions;
   private currentTimestampIso: string | null = null;
   private markPrices = new Map<string, number>();
 
-  constructor(capital: number, options?: { feeResolver?: FeeScheduleResolver }) {
+  constructor(capital: number, options: BacktestVenueFeeOptions = {}) {
     this.capital = capital;
     this.currentEquity = capital;
-    this.feeResolver = options?.feeResolver;
+    this.feeResolver = options.feeResolver;
+    this.feeOptions = options;
   }
 
   setCurrentTimestamp(iso: string | null): void { this.currentTimestampIso = iso; }
@@ -63,18 +70,14 @@ export class BacktestOrderManager implements OrderManager {
     const size = parseFloat(String(params.size));
     const schedule = this.feeResolver ? await this.feeResolver.resolve(params.tokenId) : undefined;
     const close = this.computeClose(params.tokenId, side, price, size, schedule, params.orderType);
-
     const trade: BacktestTrade = {
       timestamp: params.timestamp ?? this.currentTimestampIso ?? new Date().toISOString(),
-      tokenId: params.tokenId,
-      side,
-      price,
+      tokenId: params.tokenId, side, price,
       size: close?.closedSize ?? size,
       pnl: close?.pnl ?? null,
       ...(close ? { venueCostUsd: roundUsd(Math.max(0, close.fillCost.feeUsd + close.fillCost.gasUsd)) } : {}),
     };
     this.trades.push(trade);
-
     if (close) {
       if (this.fillEquityCurve.length === 0) {
         this.fillEquityCurve.push({ timestamp: this.trades[0]!.timestamp, equity: this.capital });
@@ -83,7 +86,6 @@ export class BacktestOrderManager implements OrderManager {
       this.currentEquity = roundUsd(this.currentEquity + close.pnl);
       this.fillEquityCurve.push({ timestamp: trade.timestamp, equity: this.currentEquity });
     }
-
     return { id: `backtest-${this.trades.length}` };
   }
 
@@ -96,15 +98,10 @@ export class BacktestOrderManager implements OrderManager {
   async settleBundleConversion(params: BundleConversionParams): Promise<number> {
     return settleBacktestBundleConversion(
       {
-        positions: this.positions,
-        trades: this.trades,
-        fillCosts: this.fillCosts,
-        fillEquityCurve: this.fillEquityCurve,
-        capital: this.capital,
-        getCurrentEquity: () => this.currentEquity,
-        setCurrentEquity: (next) => { this.currentEquity = next; },
-        currentTimestampIso: this.currentTimestampIso,
-        feeResolver: this.feeResolver,
+        positions: this.positions, trades: this.trades, fillCosts: this.fillCosts,
+        fillEquityCurve: this.fillEquityCurve, capital: this.capital,
+        getCurrentEquity: () => this.currentEquity, setCurrentEquity: (next) => { this.currentEquity = next; },
+        currentTimestampIso: this.currentTimestampIso, feeResolver: this.feeResolver,
       },
       params,
     );
@@ -122,19 +119,14 @@ export class BacktestOrderManager implements OrderManager {
     for (const [tokenId, pos] of this.positions) {
       const mark = this.markPrices.get(tokenId);
       if (mark === undefined || !(mark > 0)) continue;
-      const sign = pos.size > 0 ? 1 : -1;
-      unrealized += Math.abs(pos.size) * (mark - pos.avgPrice) * sign;
+      unrealized += Math.abs(pos.size) * (mark - pos.avgPrice) * (pos.size > 0 ? 1 : -1);
     }
     return roundUsd(this.currentEquity + unrealized);
   }
 
   private computeClose(
-    tokenId: string,
-    side: 'BUY' | 'SELL',
-    price: number,
-    size: number,
-    schedule?: PolymarketFeeSchedule | null,
-    orderType?: BacktestLegOrderType,
+    tokenId: string, side: 'BUY' | 'SELL', price: number, size: number,
+    schedule?: PolymarketFeeSchedule | null, orderType?: BacktestLegOrderType,
   ): { pnl: number; closedSize: number; fillCost: FillCostDetail } | null {
     const existing = this.positions.get(tokenId);
     const direction = side === 'BUY' ? 1 : -1;
@@ -156,12 +148,8 @@ export class BacktestOrderManager implements OrderManager {
   }
 
   private settleClose(
-    tokenId: string,
-    existing: OpenPosition,
-    price: number,
-    size: number,
-    schedule?: PolymarketFeeSchedule | null,
-    exitOrderType?: BacktestLegOrderType,
+    tokenId: string, existing: OpenPosition, price: number, size: number,
+    schedule?: PolymarketFeeSchedule | null, exitOrderType?: BacktestLegOrderType,
   ): { pnl: number; closedSize: number; fillCost: FillCostDetail } {
     const positionSign = existing.size > 0 ? 1 : -1;
     const openSize = existing.size * positionSign;
@@ -169,29 +157,24 @@ export class BacktestOrderManager implements OrderManager {
     const grossPnlUsd = closeSize * (price - existing.avgPrice) * positionSign;
     const remaining = openSize - closeSize;
     const chargeEntryGas = remaining <= POSITION_DUST_EPSILON;
-    if (chargeEntryGas) {
-      this.positions.delete(tokenId);
-    } else {
-      this.positions.set(tokenId, { ...existing, size: remaining * positionSign });
-    }
-    const gasFills = 1 + (chargeEntryGas ? existing.entryFills : 0);
+    if (chargeEntryGas) this.positions.delete(tokenId);
+    else this.positions.set(tokenId, { ...existing, size: remaining * positionSign });
     const costs = applyVenueCosts(
       {
-        price, entryPrice: existing.avgPrice, entryOrderType: existing.entryOrderType,
-        exitOrderType, size: closeSize, grossPnl: grossPnlUsd, schedule,
+        price, entryPrice: existing.avgPrice, entryOrderType: existing.entryOrderType, exitOrderType,
+        size: closeSize, grossPnl: grossPnlUsd, schedule,
+        clobV2Category: this.feeOptions.clobV2Category, postOnly: this.feeOptions.postOnly,
       },
-      gasFills,
+      1 + (chargeEntryGas ? existing.entryFills : 0),
     );
     return {
-      pnl: costs.netPnl,
-      closedSize: closeSize,
+      pnl: costs.netPnl, closedSize: closeSize,
       fillCost: {
-        grossPnlUsd: roundUsd(grossPnlUsd), feeUsd: costs.feeUsd, gasUsd: costs.gasUsd, netPnlUsd: costs.netPnl,
+        grossPnlUsd: roundUsd(grossPnlUsd), feeUsd: costs.feeUsd,
+        gasUsd: costs.gasUsd,
+        ...(this.feeOptions.clobV2Category ? { rebateUsd: costs.rebateUsd } : {}),
+        netPnlUsd: costs.netPnl,
       },
     };
   }
-}
-
-function roundUsd(value: number): number {
-  return Math.round(value * 100) / 100;
 }

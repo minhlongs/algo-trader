@@ -1,15 +1,19 @@
 /**
  * Profitability Fee Calculator
- * Applies the fee schedule the exchange publishes for each leg's market.
  *
- * There is no category table here. A Polymarket leg carries the schedule its
- * market reports (`VenueTradeLeg.polymarketFeeSchedule`); a leg without one is
- * `unavailable` rather than silently priced from a guessed category.
+ * Prices Polymarket legs from either the market's published `polymarketFeeSchedule`
+ * (fail-closed primary path) or an explicit CLOB V2 quadratic category / market
+ * description. A Polymarket leg with neither is rejected (`available: false`)
+ * rather than silently priced from a guessed category.
  */
 
 import {
   calcMakerFeeRate,
+  calcQuadraticTakerFeeRateV2,
   calcTakerFeeRate,
+  classifyMarketCategory,
+  CLOB_V2_QUADRATIC_RATES,
+  type PolymarketCategory,
   type PolymarketFeeSchedule,
 } from '../../polymarket/polymarket-fee-calculator';
 import type { VenueTradeLeg } from './profitability-types';
@@ -26,14 +30,8 @@ export type LegFee =
   | { available: true; rate: number; feeUsd: number }
   | { available: false; venue: string; symbol: string };
 
-function polymarketLegFee(leg: VenueTradeLeg, notionalUsd: number): LegFee {
-  const schedule = leg.polymarketFeeSchedule;
-  if (!schedule) {
-    return { available: false, venue: leg.venue, symbol: leg.symbol };
-  }
+function polymarketScheduleLegFee(schedule: PolymarketFeeSchedule, leg: VenueTradeLeg, notionalUsd: number): LegFee {
   if (schedule.rate <= 0) {
-    // Exempt market: the exchange publishes `feesEnabled: false`, which
-    // `FeeScheduleResolver` surfaces as a zero-rate schedule.
     return { available: true, rate: 0, feeUsd: 0 };
   }
   const rate =
@@ -43,39 +41,67 @@ function polymarketLegFee(leg: VenueTradeLeg, notionalUsd: number): LegFee {
   return { available: true, rate, feeUsd: notionalUsd * rate };
 }
 
+function polymarketCategoryLegFee(category: PolymarketCategory, leg: VenueTradeLeg, notionalUsd: number): LegFee {
+  const clampedP = Math.min(Math.max(leg.price, 0.001), 0.999);
+  const v2 = CLOB_V2_QUADRATIC_RATES[category];
+  if (v2.rCat <= 0) {
+    return { available: true, rate: 0, feeUsd: 0 };
+  }
+  const takerRate = calcQuadraticTakerFeeRateV2(category, clampedP);
+  if (leg.orderType === 'maker') {
+    const rebateRate = takerRate * v2.makerRebatePct;
+    return { available: true, rate: -rebateRate, feeUsd: -notionalUsd * rebateRate };
+  }
+  return { available: true, rate: takerRate, feeUsd: notionalUsd * takerRate };
+}
+
 /**
- * Fee for one leg of a cross-venue trade. `feeOverride` still wins so callers
- * that measured a real fill can pin the exact rate.
+ * Fee for one leg of a cross-venue trade. `feeOverride` wins when supplied.
  */
 export function calculateLegFee(
   leg: VenueTradeLeg,
   notionalUsd: number,
-  feeOverride?: number
+  feeOverride?: number,
 ): LegFee {
   if (feeOverride !== undefined) {
     return { available: true, rate: feeOverride, feeUsd: notionalUsd * feeOverride };
   }
   if (leg.venue.toLowerCase() === 'polymarket') {
-    return polymarketLegFee(leg, notionalUsd);
+    if (leg.polymarketFeeSchedule) {
+      return polymarketScheduleLegFee(leg.polymarketFeeSchedule, leg, notionalUsd);
+    }
+    if (leg.polymarketCategory !== undefined || leg.marketDescription !== undefined) {
+      const category = leg.polymarketCategory ?? classifyMarketCategory(leg.marketDescription!);
+      return polymarketCategoryLegFee(category, leg, notionalUsd);
+    }
+    return { available: false, venue: leg.venue, symbol: leg.symbol };
   }
   return { available: true, rate: DEFAULT_CEX_FEE_RATE, feeUsd: notionalUsd * DEFAULT_CEX_FEE_RATE };
 }
 
 /**
- * Taker fee, its rate as a fraction of notional, and the maker rebate the same
- * market pays, for `notionalUsd` of exposure at `probability`.
- *
- * The rebate is the taker fee at that price times the market's `rebateRate`,
- * which is what `-notionalUsd * calcMakerFeeRate(...)` reduces to.
+ * Taker fee, its rate, and the maker rebate for `notionalUsd` (or share count on
+ * the CLOB V2 quadratic curve when passed a `PolymarketCategory`) at `probability`.
  */
 export function calculatePolymarketFee(
-  schedule: PolymarketFeeSchedule,
+  scheduleOrCategory: PolymarketFeeSchedule | PolymarketCategory,
   probability: number,
-  notionalUsd: number
+  notionalUsd: number,
 ): { rate: number; feeUsd: number; rebateUsd: number } {
-  const rate = calcTakerFeeRate(schedule, probability);
+  if (typeof scheduleOrCategory === 'string') {
+    const clampedP = Math.min(Math.max(probability, 0.001), 0.999);
+    const rate = calcQuadraticTakerFeeRateV2(scheduleOrCategory, clampedP);
+    const feeUsd = notionalUsd * rate;
+    const rebateUsd = feeUsd * CLOB_V2_QUADRATIC_RATES[scheduleOrCategory].makerRebatePct;
+    return {
+      rate,
+      feeUsd,
+      rebateUsd: Number.isFinite(rebateUsd) && rebateUsd > 0 ? rebateUsd : 0,
+    };
+  }
+  const rate = calcTakerFeeRate(scheduleOrCategory, probability);
   const feeUsd = notionalUsd * rate;
-  const rebateUsd = notionalUsd * -calcMakerFeeRate(schedule, probability);
+  const rebateUsd = notionalUsd * -calcMakerFeeRate(scheduleOrCategory, probability);
   return {
     rate,
     feeUsd,

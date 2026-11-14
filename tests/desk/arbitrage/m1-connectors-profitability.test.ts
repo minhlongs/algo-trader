@@ -1016,6 +1016,20 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
       expect(res.feeUsd).toBeCloseTo(3.5, 6);
     });
 
+    it('3.2b: evaluates CLOB V2 category dynamic taker fee curve at probability p = 0.50', () => {
+      // CLOB V2 quadratic curve: crypto rCat = 0.07 => rate = 0.07 * 0.50 * 0.50 = 0.0175 (175 bps)
+      const res = calculator.calculatePolymarketFee('crypto', 0.50, 1000);
+      expect(res.rate).toBeCloseTo(0.0175, 4);
+      expect(res.feeUsd).toBeCloseTo(17.50, 2);
+    });
+
+    it('3.3b: evaluates CLOB V2 category dynamic taker fee curve at extreme probability p = 0.95', () => {
+      // CLOB V2 quadratic curve: crypto rCat = 0.07 => rate = 0.07 * 0.95 * 0.05 = 0.003325 (33.25 bps)
+      const res = calculator.calculatePolymarketFee('crypto', 0.95, 1000);
+      expect(res.rate).toBeCloseTo(0.003325, 6);
+      expect(res.feeUsd).toBeCloseTo(3.325, 3);
+    });
+
     it('3.4: returns 0 fee for a market the exchange publishes as exempt', () => {
       const res1 = calculator.calculatePolymarketFee(EXEMPT_FEE_SCHEDULE, 0.9, 1000);
       expect(res1.rate).toBe(0);
@@ -1055,6 +1069,7 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
       // Taker fee at 0.04 rate is 0.01/share; 25% of it is rebated => 0.0025/share,
       // which is 0.0050 of notional => a $5.00 credit on $1,000.
       expect(analysis.estimatedBuyFeeUsd).toBeCloseTo(-5.0, 6);
+
       expect(analysis.estimatedBuyFeeUsd).toBeLessThan(0);
     });
   });

@@ -116,6 +116,7 @@ export interface PaperTradingVersionIdentity {
   deployedAt: string | null;
   deployBranch: string | null;
   environment: string;
+  srcTreeHash?: string;
 }
 
 export async function getPaperTradingStatus(
@@ -142,12 +143,19 @@ export async function getPaperTradingStatus(
   const startTime = loaded?.startTime ?? (running ? inMemoryState?.startTime : undefined);
   const state = buildLoopStatus(running, trades, startTime);
   const tradeCounter = typeof loaded?.tradeCounter === 'number' ? loaded.tradeCounter : trades.length;
-  const rawCommitSha = String(env?.COMMIT_SHA ?? process.env.COMMIT_SHA ?? '').trim();
+  const rawCommitSha = String(
+    env?.COMMIT_SHA ??
+      env?.BUILD_COMMIT_SHA ??
+      process.env.COMMIT_SHA ??
+      process.env.BUILD_COMMIT_SHA ??
+      '',
+  ).trim();
   const commitSha = rawCommitSha || 'unknown';
   const shortSha = commitSha !== 'unknown' && commitSha.length >= 8 ? commitSha.slice(0, 8) : commitSha;
   const rawDeployedAt = String(env?.DEPLOYED_AT ?? process.env.DEPLOYED_AT ?? '').trim();
   const rawDeployBranch = String(env?.DEPLOY_BRANCH ?? process.env.DEPLOY_BRANCH ?? '').trim();
   const rawEnvironment = String(env?.ENVIRONMENT ?? process.env.ENVIRONMENT ?? '').trim();
+  const rawSrcTreeHash = String(env?.SRC_TREE_HASH ?? process.env.SRC_TREE_HASH ?? '').trim();
   return {
     ok: true,
     enabled,
@@ -161,6 +169,7 @@ export async function getPaperTradingStatus(
       deployedAt: rawDeployedAt || null,
       deployBranch: rawDeployBranch || null,
       environment: rawEnvironment || 'unknown',
+      ...(rawSrcTreeHash ? { srcTreeHash: rawSrcTreeHash } : {}),
     },
   };
 }

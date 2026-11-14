@@ -20,6 +20,7 @@ import type { LivePositionTracker } from './live-position-tracker';
 import { logger } from '../../shared/utils/logger';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
+import type { PolymarketV2PreTradeRiskGate } from './polymarket-v2-pretrade-risk-gate';
 import { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
 import {
   DEFAULT_MAX_ORDER_LIFETIME,
@@ -50,6 +51,9 @@ export class LiveOrderManager extends EventEmitter {
     positionTracker: LivePositionTracker,
     maxOrderLifetimeMs: number = DEFAULT_MAX_ORDER_LIFETIME,
     readonly riskGateManager?: RiskGateManager,
+    readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate,
+    readonly getTickSizeMicro?: (tokenId: string) => number,
+    readonly getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number },
   ) {
     super();
     this.adapter = adapter;

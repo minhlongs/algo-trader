@@ -14,6 +14,7 @@ import type { PolymarketOrder } from './polymarket-signer';
 import type { LivePositionTracker, FilledOrder } from './live-position-tracker';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
+import type { PolymarketV2PreTradeRiskGate } from './polymarket-v2-pretrade-risk-gate';
 
 // ── Public Types ────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,15 @@ export interface LiveOrderManagerCtx {
   // Optional risk gate manager
   readonly riskGateManager?: RiskGateManager;
 
+  // Optional CLOB V2 pre-trade risk gate
+  readonly polymarketV2Gate?: PolymarketV2PreTradeRiskGate;
+
+  // Optional authoritative tick-size resolver (e.g. OrderBookStream.getTickSizeMicro)
+  readonly getTickSizeMicro?: (tokenId: string) => number;
+
+  // Optional dynamic microstructure & book-error context resolver
+  readonly getRiskContext?: (tokenId: string) => { currentVpin?: number; consecutiveBookErrors?: number };
+
   // Per-strategy rate limiters
   strategyRateLimiters: Map<string, TokenBucketRateLimiter>;
 
@@ -96,3 +106,27 @@ export interface LiveOrderManagerCtx {
 // ── Forward declaration for structural interface ────────────────────────────────
 
 import { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
+
+/** Compute pending order commitments from `activeOrders` for pre-trade risk evaluation. */
+export function computePendingRiskAdjustments(
+  activeOrders: Map<string, OrderState> | undefined,
+  tokenId: string,
+  side: 'BUY' | 'SELL',
+): { pendingFreeNotionalUsd: number; pendingSameSideUsd: number; pendingOppositeShares: number } {
+  let pendingFreeNotionalUsd = 0;
+  let pendingSameSideUsd = 0;
+  let pendingOppositeShares = 0;
+  if (!activeOrders) {
+    return { pendingFreeNotionalUsd, pendingSameSideUsd, pendingOppositeShares };
+  }
+  for (const st of activeOrders.values()) {
+    if (st.status !== 'pending' && st.status !== 'delayed') continue;
+    const notional = st.size * st.price;
+    pendingFreeNotionalUsd += notional;
+    if (st.tokenId === tokenId) {
+      if (st.side === side) pendingSameSideUsd += notional;
+      else pendingOppositeShares += st.size;
+    }
+  }
+  return { pendingFreeNotionalUsd, pendingSameSideUsd, pendingOppositeShares };
+}

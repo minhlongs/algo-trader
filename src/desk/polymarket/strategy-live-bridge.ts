@@ -47,7 +47,7 @@ export class StrategyLiveBridge {
         side: signal.side,
         expiration: Math.floor(Date.now() / 1000) + 300, // 5 min GTC
         nonce: String(Date.now()),
-        feeRateBps: 0,
+        feeRateBps: signal.feeRateBps ?? 0,
         signatureType: 0,
         orderType: signal.orderType,
       });
@@ -64,7 +64,7 @@ export class StrategyLiveBridge {
     } catch (err) {
       const msg = String(err);
 
-      if (msg.includes('Guard rejected') || msg.includes('PolyRisk blocked')) {
+      if (msg.includes('Guard rejected') || msg.includes('PolyRisk blocked') || msg.includes('RISK_GATE_REJECTED')) {
         this.signalsRejected++;
         logger.warn('Signal rejected by risk gate', 'StrategyLiveBridge', {
           reason: msg,

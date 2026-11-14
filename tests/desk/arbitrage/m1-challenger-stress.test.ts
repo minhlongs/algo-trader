@@ -409,6 +409,7 @@ describe('Challenger M1-1: NetProfitabilityCalculator Empirical Stress Suite', (
       // Finance schedule: taker fee is 0.04 * 0.25 = 0.01 USDC/share (2% of a
       // 0.50 price); 25% of it comes back to the maker = 0.0025/share = 50 bps
       // of notional.
+
       const resultWithMaker = calculator.evaluate({
         buyLeg: {
           venue: 'polymarket',
@@ -437,6 +438,7 @@ describe('Challenger M1-1: NetProfitabilityCalculator Empirical Stress Suite', (
       // Gross spread = $4.00. Net profit = $7.996 = 79.96 bps >= 10 bps hurdle
       expect(resultWithMaker.isProfitable).toBe(true);
       expect(resultWithMaker.netProfitBps).toBeCloseTo(79.96, 1);
+
     });
 
     it('3.6: a market the exchange publishes as exempt charges exactly 0 bps fee', () => {

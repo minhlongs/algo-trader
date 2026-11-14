@@ -7,6 +7,7 @@
 
 import type { OrderManager } from '../../polymarket/order-manager';
 import type { EventBus } from '../../events/event-bus';
+import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import type { InventorySkewRebalancerConfig, TrackedPosition } from './inventory-skew-types';
 import { STRATEGY_NAME } from './inventory-skew-types';
@@ -56,13 +57,15 @@ export async function runRebalance(ctx: RebalanceContext): Promise<number> {
     if (trimSize <= 0) continue;
 
     try {
-      await orderManager.placeOrder({
+      const order = await orderManager.placeOrder({
         tokenId: pos.tokenId,
         side: 'sell',
         price: pos.currentPrice.toFixed(4),
         size: String(trimSize),
         orderType: 'IOC',
       });
+      const category = classifyMarketCategory(pos.marketId);
+      const feeUsdc = calcQuadraticTakerFeeV2(category, pos.currentPrice, trimSize) * pos.currentPrice;
 
       pos.size -= trimSize;
       tradesPlaced++;
@@ -82,7 +85,7 @@ export async function runRebalance(ctx: RebalanceContext): Promise<number> {
           side: 'sell',
           fillPrice: String(pos.currentPrice),
           fillSize: String(trimSize),
-          fees: '0',
+          fees: order?.fees ?? feeUsdc.toFixed(6),
           timestamp: now,
           strategy: STRATEGY_NAME,
         },

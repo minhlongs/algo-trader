@@ -1,17 +1,14 @@
-/**
- * Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator (Stage S5)
- *
- * Deterministic walk-forward protocol (70% in-sample, 30% out-of-sample + stressed regime)
- * incorporating executable ask spread, taker fees taken from the market's published
- * fee schedule, top-of-book ask depth constraints, and Leg-2 rejection unwind
- * slippage risk.
- *
- * The schedule is a required input: this module must never price a fill from a
- * category keyword. Callers holding a token id resolve the real schedule through
- * `FeeScheduleResolver` and pass the result in.
- */
+/** Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator (70/30 split + markout kill gate). */
 
-import { calcTakerFeeRate, type PolymarketFeeSchedule } from './polymarket-fee-calculator';
+import {
+  calcTakerFeeRate,
+  DEFAULT_CLOB_V2_CATEGORY,
+  type PolymarketCategory,
+  type PolymarketFeeSchedule,
+} from './polymarket-fee-calculator';
+import { simulateExecutableAskFeeArbEpisode, simulateNaiveArbEpisode } from './polymarket-oos-arb-episode-simulator';
+import { simulateMakerEpisode, type EpisodeOutcome } from './polymarket-oos-maker-episode-simulator';
+import { generateEpisode, type SyntheticMarketSnapshot } from './polymarket-oos-synthetic-market';
 
 export interface WalkForwardConfig {
   seed: number;
@@ -19,11 +16,17 @@ export interface WalkForwardConfig {
   inSampleFraction?: number;
   legSizeUsdc?: number;
   minNetSpread?: number;
-  /** The market's published schedule. Required — there is no default category. */
-  schedule: PolymarketFeeSchedule;
+  /** Published per-market fee schedule; takes precedence for taker-arb candidates when supplied. */
+  schedule?: PolymarketFeeSchedule;
+  category?: PolymarketCategory;
+  competitiveDilutionFactor?: number;
 }
 
-export type CandidateId = 'no_trade_baseline' | 'naive_mid_arb' | 'executable_ask_fee_arb';
+export type CandidateId =
+  | 'no_trade_baseline'
+  | 'naive_mid_arb'
+  | 'executable_ask_fee_arb'
+  | 'log_odds_maker_mm_v2';
 
 export interface CandidateEvaluationMetrics {
   candidateId: CandidateId;
@@ -36,6 +39,8 @@ export interface CandidateEvaluationMetrics {
   oosNetPnlUsdc: number;
   oosWinRate: number;
   stressedNetPnlUsdc: number;
+  makerMarkoutCoverageRatio?: number;
+  passesMakerMarkoutKillCriterion?: boolean;
 }
 
 export interface WalkForwardEvaluationReport {
@@ -43,69 +48,26 @@ export interface WalkForwardEvaluationReport {
   episodes: number;
   inSampleCount: number;
   outOfSampleCount: number;
-  schedule: PolymarketFeeSchedule;
+  schedule?: PolymarketFeeSchedule;
+  category: PolymarketCategory;
   candidates: Record<CandidateId, CandidateEvaluationMetrics>;
 }
 
-interface SyntheticMarketSnapshot {
-  yesBid: number;
-  yesAsk: number;
-  noBid: number;
-  noAsk: number;
-  yesAskTokens: number;
-  noAskTokens: number;
-  leg2Reject: boolean;
-}
+const CANDIDATE_IDS: CandidateId[] = [
+  'no_trade_baseline', 'naive_mid_arb', 'executable_ask_fee_arb', 'log_odds_maker_mm_v2',
+];
 
-function nextRand(state: { s: number }): number {
-  state.s = (state.s * 1664525 + 1013904223) >>> 0;
-  return state.s / 0x100000000;
-}
+const NO_TRADE: EpisodeOutcome = { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
 
-function generateEpisode(rng: { s: number }, stressed: boolean): SyntheticMarketSnapshot {
-  const baseYesMid = 0.35 + nextRand(rng) * 0.30;
-  const trueArbOpportunity = nextRand(rng) < (stressed ? 0.18 : 0.28);
-  const trueDislocation = trueArbOpportunity
-    ? 0.042 + nextRand(rng) * 0.025
-    : (nextRand(rng) - 0.35) * 0.032;
-  const baseNoMid = Math.max(0.05, Math.min(0.95, 1 - baseYesMid - trueDislocation));
-  const halfSpread = (stressed ? 0.011 : 0.006) + nextRand(rng) * 0.008;
-  const thinBook = nextRand(rng) < (stressed ? 0.35 : 0.20);
-  return {
-    yesBid: Math.max(0.01, baseYesMid - halfSpread),
-    yesAsk: Math.min(0.99, baseYesMid + halfSpread),
-    noBid: Math.max(0.01, baseNoMid - halfSpread),
-    noAsk: Math.min(0.99, baseNoMid + halfSpread),
-    yesAskTokens: thinBook ? 15 : 200,
-    noAskTokens: thinBook ? 15 : 200,
-    leg2Reject: nextRand(rng) < (stressed ? 0.16 : 0.05),
-  };
-}
-
-interface EpisodeResult {
-  traded: boolean;
-  grossPnl: number;
-  fees: number;
-  unwindLoss: number;
-  netPnl: number;
-}
-
-const NO_TRADE: EpisodeResult = { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-
-function simulateEpisode(
+function simulateScheduleArbEpisode(
   snap: SyntheticMarketSnapshot,
-  candidateId: CandidateId,
+  candidateId: 'naive_mid_arb' | 'executable_ask_fee_arb',
   shares: number,
   minNetSpread: number,
   schedule: PolymarketFeeSchedule,
-): EpisodeResult {
-  if (candidateId === 'no_trade_baseline') return NO_TRADE;
-
-  // Fee as a fraction of the USDC paid per share at that price, which is the
-  // unit the per-leg notional below is expressed in.
+): EpisodeOutcome {
   const feeRateYes = calcTakerFeeRate(schedule, snap.yesAsk);
   const feeRateNo = calcTakerFeeRate(schedule, snap.noAsk);
-
   if (candidateId === 'naive_mid_arb') {
     const yesMid = (snap.yesBid + snap.yesAsk) / 2;
     const noMid = (snap.noBid + snap.noAsk) / 2;
@@ -122,7 +84,6 @@ function simulateEpisode(
     const fees = feeYes + shares * execNoAsk * feeRateNo;
     return { traded: true, grossPnl, fees, unwindLoss: 0, netPnl: grossPnl - fees };
   }
-
   if (snap.yesAskTokens < shares || snap.noAskTokens < shares) return NO_TRADE;
   const combinedAsk = snap.yesAsk + snap.noAsk;
   const estFeePerPair = snap.yesAsk * feeRateYes + snap.noAsk * feeRateNo;
@@ -138,26 +99,54 @@ function simulateEpisode(
   return { traded: true, grossPnl, fees, unwindLoss: 0, netPnl: grossPnl - fees };
 }
 
+function simulateEpisode(
+  snap: SyntheticMarketSnapshot,
+  candidateId: CandidateId,
+  pairCount: number,
+  minNetSpread: number,
+  schedule: PolymarketFeeSchedule | undefined,
+  category: PolymarketCategory,
+  episodeRngState: number,
+  competitiveDilutionFactor?: number,
+): EpisodeOutcome {
+  if (candidateId === 'no_trade_baseline') return NO_TRADE;
+  if (candidateId === 'naive_mid_arb' || candidateId === 'executable_ask_fee_arb') {
+    if (schedule) return simulateScheduleArbEpisode(snap, candidateId, pairCount, minNetSpread, schedule);
+    return candidateId === 'naive_mid_arb'
+      ? simulateNaiveArbEpisode(snap, pairCount, category)
+      : simulateExecutableAskFeeArbEpisode(snap, pairCount, minNetSpread, category);
+  }
+  return simulateMakerEpisode(
+    snap,
+    pairCount,
+    minNetSpread,
+    category,
+    { s: episodeRngState >>> 0 },
+    { competitiveDilutionFactor },
+  );
+}
+
 export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): WalkForwardEvaluationReport {
   const inSampleCount = Math.floor(cfg.episodes * (cfg.inSampleFraction ?? 0.7));
   const outOfSampleCount = cfg.episodes - inSampleCount;
-  const shares = cfg.legSizeUsdc ?? 25;
+  const legSizeUsdc = cfg.legSizeUsdc ?? 25;
   const minNetSpread = cfg.minNetSpread ?? 0.012;
-  const { schedule } = cfg;
+  const category = cfg.category ?? DEFAULT_CLOB_V2_CATEGORY;
   const rngNormal = { s: cfg.seed >>> 0 };
   const rngStress = { s: (cfg.seed ^ 0x9e3779b9) >>> 0 };
-
   const normalSnaps = Array.from({ length: cfg.episodes }, () => generateEpisode(rngNormal, false));
   const stressedSnaps = Array.from({ length: cfg.episodes }, () => generateEpisode(rngStress, true));
-  const ids: CandidateId[] = ['no_trade_baseline', 'naive_mid_arb', 'executable_ask_fee_arb'];
   const candidates = {} as Record<CandidateId, CandidateEvaluationMetrics>;
 
-  for (const id of ids) {
+  for (const id of CANDIDATE_IDS) {
     let inSampleTrades = 0, inSampleNetPnlUsdc = 0, oosTrades = 0, oosWins = 0;
     let oosGrossPnlUsdc = 0, oosFeesUsdc = 0, oosLegUnwindLossUsdc = 0, oosNetPnlUsdc = 0, stressedNetPnlUsdc = 0;
-
+    let oosMakerRevenueUsdc = 0, oosMarkoutLoss60sUsdc = 0;
     for (let i = 0; i < cfg.episodes; i++) {
-      const res = simulateEpisode(normalSnaps[i]!, id, shares, minNetSpread, schedule);
+      const res = simulateEpisode(
+        normalSnaps[i]!, id, legSizeUsdc, minNetSpread, cfg.schedule, category,
+        (cfg.seed ^ (i * 0x9e3779b9)) >>> 0, cfg.competitiveDilutionFactor,
+      );
       if (i < inSampleCount) {
         if (res.traded) inSampleTrades++;
         inSampleNetPnlUsdc += res.netPnl;
@@ -170,30 +159,39 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
         oosFeesUsdc += res.fees;
         oosLegUnwindLossUsdc += res.unwindLoss;
         oosNetPnlUsdc += res.netPnl;
-        stressedNetPnlUsdc += simulateEpisode(stressedSnaps[i]!, id, shares, minNetSpread, schedule).netPnl;
+        oosMakerRevenueUsdc += res.makerRevenueUsdc ?? 0;
+        oosMarkoutLoss60sUsdc += res.markoutLoss60s ?? 0;
+        stressedNetPnlUsdc += simulateEpisode(
+          stressedSnaps[i]!, id, legSizeUsdc, minNetSpread, cfg.schedule, category,
+          (cfg.seed ^ (i * 0x9e3779b9) ^ 0x85ebca6b) >>> 0, cfg.competitiveDilutionFactor,
+        ).netPnl;
       }
     }
-
+    const r4 = (x: number): number => Number(x.toFixed(4));
+    const coverageRatio =
+      id === 'log_odds_maker_mm_v2' && oosMarkoutLoss60sUsdc > 0
+        ? r4(oosMakerRevenueUsdc / oosMarkoutLoss60sUsdc)
+        : undefined;
     candidates[id] = {
-      candidateId: id,
-      inSampleTrades,
-      inSampleNetPnlUsdc: Number(inSampleNetPnlUsdc.toFixed(4)),
-      oosTrades,
-      oosGrossPnlUsdc: Number(oosGrossPnlUsdc.toFixed(4)),
-      oosFeesUsdc: Number(oosFeesUsdc.toFixed(4)),
-      oosLegUnwindLossUsdc: Number(oosLegUnwindLossUsdc.toFixed(4)),
-      oosNetPnlUsdc: Number(oosNetPnlUsdc.toFixed(4)),
-      oosWinRate: oosTrades > 0 ? Number((oosWins / oosTrades).toFixed(4)) : 0,
-      stressedNetPnlUsdc: Number(stressedNetPnlUsdc.toFixed(4)),
+      candidateId: id, inSampleTrades, inSampleNetPnlUsdc: r4(inSampleNetPnlUsdc), oosTrades,
+      oosGrossPnlUsdc: r4(oosGrossPnlUsdc), oosFeesUsdc: r4(oosFeesUsdc),
+      oosLegUnwindLossUsdc: r4(oosLegUnwindLossUsdc), oosNetPnlUsdc: r4(oosNetPnlUsdc),
+      oosWinRate: oosTrades > 0 ? r4(oosWins / oosTrades) : 0, stressedNetPnlUsdc: r4(stressedNetPnlUsdc),
+      ...(id === 'log_odds_maker_mm_v2'
+        ? {
+            makerMarkoutCoverageRatio: coverageRatio ?? 0,
+            passesMakerMarkoutKillCriterion: coverageRatio !== undefined && coverageRatio >= 1.5,
+          }
+        : {}),
     };
   }
-
   return {
     seed: cfg.seed,
     episodes: cfg.episodes,
     inSampleCount,
     outOfSampleCount,
-    schedule,
+    ...(cfg.schedule ? { schedule: cfg.schedule } : {}),
+    category,
     candidates,
   };
 }

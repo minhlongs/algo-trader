@@ -11,6 +11,7 @@ import type { OrderManager } from '../../polymarket/order-manager';
 import type { EventBus } from '../../events/event-bus';
 import type { GammaClient } from '../../polymarket/gamma-client';
 import type { StrategyName } from '../../core/types';
+import type { PolymarketCategory } from '../../polymarket/polymarket-fee-calculator';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,21 @@ export interface NegativeRiskScannerConfig {
   stopLossPct?: number;
   /** Maximum hold time before forced exit (ms) */
   maxHoldMs?: number;
+  /**
+   * Minimum net USDC profit per entry required after CLOB V2 fees and share
+   * deduction. Defaults to 0, so an entry only needs a positive net edge.
+   */
+  minNetEdgeUsdc?: number;
+  /**
+   * When true, refuses entry unless the ordered leg share quantities deliver at
+   * least the full requested pair count after CLOB V2 Taker-BUY share deduction.
+   */
+  requireFullRequestedPairMerge?: boolean;
+  /**
+   * When true, grosses up YES and NO order token quantities to `grossUpYesShares`
+   * and `grossUpNoShares` so net received shares restore full pair parity.
+   */
+  grossUpForShareDeduction?: boolean;
 }
 
 export const DEFAULT_CONFIG: NegativeRiskScannerConfig = {
@@ -56,6 +72,9 @@ export interface ArbPosition {
   yesOrderId: string;
   noOrderId: string;
   openedAt: number;
+  category?: PolymarketCategory;
+  yesTokens?: number;
+  noTokens?: number;
 }
 
 // ── Dependencies ─────────────────────────────────────────────────────────────

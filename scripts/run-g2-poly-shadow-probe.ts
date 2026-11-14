@@ -131,6 +131,7 @@ export async function runG2PolyShadowProbe(): Promise<{
 
   const orchestrator = new LiveTradingOrchestrator({
     paperTrading: true,
+    allowCohortContinuation: true,
     capitalUsdc: 1000,
     maxPositionFraction: 0.10,
     maxDailyDrawdown: 0.05,
@@ -141,7 +142,7 @@ export async function runG2PolyShadowProbe(): Promise<{
     PolymarketArbStrategy,
     {
       strategyConfig: { ...ARB_DEFAULT_CONFIG, spreadLookback: 1, minSpread: 0.01, positionSize: '10' },
-      tradingConfig: { paperTrading: true, capitalUsdc: 1000 },
+      tradingConfig: { paperTrading: true, allowCohortContinuation: true, capitalUsdc: 1000 },
       minExecutionIntervalMs: 1,
       deps: { gamma: probeGamma, clob: probeClob },
     },
