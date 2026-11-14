@@ -66,7 +66,6 @@ export function readWebhookBody(
       if (total > MAX_WEBHOOK_BODY_BYTES) {
         settled = true;
         resolve({ ok: false, status: 413, error: 'Payload exceeds maximum allowed size' });
-        req.destroy();
         return;
       }
       chunks.push(chunk);
