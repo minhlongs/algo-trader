@@ -190,28 +190,47 @@ describe('Lockup-Adjusted Multi-Market Kelly Solver', () => {
     expect(totalLocked).toBeLessThanOrEqual(0.60 + 1e-9);
     expect(totalLocked).toBeCloseTo(0.60, 4);
 
-    // Lockup & gammaKelly sensitivity on an interior solution
+    // Lockup & gammaKelly sensitivity on an interior solution (not clipped by 3% cluster loss cap)
     const interiorCandidate: PolyKellyMarketCandidate = {
       tokenId: 'interior-1',
       clusterId: 'c1',
-      scenarioNetReturns: [0.12, -0.08],
-      expectedLockupDays: 60,
+      scenarioNetReturns: [0.22, -0.20],
+      expectedLockupDays: 30,
       executableDepthUsd: 90_000,
-      resolutionRiskBps: 25,
+      resolutionRiskBps: 10,
     };
     const hiGamma = solveLockupAdjustedKelly({
-      scenarioProbabilities: [0.60, 0.40],
+      scenarioProbabilities: [0.53, 0.47],
       candidates: [interiorCandidate],
       navUsd: NAV,
       config: { gammaKelly: 0.25 },
     });
     const loGamma = solveLockupAdjustedKelly({
-      scenarioProbabilities: [0.60, 0.40],
+      scenarioProbabilities: [0.53, 0.47],
       candidates: [interiorCandidate],
       navUsd: NAV,
       config: { gammaKelly: 0.15 },
     });
     expect(loGamma.weights[0]!).toBeLessThan(hiGamma.weights[0]!);
+
+    // True fractional Kelly damping check (HIGH-1 regression):
+    // pi = [0.51, 0.49], R = [+0.20, -0.20] -> Full Kelly = 0.01 / 0.04 = 10.0% NAV;
+    // 0.20 Fractional Kelly without drag is 2.0% NAV (slightly lower after 2-day carry + 1 bps RR).
+    const fracCheck = solveLockupAdjustedKelly({
+      scenarioProbabilities: [0.51, 0.49],
+      candidates: [{
+        tokenId: 'frac-kelly-tok',
+        clusterId: 'c-frac',
+        scenarioNetReturns: [0.20, -0.20],
+        expectedLockupDays: 2,
+        executableDepthUsd: 90_000,
+        resolutionRiskBps: 1,
+      }],
+      navUsd: NAV,
+      config: { gammaKelly: 0.20 },
+    });
+    expect(fracCheck.weights[0]!).toBeGreaterThan(0.015);
+    expect(fracCheck.weights[0]!).toBeLessThanOrEqual(0.02 + 1e-6);
   });
 
   it('fails closed to zero weights on non-finite, unnormalized, or out-of-range inputs', () => {

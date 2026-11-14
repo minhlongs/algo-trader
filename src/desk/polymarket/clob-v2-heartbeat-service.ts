@@ -2,9 +2,9 @@
  * Polymarket CLOB V2 — Periodic `POST /heartbeats` Deadman Service.
  *
  * Maintains resting maker orders inside Polymarket's 10-second auto-cancel window
- * via a default 5-second heartbeat loop, tracks consecutive misses and round-trip
- * latency, notes HTTP 425 engine restarts, and fires `killSwitch.fire('heartbeat-deadman-missed')`
- * once consecutive misses reach `maxMissedHeartbeats` (default 2, ~10s).
+ * via a default 5-second heartbeat loop, enforces per-request AbortSignal timeouts
+ * and monotonic tick ordering, notes HTTP 425 engine restarts, and fires
+ * `killSwitch.fire('heartbeat-deadman-missed')` at `maxMissedHeartbeats` (default 2).
  */
 
 import type { PolyKillSwitch } from '../risk/poly-kill-switch';
@@ -62,6 +62,7 @@ export class ClobV2HeartbeatService {
   private readonly clock: () => number;
 
   private timer: ReturnType<typeof setInterval> | null = null;
+  private tickSequence = 0;
   private totalSent = 0;
   private totalAcked = 0;
   private consecutiveMisses = 0;
@@ -69,7 +70,7 @@ export class ClobV2HeartbeatService {
   private maxLatencyMs = 0;
   private lastSuccessAtMs: number | null = null;
   private lastHeartbeatId = '';
-  private lastError: string | null = null;
+  private lastError: string | null;
   private deadmanTriggered = false;
 
   constructor(options: ClobV2HeartbeatOptions = {}) {
@@ -90,30 +91,26 @@ export class ClobV2HeartbeatService {
     this.killSwitch = options.killSwitch;
     this.engineCooldown = options.engineCooldown;
     this.clock = options.nowMs ?? (() => Date.now());
+    this.lastError = null;
   }
 
   start(): void {
     if (this.timer !== null) return;
-    const handle = setInterval(() => {
-      void this.beatOnce();
-    }, this.intervalMs);
-    if (typeof (handle as { unref?: () => void }).unref === 'function') {
-      (handle as { unref: () => void }).unref();
-    }
+    const handle = setInterval(() => { void this.beatOnce(); }, this.intervalMs);
+    if (typeof (handle as { unref?: () => void }).unref === 'function') (handle as { unref: () => void }).unref();
     this.timer = handle;
   }
 
   stop(): void {
-    if (this.timer !== null) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    if (this.timer !== null) { clearInterval(this.timer); this.timer = null; }
   }
 
   async beatOnce(): Promise<ClobV2HeartbeatTickResult> {
+    const seq = ++this.tickSequence;
     const startedAt = this.clock();
     this.totalSent += 1;
     const payload = JSON.stringify({ heartbeat_id: this.lastHeartbeatId });
+    const reqTimeoutMs = Math.max(250, Math.min(this.intervalMs, 4_500));
 
     try {
       const doFetch = this.fetchImpl ?? fetch;
@@ -122,21 +119,22 @@ export class ClobV2HeartbeatService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(this.headers ?? {}), ...dynHeaders },
         body: payload,
+        signal: AbortSignal.timeout(reqTimeoutMs),
       });
       const finishedAt = this.clock();
       const latencyMs = Math.max(0, finishedAt - startedAt);
       this.lastLatencyMs = latencyMs;
       this.maxLatencyMs = Math.max(this.maxLatencyMs, latencyMs);
 
+      if (seq < this.tickSequence) return this.supersededResult(res.status, latencyMs);
       if (res.status === ENGINE_RESTARTING_HTTP_STATUS) {
         this.engineCooldown?.noteEngineRestart(finishedAt);
         return await this.recordMiss(res.status, latencyMs, 'http 425 engine restarting');
       }
-      if (!res.ok) {
-        return await this.recordMiss(res.status, latencyMs, `http ${res.status}`);
-      }
+      if (!res.ok) return await this.recordMiss(res.status, latencyMs, `http ${res.status}`);
 
       const rawText = await res.text();
+      if (seq < this.tickSequence) return this.supersededResult(res.status, latencyMs);
       this.extractHeartbeatId(rawText);
       this.totalAcked += 1;
       this.consecutiveMisses = 0;
@@ -150,8 +148,7 @@ export class ClobV2HeartbeatService {
       const latencyMs = Math.max(0, this.clock() - startedAt);
       this.lastLatencyMs = latencyMs;
       this.maxLatencyMs = Math.max(this.maxLatencyMs, latencyMs);
-      const message = err instanceof Error ? err.message : String(err);
-      return await this.recordMiss(0, latencyMs, message);
+      return await this.recordMiss(0, latencyMs, err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -166,6 +163,13 @@ export class ClobV2HeartbeatService {
     };
   }
 
+  private supersededResult(status: number, latencyMs: number): ClobV2HeartbeatTickResult {
+    return {
+      ok: false, status, latencyMs, consecutiveMisses: this.consecutiveMisses,
+      deadmanTriggered: this.deadmanTriggered, heartbeatId: this.lastHeartbeatId, error: 'superseded-heartbeat-tick',
+    };
+  }
+
   private extractHeartbeatId(rawText: string): void {
     if (!rawText) return;
     try {
@@ -174,9 +178,7 @@ export class ClobV2HeartbeatService {
         ? parsed.heartbeat_id
         : typeof parsed.heartbeatID === 'string' ? parsed.heartbeatID : '';
       if (id) this.lastHeartbeatId = id;
-    } catch {
-      // Non-JSON 200 ACK is still a valid heartbeat acknowledgement.
-    }
+    } catch { /* Non-JSON 200 ACK is valid */ }
   }
 
   private async recordMiss(status: number, latencyMs: number, error: string): Promise<ClobV2HeartbeatTickResult> {

@@ -29,10 +29,7 @@ import {
   MakerRegimeCoordinator, calcPairMakerRebatePusd, widenBidForRegime, type ExternalRegimeFeed,
 } from './toxicity-aware-market-maker-regime-wiring';
 
-export type {
-  ToxicityAwareConfig, PairQuote, QuotePlacement,
-  MakerRegimeTelemetry, MergeEligiblePair, MergeEligiblePairEvent,
-} from './toxicity-aware-market-maker-types';
+export type { ToxicityAwareConfig, PairQuote, QuotePlacement, MakerRegimeTelemetry, MergeEligiblePair, MergeEligiblePairEvent } from './toxicity-aware-market-maker-types';
 export { DEFAULT_CONFIG, STRATEGY_NAME } from './toxicity-aware-market-maker-types';
 export * from './toxicity-aware-market-maker-math';
 
@@ -40,9 +37,7 @@ export interface ToxicityAwareMarketMakerDeps extends StrategyDeps {
   feeResolver?: FeeScheduleResolver;
   regimeMachine?: LiquidityRegimeMachine;
   ctfPreflight?: CtfEthCallPreflight;
-  onMergePair?: (
-    event: MergeEligiblePairEvent,
-  ) => Promise<{ merged?: boolean } | void> | { merged?: boolean } | void;
+  onMergePair?: (event: MergeEligiblePairEvent) => Promise<{ merged?: boolean } | void> | { merged?: boolean } | void;
 }
 
 export class ToxicityAwareMarketMakerStrategy extends BasePolymarketStrategy {
@@ -64,16 +59,19 @@ export class ToxicityAwareMarketMakerStrategy extends BasePolymarketStrategy {
       this.regimeMachine, fullConfig, deps.orderManager, deps.ctfPreflight, deps.onMergePair,
     );
     this.legs = new PairLegExecutor({
-      clob: deps.clob,
-      orderManager: deps.orderManager,
-      strategyName: this.strategyName,
-      config: fullConfig,
-      onFill: (leg) => this.recordLeg(leg),
+      clob: deps.clob, orderManager: deps.orderManager, strategyName: this.strategyName,
+      config: fullConfig, onFill: (leg) => this.recordLeg(leg),
     });
   }
 
   updateRegimeObservation(marketId: string, obs: ExternalRegimeFeed): void {
     this.regimeCoord.updateObservation(marketId, obs);
+  }
+
+  protected override async exitPosition(pos: OpenPosition, currentPrice: number, reason: string): Promise<void> {
+    const qty = pos.tokenQuantity;
+    await super.exitPosition(pos, currentPrice, reason);
+    this.regimeCoord.recordSoldPosition(pos.conditionId, pos.tokenId, qty);
   }
 
   protected getCustomExitCondition(
@@ -89,44 +87,48 @@ export class ToxicityAwareMarketMakerStrategy extends BasePolymarketStrategy {
     const now = Date.now();
     this.state.rollDay(now);
     await this.refreshMarkouts();
-    if (this.state.isKilled(now, this.cfg)) return;
+    const killed = this.state.isKilled(now, this.cfg) !== null;
 
     const candidates: PairQuote[] = [];
     for (const market of markets) {
-      const quote = await this.evaluate(market, now);
-      if (quote) candidates.push(quote);
+      const quote = await this.evaluate(market, now, killed);
+      if (quote && !killed) candidates.push(quote);
     }
-    const chosen = topFractionByScore(
-      candidates.map((quote) => ({ item: quote, score: quote.rankScore })),
-      this.cfg.marketSelectionTopFraction,
-    );
-    for (const quote of chosen) {
-      if (this.getPositionCount() >= this.cfg.maxPositions) break;
-      this.tokenPairs.set(quote.conditionId, { yes: quote.tokenId, no: quote.noTokenId });
-      await this.legs.postPair(quote, now);
+    if (!killed) {
+      const chosen = topFractionByScore(
+        candidates.map((quote) => ({ item: quote, score: quote.rankScore })),
+        this.cfg.marketSelectionTopFraction,
+      );
+      for (const quote of chosen) {
+        if (this.getPositionCount() >= this.cfg.maxPositions) break;
+        this.tokenPairs.set(quote.conditionId, { yes: quote.tokenId, no: quote.noTokenId });
+        await this.legs.postPair(quote, now);
+      }
     }
     await this.regimeCoord.processEligibleMerges(this.positions);
   }
 
-  private async evaluate(market: GammaMarket, now: number): Promise<PairQuote | null> {
+  private async evaluate(market: GammaMarket, now: number, killed = false): Promise<PairQuote | null> {
     if (isFiveMinuteCryptoMarket(market)) {
       this.regimeCoord.noteExcludedFiveMinuteMarket();
       return null;
     }
     const noTokenId = market.noTokenId;
     if (!market.yesTokenId || !noTokenId || market.closed || market.resolved) return null;
-    if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId, now)) return null;
-    if ((market.volume ?? 0) < this.cfg.minVolume) return null;
-    if (!Number.isFinite(Date.parse(market.endDate))) return null;
 
     try {
+      // Evaluate 5-state regime FIRST so EVENT/REDUCE_ONLY/HALTED always cancel resting quotes
+      // even when `hasPosition`, `isOnCooldown`, `minVolume`, or `isKilled` block new entries.
       const yesBook = await this.deps.clob.getOrderBook(market.yesTokenId);
-      const noBook = await this.deps.clob.getOrderBook(noTokenId);
       const yesTop = this.bestBidAsk(yesBook);
-      const noTop = this.bestBidAsk(noBook);
       const decision = await this.regimeCoord.evaluateMarketRegime(market, now, this.state.fills, yesTop.mid);
-      if (!decision.allowNewQuotes) return null;
+      if (killed || !decision.allowNewQuotes) return null;
+      if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId, now)) return null;
+      if ((market.volume ?? 0) < this.cfg.minVolume || !Number.isFinite(Date.parse(market.endDate))) return null;
       if (isCloseToExpiry(market.endDate, now, this.cfg.minTimeToExpiryMs)) return null;
+
+      const noBook = await this.deps.clob.getOrderBook(noTokenId);
+      const noTop = this.bestBidAsk(noBook);
       if (yesBook.bids.length === 0 || noBook.bids.length === 0) return null;
       if (this.state.readToxicity(market.yesTokenId, yesBook, this.cfg, true)) return null;
       if (this.state.readToxicity(noTokenId, noBook, this.cfg, true)) return null;

@@ -688,6 +688,9 @@ describe('Strategy 4 — Host Whitelist Pre-Screen, 3rd Arbiter Split Resolution
         { modelKnowledgeCutoffMs: 100 },
       ),
     ).toThrow(/eventResolutionOrCutoffMs/);
+    expect(() =>
+      sanitizeMarketBlindContext({ documents: [] }, { modelKnowledgeCutoffMs: 100 }),
+    ).toThrow(/eventResolutionOrCutoffMs/);
 
     // Ledger boundary validations & cross-ledger isolation
     expect(() =>

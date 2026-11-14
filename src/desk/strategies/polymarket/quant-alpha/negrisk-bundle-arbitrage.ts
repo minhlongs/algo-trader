@@ -139,8 +139,9 @@ export class NegRiskBundleArbitrageStrategy extends BasePolymarketStrategy {
     this.book.open(quote, now);
     const failures = await this.legs.executeQuote(quote, now);
     await settleOrRecordBundle({
-      eventId: event.id,
+      event,
       nowMs: now,
+      totalOutcomeCount: outcomeCount,
       book: this.book,
       cfg: this.cfg,
       orderManager: this.deps.orderManager,

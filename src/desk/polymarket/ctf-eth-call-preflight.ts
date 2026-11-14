@@ -28,7 +28,6 @@ export const NEGRISK_ADAPTER_IFACE = new ethers.Interface([
 ]);
 
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
-const REVERT_SELECTORS = ['0x08c379a0', '0x4e487b71'];
 
 export interface EthCallTxRequest { from?: string; to: string; data: string }
 export type EthCallTransport = (tx: EthCallTxRequest, blockTag?: string) => Promise<string>;
@@ -145,9 +144,11 @@ export class CtfEthCallPreflight {
     if (this.rpcCall) {
       try {
         const ret = await this.rpcCall({ ...(this.fromAddress ? { from: this.fromAddress } : {}), to, data: calldata }, 'latest');
-        if (typeof ret !== 'string' || !ret.startsWith('0x') || REVERT_SELECTORS.some((s) => ret.toLowerCase().startsWith(s))) {
+        // All 4 CTF / NegRisk settlement calls return void (`returns ()`), so any non-`0x` payload is a custom/standard revert.
+        if (typeof ret !== 'string' || ret.toLowerCase() !== '0x') {
           return { ok: false, to, calldata, mode: 'rpc-eth-call', returnData: String(ret), reason: 'eth-call-reverted' };
         }
+        iface.decodeFunctionResult(fn, ret);
         return { ok: true, to, calldata, mode: 'rpc-eth-call', returnData: ret };
       } catch (err) {
         return { ok: false, to, calldata, mode: 'rpc-eth-call', reason: err instanceof Error ? err.message : String(err) };

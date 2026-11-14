@@ -84,6 +84,13 @@ export class MakerRegimeCoordinator {
     this.pairInventory.set(leg.conditionId, rec);
   }
 
+  recordSoldPosition(conditionId: string, tokenId: string, shares: number): void {
+    const rec = this.pairInventory.get(conditionId);
+    if (!rec || !(shares > 0)) return;
+    if (tokenId === rec.yesTokenId) rec.yesShares = Math.max(0, rec.yesShares - shares);
+    else if (tokenId === rec.noTokenId) rec.noShares = Math.max(0, rec.noShares - shares);
+  }
+
   async evaluateMarketRegime(
     market: GammaMarket, nowMs: number, fills: ReadonlyArray<QuoteFill>, yesMid: number,
   ): Promise<LiquidityRegimeDecision> {
@@ -146,7 +153,8 @@ export class MakerRegimeCoordinator {
         rec.yesShares = Math.max(0, rec.yesShares - pair.matchedShares);
         rec.noShares = Math.max(0, rec.noShares - pair.matchedShares);
       }
-      deductMergedPositions(positions, pair.conditionId, pair.matchedShares);
+      deductTokenShares(positions, pair.conditionId, pair.yesTokenId, pair.matchedShares);
+      deductTokenShares(positions, pair.conditionId, pair.noTokenId, pair.matchedShares);
     }
   }
 
@@ -165,12 +173,20 @@ export class MakerRegimeCoordinator {
   }
 }
 
-function deductMergedPositions(positions: OpenPosition[], conditionId: string, shares: number): void {
-  for (let i = positions.length - 1; i >= 0; i--) {
+function deductTokenShares(positions: OpenPosition[], conditionId: string, tokenId: string, shares: number): void {
+  let remainingToDeduct = shares;
+  for (let i = positions.length - 1; i >= 0 && remainingToDeduct > 1e-9; i--) {
     const p = positions[i]!;
-    if (p.conditionId !== conditionId) continue;
-    const rem = p.tokenQuantity - shares;
+    if (p.conditionId !== conditionId || p.tokenId !== tokenId) continue;
+    const take = Math.min(p.tokenQuantity, remainingToDeduct);
+    const rem = p.tokenQuantity - take;
+    remainingToDeduct -= take;
     if (rem <= 1e-9) positions.splice(i, 1);
-    else { p.sizeUsdc *= rem / p.tokenQuantity; p.tokenQuantity = rem; }
+    else {
+      const ratio = rem / p.tokenQuantity;
+      p.sizeUsdc *= ratio;
+      if (p.entryFeesUsdc !== undefined) p.entryFeesUsdc *= ratio;
+      p.tokenQuantity = rem;
+    }
   }
 }

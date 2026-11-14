@@ -100,9 +100,8 @@ export function assertProspectiveCutoff(params: {
   if (!Number.isFinite(modelKnowledgeCutoffMs) || modelKnowledgeCutoffMs <= 0) {
     throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'modelKnowledgeCutoffMs must be a positive finite timestamp');
   }
-  if (eventResolutionOrCutoffMs === undefined) return;
-  if (!Number.isFinite(eventResolutionOrCutoffMs)) {
-    throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'eventResolutionOrCutoffMs must be a finite timestamp');
+  if (eventResolutionOrCutoffMs === undefined || !Number.isFinite(eventResolutionOrCutoffMs)) {
+    throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'eventResolutionOrCutoffMs must be a finite timestamp when modelKnowledgeCutoffMs is set');
   }
   if (eventResolutionOrCutoffMs <= modelKnowledgeCutoffMs) {
     throw new MarketBlindError(

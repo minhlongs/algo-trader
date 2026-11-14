@@ -1,6 +1,7 @@
 /**
  * Deterministic zero-native-dep convex solver for Lockup-Adjusted
- * Multi-Market Fractional Kelly over joint world-state scenarios.
+ * Multi-Market Fractional Kelly (`w = gamma * f` fractional Kelly coordinates)
+ * over joint world-state scenarios.
  */
 import {
   DEFAULT_ANNUAL_CARRY_RATE, DEFAULT_GAMMA_KELLY, DEFAULT_KELLY_MAX_ITERATIONS,
@@ -46,7 +47,7 @@ function projectOntoCappedBox(y: Float64Array, u: Float64Array, cap: number, out
 
 function projectOntoPolytope(y: Float64Array, u: Float64Array, cap: number, halfSpaces: readonly HalfSpace[], deadlineMs: number): Float64Array {
   const m = y.length, x = new Float64Array(y), z0 = new Float64Array(m), tmp = new Float64Array(m), alpha = new Float64Array(halfSpaces.length);
-  for (let cyc = 0; cyc < 120; cyc++) {
+  for (let cyc = 0; cyc < 160; cyc++) {
     let maxStep = 0, maxViol = 0;
     for (let i = 0; i < m; i++) tmp[i] = x[i]! + z0[i]!;
     projectOntoCappedBox(tmp, u, cap, x);
@@ -61,7 +62,7 @@ function projectOntoPolytope(y: Float64Array, u: Float64Array, cap: number, half
       }
       alpha[h] = nextAlpha;
     }
-    if ((maxStep < 1e-11 && maxViol < 1e-11) || performance.now() >= deadlineMs) break;
+    if ((maxStep < 1e-12 && maxViol < 1e-12) || performance.now() >= deadlineMs) break;
   }
   for (let i = 0; i < m; i++) x[i] = Math.min(u[i]!, Math.max(0, x[i]!));
   let scale = cap > 0 ? x.reduce((acc, v) => acc + v, 0) / cap : 1;
@@ -132,17 +133,17 @@ export function solveLockupAdjustedKelly(input: PolyKellySolverInput): PolyKelly
     if (gradOut) for (let i = 0; i < m; i++) gradOut[i] = -drag[i]!;
     let obj = -dotVec(w, drag);
     for (let s = 0; s < sCount; s++) {
-      let portRet = 0;
-      for (let i = 0; i < m; i++) portRet += w[i]! * candidates[i]!.scenarioNetReturns[s]!;
-      if (1 + portRet <= 0) return Number.NEGATIVE_INFINITY;
-      obj += gamma * pi[s]! * Math.log(1 + portRet);
-      if (gradOut) for (let i = 0; i < m; i++) gradOut[i] = gradOut[i]! + ((gamma * pi[s]!) / (1 + portRet)) * candidates[i]!.scenarioNetReturns[s]!;
+      let scaledPortRet = 0;
+      for (let i = 0; i < m; i++) scaledPortRet += (w[i]! / gamma) * candidates[i]!.scenarioNetReturns[s]!;
+      if (1 + scaledPortRet <= 0) return Number.NEGATIVE_INFINITY;
+      obj += gamma * pi[s]! * Math.log(1 + scaledPortRet);
+      if (gradOut) for (let i = 0; i < m; i++) gradOut[i] = gradOut[i]! + (pi[s]! / (1 + scaledPortRet)) * candidates[i]!.scenarioNetReturns[s]!;
     }
     return obj;
   };
 
   const deadlineMs = t0 + budgetMs, grad = new Float64Array(m), prevW = new Float64Array(m), prevGrad = new Float64Array(m), trial = new Float64Array(m);
-  let w = new Float64Array(m), fVal = evalObjAndGrad(w, grad), eta = 1.0, iterations = 0;
+  let w = new Float64Array(m), fVal = evalObjAndGrad(w, grad), eta = gamma, iterations = 0;
   for (let iter = 0; iter < maxIter && performance.now() < deadlineMs; iter++) {
     iterations = iter + 1;
     for (let i = 0; i < m; i++) trial[i] = w[i]! + eta * grad[i]!;
@@ -151,7 +152,7 @@ export function solveLockupAdjustedKelly(input: PolyKellySolverInput): PolyKelly
     for (let i = 0; i < m; i++) { const di = projected[i]! - w[i]!; dirDeriv += grad[i]! * di; maxDir = Math.max(maxDir, Math.abs(di)); }
     if (maxDir <= optTol * Math.min(1, eta) || dirDeriv <= 1e-14) break;
     let beta = 1.0, nextF = Number.NEGATIVE_INFINITY;
-    for (let ls = 0; ls < 25; ls++) {
+    for (let ls = 0; ls < 30; ls++) {
       for (let i = 0; i < m; i++) trial[i] = w[i]! + beta * (projected[i]! - w[i]!);
       nextF = evalObjAndGrad(trial);
       if (nextF >= fVal + 1e-4 * beta * dirDeriv) break;
@@ -161,14 +162,17 @@ export function solveLockupAdjustedKelly(input: PolyKellySolverInput): PolyKelly
     prevW.set(w); prevGrad.set(grad); w = new Float64Array(trial); fVal = evalObjAndGrad(w, grad);
     let ss = 0, sy = 0;
     for (let i = 0; i < m; i++) { const si = w[i]! - prevW[i]!, yi = prevGrad[i]! - grad[i]!; ss += si * si; sy += si * yi; }
-    eta = sy > 1e-14 ? Math.min(1e3, Math.max(1e-4, ss / sy)) : 1.0;
+    eta = sy > 1e-14 ? Math.min(10, Math.max(1e-5, ss / sy)) : gamma;
   }
 
-  for (let i = 0; i < m; i++) trial[i] = w[i]! + grad[i]!;
+  // Evaluate projected-gradient stationarity with small probe step `tau = 1e-3`
+  // so boundary active-set KKT residuals are exact rather than distorted by `eta = 1.0` jumps.
+  const tau = 1e-3;
+  for (let i = 0; i < m; i++) trial[i] = w[i]! + tau * grad[i]!;
   const unitProj = projectOntoPolytope(trial, u, maxLocked, halfSpaces, t0 + budgetMs + 10);
   let gradResidual = 0, sumW = 0;
   for (let i = 0; i < m; i++) {
-    gradResidual = Math.max(gradResidual, Math.abs(unitProj[i]! - w[i]!)); sumW += w[i]!;
+    gradResidual = Math.max(gradResidual, Math.abs(unitProj[i]! - w[i]!) / tau); sumW += w[i]!;
     if (!isFin(w[i]) || w[i]! < -1e-9 || w[i]! > u[i]! + 1e-9) return failClosed(candidates, 'infeasible box weight', performance.now() - t0);
   }
   const worstPortLoss = worstLossOnIndices(allIndices, w, candidates, sCount), worstClusterLoss: Record<string, number> = {};

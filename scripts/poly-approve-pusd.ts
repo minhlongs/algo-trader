@@ -24,7 +24,19 @@ export interface PolyApproveCliFlags {
 }
 
 const DEFAULT_PILOT_APPROVAL_PUSD = 5_000;
-const PLACEHOLDER_EXCHANGE_V3 = '0xC5d563A36AE78145C45a50134d48A1215220f80a';
+const DRY_RUN_PLACEHOLDER_EXCHANGE_V3 = '0xC5d563A36AE78145C45a50134d48A1215220f80a';
+
+function readFlagValue(argv: readonly string[], idx: number, flag: string): { value: string; nextIdx: number } {
+  const eqPos = argv[idx]!.indexOf('=');
+  if (eqPos !== -1) {
+    const val = argv[idx]!.slice(eqPos + 1).trim();
+    if (!val) throw new Error(`Missing value for ${flag}`);
+    return { value: val, nextIdx: idx };
+  }
+  const next = argv[idx + 1];
+  if (!next || next.startsWith('--')) throw new Error(`Missing value for ${flag}`);
+  return { value: next, nextIdx: idx + 1 };
+}
 
 export function parsePolyApproveCliFlags(
   argv: readonly string[],
@@ -33,37 +45,54 @@ export function parsePolyApproveCliFlags(
   let broadcast = false;
   let json = false;
   let amountPusd = Number(env['POLY_APPROVAL_AMOUNT_PUSD'] ?? DEFAULT_PILOT_APPROVAL_PUSD);
-  let exchangeV3Address = env['POLY_EXCHANGE_V3_ADDRESS'] ?? PLACEHOLDER_EXCHANGE_V3;
+  let explicitExchange = env['POLY_EXCHANGE_V3_ADDRESS']?.trim() || undefined;
   let negRiskAdapterAddress = env['POLY_NEGRISK_ADAPTER_ADDRESS'];
   let positionManagerAddress = env['POLY_POSITION_MANAGER_ADDRESS'];
   let rpcUrl = env['POLYGON_RPC_URL'];
 
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--broadcast') {
+    const raw = argv[i]!;
+    const flag = raw.split('=')[0]!;
+    if (raw === '--broadcast') {
       broadcast = true;
-    } else if (arg === '--dry-run') {
+    } else if (raw === '--dry-run') {
       broadcast = false;
-    } else if (arg === '--json') {
+    } else if (raw === '--json') {
       json = true;
-    } else if (arg === '--amount-pusd' && argv[i + 1]) {
-      amountPusd = Number(argv[++i]);
-    } else if (arg === '--exchange' && argv[i + 1]) {
-      exchangeV3Address = String(argv[++i]);
-    } else if (arg === '--neg-risk-adapter' && argv[i + 1]) {
-      negRiskAdapterAddress = String(argv[++i]);
-    } else if (arg === '--position-manager' && argv[i + 1]) {
-      positionManagerAddress = String(argv[++i]);
-    } else if (arg === '--rpc-url' && argv[i + 1]) {
-      rpcUrl = String(argv[++i]);
+    } else if (flag === '--amount-pusd') {
+      const r = readFlagValue(argv, i, flag);
+      amountPusd = Number(r.value);
+      i = r.nextIdx;
+    } else if (flag === '--exchange') {
+      const r = readFlagValue(argv, i, flag);
+      explicitExchange = r.value;
+      i = r.nextIdx;
+    } else if (flag === '--neg-risk-adapter') {
+      const r = readFlagValue(argv, i, flag);
+      negRiskAdapterAddress = r.value;
+      i = r.nextIdx;
+    } else if (flag === '--position-manager') {
+      const r = readFlagValue(argv, i, flag);
+      positionManagerAddress = r.value;
+      i = r.nextIdx;
+    } else if (flag === '--rpc-url') {
+      const r = readFlagValue(argv, i, flag);
+      rpcUrl = r.value;
+      i = r.nextIdx;
+    } else {
+      throw new Error(`Unknown or unsupported CLI argument: "${raw}"`);
     }
+  }
+
+  if (broadcast && !explicitExchange) {
+    throw new Error('Broadcast mode requires explicit --exchange or POLY_EXCHANGE_V3_ADDRESS (refusing placeholder)');
   }
 
   return {
     broadcast,
     dryRun: !broadcast,
     amountPusd,
-    exchangeV3Address,
+    exchangeV3Address: explicitExchange ?? DRY_RUN_PLACEHOLDER_EXCHANGE_V3,
     ...(negRiskAdapterAddress ? { negRiskAdapterAddress } : {}),
     ...(positionManagerAddress ? { positionManagerAddress } : {}),
     ...(rpcUrl ? { rpcUrl } : {}),

@@ -65,7 +65,7 @@ export type ArbitrationCheckFn = (event: {
 export interface MarketBlindEventPosterior {
   receipt: SealedForecastReceipt;
   pPost: number;
-  wSkill?: number;
+  wSkill: number;
   thetaSafety?: number;
 }
 

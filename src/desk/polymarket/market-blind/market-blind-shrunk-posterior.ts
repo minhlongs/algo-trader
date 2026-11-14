@@ -65,11 +65,12 @@ function validateOpenProb(label: string, value: number): void {
 }
 
 function computePostOnlyPrice(askPrice: number, bestBid: number | undefined, tickSize: number): number {
-  const maxMaker = Math.max(tickSize, Number((askPrice - tickSize).toFixed(6)));
+  const snapDown = (v: number): number => Math.floor((v + 1e-9) / tickSize) * tickSize;
+  const maxMaker = Math.max(tickSize, Number(snapDown(askPrice - tickSize).toFixed(6)));
   if (bestBid !== undefined && Number.isFinite(bestBid) && bestBid > 0) {
-    return Math.min(maxMaker, Number((bestBid + tickSize).toFixed(6)));
+    return Math.min(maxMaker, Number(snapDown(bestBid + tickSize).toFixed(6)));
   }
-  return maxMaker;
+  return maxMaker < askPrice ? maxMaker : Math.max(1e-6, Number((askPrice * 0.5).toFixed(6)));
 }
 
 /**

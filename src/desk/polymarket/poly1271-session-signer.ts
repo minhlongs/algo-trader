@@ -4,7 +4,7 @@
  * Enforces strict separation between the ERC-1967 / EIP-1271 Deposit Wallet
  * (`maker`, `signatureType = 3`) and the trading runtime's Session Key EOA
  * (`signer`). Refuses to boot if an owner/master private key is supplied to
- * the runtime (`MASTER_KEY_FORBIDDEN_IN_RUNTIME`).
+ * the runtime or leaked in environment (`MASTER_KEY_FORBIDDEN_IN_RUNTIME`).
  */
 
 import { ethers } from 'ethers';
@@ -16,7 +16,7 @@ import {
   ZERO_BUILDER_CODE,
   type ClobV2OrderIntent,
 } from './clob-v2-venue-constants';
-import { signClobV2Order, type ClobV2SignedOrder } from './clob-v2-order-signing';
+import { buildClobV2TypedData, signClobV2Order, type ClobV2SignedOrder } from './clob-v2-order-signing';
 import { validateClobV2Order } from './clob-v2-order-validation';
 
 export type Poly1271IsolationErrorCode =
@@ -25,7 +25,8 @@ export type Poly1271IsolationErrorCode =
   | 'SESSION_KEY_EQUALS_DEPOSIT_WALLET'
   | 'INVALID_EXCHANGE_V3_CONTRACT'
   | 'INVALID_COLLATERAL_TOKEN'
-  | 'ORDER_VALIDATION_FAILED';
+  | 'ORDER_VALIDATION_FAILED'
+  | 'SIGNATURE_RECOVERY_MISMATCH';
 
 export class Poly1271IsolationError extends Error {
   readonly code: Poly1271IsolationErrorCode;
@@ -44,21 +45,13 @@ export type RemoteTypedDataSigner = (
 ) => Promise<string>;
 
 export interface Poly1271SessionSignerConfig {
-  /** ERC-1967 / EIP-1271 Deposit Wallet (`maker` address holding pUSD & CTF). */
   depositWalletAddress: string;
-  /** ExchangeV3 verifying contract on Polygon (chainId 137). */
   verifyingContract: string;
-  /** Isolated Session Key EOA private key (mutually alternative to `remoteSignTypedData`). */
   sessionPrivateKey?: string;
-  /** Remote HSM/KMS EIP-712 signer callback when raw session key stays out of memory. */
   remoteSignTypedData?: RemoteTypedDataSigner;
-  /** Required when `remoteSignTypedData` is used without `sessionPrivateKey`. */
   sessionSignerAddress?: string;
-  /** Must NEVER be provided in trading runtime; presence triggers immediate boot refusal. */
   ownerMasterPrivateKey?: unknown;
-  /** Optional collateral override check — must equal `PUSD_COLLATERAL_ADDRESS` if provided. */
   collateralToken?: string;
-  /** Optional runtime env map inspected for leaked `POLY_OWNER_MASTER_PRIVATE_KEY`. */
   runtimeEnv?: Record<string, string | undefined>;
 }
 
@@ -89,6 +82,8 @@ class RemoteEip712Signer extends ethers.AbstractSigner {
   }
 }
 
+const FORBIDDEN_MASTER_ENV_KEYS = ['POLY_OWNER_MASTER_PRIVATE_KEY', 'POLY_DEPOSIT_OWNER_PRIVATE_KEY'] as const;
+
 export class Poly1271SessionSigner {
   readonly depositWalletAddress: string;
   readonly sessionSignerAddress: string;
@@ -96,10 +91,13 @@ export class Poly1271SessionSigner {
   private readonly signer: ethers.Signer;
 
   constructor(config: Poly1271SessionSignerConfig) {
-    if (
-      config.ownerMasterPrivateKey !== undefined ||
-      Boolean(config.runtimeEnv?.['POLY_OWNER_MASTER_PRIVATE_KEY'])
-    ) {
+    const env = config.runtimeEnv ?? (typeof process !== 'undefined' ? process.env : undefined);
+    const leakedMaster = FORBIDDEN_MASTER_ENV_KEYS.some((k) => Boolean(env?.[k]?.trim()));
+    const matchesMaster = Boolean(
+      config.sessionPrivateKey &&
+      FORBIDDEN_MASTER_ENV_KEYS.some((k) => env?.[k]?.trim().toLowerCase() === config.sessionPrivateKey?.trim().toLowerCase()),
+    );
+    if (config.ownerMasterPrivateKey !== undefined || leakedMaster || matchesMaster) {
       throw new Poly1271IsolationError(
         'MASTER_KEY_FORBIDDEN_IN_RUNTIME',
         'Owner/master Deposit Wallet private key is strictly forbidden inside the trading runtime',
@@ -109,19 +107,13 @@ export class Poly1271SessionSigner {
     const depositWallet = ethers.getAddress(config.depositWalletAddress);
     const verifyingContract = ethers.getAddress(config.verifyingContract);
     if (verifyingContract.toLowerCase() === V1_CTF_EXCHANGE_ADDRESS.toLowerCase()) {
-      throw new Poly1271IsolationError(
-        'INVALID_EXCHANGE_V3_CONTRACT',
-        'Retired V1 CTF Exchange address rejected; ExchangeV3 contract required',
-      );
+      throw new Poly1271IsolationError('INVALID_EXCHANGE_V3_CONTRACT', 'Retired V1 CTF Exchange address rejected');
     }
     if (
       config.collateralToken !== undefined &&
       ethers.getAddress(config.collateralToken).toLowerCase() !== PUSD_COLLATERAL_ADDRESS.toLowerCase()
     ) {
-      throw new Poly1271IsolationError(
-        'INVALID_COLLATERAL_TOKEN',
-        `Expected pUSD collateral ${PUSD_COLLATERAL_ADDRESS}`,
-      );
+      throw new Poly1271IsolationError('INVALID_COLLATERAL_TOKEN', `Expected pUSD collateral ${PUSD_COLLATERAL_ADDRESS}`);
     }
 
     if (config.sessionPrivateKey) {
@@ -151,20 +143,31 @@ export class Poly1271SessionSigner {
   }
 
   async signOrder(intent: ClobV2OrderIntent, engineRestartPostOnly = false): Promise<Poly1271SignedOrder> {
-    const normalized: ClobV2OrderIntent = {
-      ...intent,
-      builderCode: intent.builderCode ?? ZERO_BUILDER_CODE,
-    };
+    const normalized: ClobV2OrderIntent = { ...intent, builderCode: intent.builderCode ?? ZERO_BUILDER_CODE };
     const validation = validateClobV2Order(normalized, engineRestartPostOnly);
     if (!validation.ok) {
       throw new Poly1271IsolationError('ORDER_VALIDATION_FAILED', `${validation.code}: ${validation.detail}`);
     }
 
-    const signed = await signClobV2Order(this.signer, normalized, {
+    const exchangeCfg = {
       verifyingContract: this.verifyingContract,
       chainId: POLYGON_CHAIN_ID,
       signatureType: POLY_1271_SIGNATURE_TYPE,
-    });
+    } as const;
+    const signed = await signClobV2Order(this.signer, normalized, exchangeCfg);
+    const typed = buildClobV2TypedData(normalized, exchangeCfg);
+    let recovered = '';
+    try {
+      recovered = ethers.verifyTypedData(typed.domain, { Order: typed.types.Order }, typed.message, signed.signature);
+    } catch {
+      recovered = '';
+    }
+    if (recovered.toLowerCase() !== this.sessionSignerAddress.toLowerCase()) {
+      throw new Poly1271IsolationError(
+        'SIGNATURE_RECOVERY_MISMATCH',
+        `Recovered EIP-712 signer ${recovered || 'invalid'} does not match session key ${this.sessionSignerAddress}`,
+      );
+    }
 
     return {
       order: normalized,

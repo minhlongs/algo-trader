@@ -137,10 +137,11 @@ export async function terminateAllManagedChildren(graceMs = 1_500): Promise<void
 export async function runBoundedProcess(
   command: string,
   args: readonly string[],
-  options: { cwd?: string; timeoutMs: number; graceMs?: number },
+  options: { cwd?: string; env?: NodeJS.ProcessEnv; timeoutMs: number; graceMs?: number },
 ): Promise<ManagedRunResult> {
   const child = spawn(command, [...args], {
     cwd: options.cwd ?? REPO_ROOT,
+    env: options.env ?? process.env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   if (child.pid !== undefined) activeChildren.set(child.pid, child);
@@ -257,7 +258,11 @@ export async function cmdCaptureSample(opts: { walDir?: string; durationMs?: num
       await runBoundedProcess(
         binaries.polyBook.binaryPath,
         ['ingest', '--auto-rotate', '--parquet=false', '--metrics=false'],
-        { cwd: join(REPO_ROOT, 'sidecars', 'poly-book'), timeoutMs: durationMs },
+        {
+          cwd: join(REPO_ROOT, 'sidecars', 'poly-book'),
+          env: { ...process.env, PB__WAL__BASE_PATH: walDir },
+          timeoutMs: durationMs,
+        },
       );
     } else {
       const snapBid = encodePolyBookWalFrame(encodePolyBookWalRecord({

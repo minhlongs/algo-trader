@@ -361,6 +361,26 @@ describe('2. Strategy 7 — 5-State Liquidity Regime Machine & Strategy 3 Wiring
     expect(cancelAllOrders).toHaveBeenCalledWith('yes-t');
     expect(cancelAllOrders).toHaveBeenCalledWith('no-t');
     expect(mm.getRegimeTelemetry().regime.markets['cond-trend']?.state).toBe('EVENT');
+
+    // Even when an open position already exists (`hasPosition === true`), a sudden HALTED
+    // observation still cancels resting quotes immediately before skipping new entries!
+    cancelAllOrders.mockClear();
+    const mOpen = makeGammaMarket({ id: 'm-open', conditionId: 'cond-open', yesTokenId: 'yes-o', noTokenId: 'no-o' });
+    const mmOpen = new ToxicityAwareMarketMakerStrategy(
+      {
+        ...deps,
+        gamma: { getTrending: async () => [mOpen] } as unknown as GammaClient,
+        onMergePair: undefined, // keep open positions unmerged after 1st pass
+      },
+      { legNotionalPusd: 20, cooldownMs: 0 },
+    );
+    await mmOpen.execute();
+    expect(mmOpen.getPositionCount()).toBe(2);
+    mmOpen.updateRegimeObservation('cond-open', { ghostFillDetected: true });
+    await mmOpen.execute();
+    expect(cancelAllOrders).toHaveBeenCalledWith('yes-o');
+    expect(cancelAllOrders).toHaveBeenCalledWith('no-o');
+    expect(mmOpen.getRegimeTelemetry().regime.markets['cond-open']?.state).toBe('HALTED');
   });
 });
 
@@ -694,5 +714,20 @@ describe('4. Strategy 2 eth_call Preflight, Poly1271 Session Key Signer & pUSD D
     });
     expect(mockedBroadcast.mode).toBe('broadcast');
     expect(mockedBroadcast.broadcastReceipts).toHaveLength(4);
+
+    // Rejects --broadcast without explicit --exchange / POLY_EXCHANGE_V3_ADDRESS and unknown flags
+    expect(() => parsePolyApproveCliFlags(['--broadcast'], {})).toThrow(/requires explicit --exchange/);
+    expect(() => parsePolyApproveCliFlags(['--unknown-flag'], {})).toThrow(/Unknown or unsupported/);
+
+    // Custom 4-byte Solidity error selector on void CTF eth_call fails closed
+    const customErrPreflight = new CtfEthCallPreflight({
+      rpcCall: async () => '0xdeadbeef',
+    });
+    const customErrRes = await customErrPreflight.simulateMergePositions({
+      conditionId: toMarketBytes32('cond-custom-err'),
+      amountRaw: 10_000_000n,
+    });
+    expect(customErrRes.ok).toBe(false);
+    expect(customErrRes.reason).toBe('eth-call-reverted');
   });
 });

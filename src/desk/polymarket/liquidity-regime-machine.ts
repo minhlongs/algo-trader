@@ -1,10 +1,6 @@
 /**
  * Strategy 7 — 5-State Microstructure Liquidity Regime Machine.
- *
- * Priority hierarchy per market `i` at timestamp `t`:
- *   1. HALTED -> 2. REDUCE_ONLY -> 3. EVENT -> 4. TRENDING -> 5. QUIET
- * Leaving EVENT requires `eventCooldownMs` of calm observations, stepping down
- * `EVENT -> TRENDING -> QUIET` rather than jumping straight from `EVENT` to `QUIET`.
+ * Priority: HALTED > REDUCE_ONLY > EVENT > TRENDING > QUIET; EVENT steps down via TRENDING.
  */
 
 import {
@@ -20,6 +16,7 @@ interface MarketMemory {
   haltedUntilMs: number;
   eventCooldownUntilMs: number;
   mustStepDownViaTrending: boolean;
+  ordersConfirmedCancelled: boolean;
   refPrices: Array<{ atMs: number; price: number }>;
   lastDecision?: LiquidityRegimeDecision;
 }
@@ -77,7 +74,7 @@ export class LiquidityRegimeMachine {
     if ((obs.timeToExpiryMs ?? Number.POSITIVE_INFINITY) <= this.cfg.reduceOnlyExpiryMs) reduceReasons.push('approaching-expiry');
     if (reduceReasons.length > 0) {
       const fullWithdraw = (obs.timeToExpiryMs ?? Number.POSITIVE_INFINITY) <= this.cfg.fullWithdrawExpiryMs;
-      return this.commit(obs.marketId, mem, prev, 'REDUCE_ONLY', reduceReasons, nowMs, 0, 1, false, !fullWithdraw, fullWithdraw, fullWithdraw, false, 0);
+      return this.commit(obs.marketId, mem, prev, 'REDUCE_ONLY', reduceReasons, nowMs, 0, 1, false, !fullWithdraw, fullWithdraw, true, false, 0);
     }
 
     const eventReasons = this.collectEventReasons(obs, jumpTicks, movePct);
@@ -101,9 +98,17 @@ export class LiquidityRegimeMachine {
 
   async evaluateAndEnforce(obs: LiquidityRegimeObservation): Promise<LiquidityRegimeDecision> {
     const d = this.evaluate(obs);
-    if (d.cancelMarketOrders && this.cancelMarketOrders && (d.transitioned || d.state === 'EVENT')) {
-      try { await this.cancelMarketOrders({ marketId: obs.marketId, reason: `${d.state}:${d.reasons.join(',')}`, requestedAtMs: d.evaluatedAtMs }); }
-      catch { this.recordApiError(d.evaluatedAtMs); }
+    const mem = this.memoryFor(obs.marketId);
+    if (!d.cancelMarketOrders) { mem.ordersConfirmedCancelled = false; return d; }
+    if (this.cancelMarketOrders && (d.transitioned || !mem.ordersConfirmedCancelled)) {
+      try {
+        const res = await this.cancelMarketOrders({ marketId: obs.marketId, reason: `${d.state}:${d.reasons.join(',')}`, requestedAtMs: d.evaluatedAtMs });
+        mem.ordersConfirmedCancelled = res.ok;
+        if (!res.ok) this.recordApiError(d.evaluatedAtMs);
+      } catch {
+        mem.ordersConfirmedCancelled = false;
+        this.recordApiError(d.evaluatedAtMs);
+      }
     }
     return d;
   }
@@ -148,8 +153,7 @@ export class LiquidityRegimeMachine {
   }
 
   private measureRefMove(mem: MarketMemory, obs: LiquidityRegimeObservation, nowMs: number) {
-    let jumpTicks = obs.priceJump10sTicks ?? 0;
-    let movePct = obs.refPriceMove10sPct ?? 0;
+    let jumpTicks = obs.priceJump10sTicks ?? 0, movePct = obs.refPriceMove10sPct ?? 0;
     if (obs.referencePrice !== undefined && obs.referencePrice > 0) {
       mem.refPrices = mem.refPrices.filter((p) => nowMs - p.atMs <= TEN_SECONDS_MS);
       const anchor = mem.refPrices[0];
@@ -169,7 +173,7 @@ export class LiquidityRegimeMachine {
     allowNewQuotes: boolean, allowCloseOrMergeOnly: boolean, withdrawAllQuotes: boolean,
     cancelMarketOrders: boolean, optimizeIncentiveSpread: boolean, haltedUntilMs: number,
   ): LiquidityRegimeDecision {
-    if (previousState !== state) this.transitionsCount += 1;
+    if (previousState !== state) { this.transitionsCount += 1; mem.ordersConfirmedCancelled = false; }
     mem.lastState = state;
     const d: LiquidityRegimeDecision = {
       marketId, state, previousState, transitioned: previousState !== state, reasons, sizeMultiplier,
@@ -183,11 +187,10 @@ export class LiquidityRegimeMachine {
   private memoryFor(marketId: string): MarketMemory {
     const existing = this.markets.get(marketId);
     if (existing) return existing;
-    const created: MarketMemory = { lastState: 'QUIET', haltedUntilMs: 0, eventCooldownUntilMs: 0, mustStepDownViaTrending: false, refPrices: [] };
+    const created: MarketMemory = { lastState: 'QUIET', haltedUntilMs: 0, eventCooldownUntilMs: 0, mustStepDownViaTrending: false, ordersConfirmedCancelled: false, refPrices: [] };
     this.markets.set(marketId, created);
     return created;
   }
-
   private pruneApiErrors(nowMs: number): void {
     while (this.apiErrorTimestamps.length > 0 && nowMs - this.apiErrorTimestamps[0]! > ONE_MINUTE_MS) this.apiErrorTimestamps.shift();
   }
