@@ -6,10 +6,13 @@
 
 import { logger } from '@shared/utils/logger';
 import type { PriceUpdatePayload } from '../events/trading-event-bus';
-import type { BasePolymarketStrategy, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import type { BasePolymarketStrategy } from '@desk/strategies/polymarket/base-polymarket-strategy';
 import { clobClient } from './clob-client';
-import { GammaClientImpl } from './strategy-runner-types';
+import type { FeeScheduleResolver } from './fee-schedule-resolver';
+import { GammaClientImpl, type RunnerStrategyDeps } from './strategy-runner-types';
 import type { LiveOrderManagerProxy } from './live-order-manager-proxy';
+
+export type { RunnerStrategyDeps };
 
 export interface StrategyExecutionContext {
   status: 'stopped' | 'running' | 'error';
@@ -40,13 +43,16 @@ export function deriveStrategyName(strategyClass: { name: string }): string {
 
 export function createRunnerStrategyDeps(
   proxy: LiveOrderManagerProxy,
-  overrides?: Partial<StrategyDeps>,
-): StrategyDeps {
+  overrides?: Partial<RunnerStrategyDeps>,
+  feeResolver?: FeeScheduleResolver | null,
+): RunnerStrategyDeps {
+  const resolvedFeeResolver = overrides?.feeResolver ?? feeResolver ?? undefined;
   return {
     clob: overrides?.clob ?? clobClient,
     orderManager: overrides?.orderManager ?? proxy,
     eventBus: overrides?.eventBus ?? { emit: () => {}, on: () => {}, off: () => {} },
     gamma: overrides?.gamma ?? new GammaClientImpl(),
+    ...(resolvedFeeResolver ? { feeResolver: resolvedFeeResolver } : {}),
   };
 }
 

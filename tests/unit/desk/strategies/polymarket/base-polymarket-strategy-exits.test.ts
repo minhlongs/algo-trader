@@ -15,6 +15,7 @@ import {
   computePositionGain,
   evaluateExitCondition,
   computeExitPnl,
+  resolveCustomExitPrice,
 } from '../../../../../src/desk/strategies/polymarket/base-polymarket-strategy-exits';
 import type { BaseStrategyConfig, CustomExitVerdict, OpenPosition } from '../../../../../src/desk/strategies/polymarket/base-polymarket-strategy-types';
 
@@ -72,6 +73,67 @@ describe('base-polymarket-strategy-exits', () => {
       const pos = makePosition({ side: 'yes', entryPrice: 0.3 });
       expect(computePositionGain(pos, 0.33)).toBeCloseTo(0.1, 6); // (0.33-0.3)/0.3 = 0.1
     });
+
+    it('returns positive gain for held NO outcome token when NO token price rises', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.45,
+        tokenQuantity: 200,
+        holdsOutcomeToken: true,
+      });
+      expect(computePositionGain(pos, 0.50)).toBeCloseTo((0.50 - 0.45) / 0.45, 6);
+    });
+
+    it('returns negative gain for held NO outcome token when NO token price falls', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.45,
+        tokenQuantity: 200,
+        holdsOutcomeToken: true,
+      });
+      expect(computePositionGain(pos, 0.40)).toBeCloseTo((0.40 - 0.45) / 0.45, 6);
+    });
+
+    it('returns 0 when entryPrice or currentPrice is non-positive or non-finite', () => {
+      const zeroEntry = makePosition({ entryPrice: 0, tokenQuantity: 0 });
+      expect(computePositionGain(zeroEntry, 0.5)).toBe(0);
+      const validPos = makePosition({ entryPrice: 0.5, tokenQuantity: 50 });
+      expect(computePositionGain(validPos, Number.NaN)).toBe(0);
+    });
+  });
+
+  describe('resolveCustomExitPrice', () => {
+    it('converts held NO outcome token mid to YES-complement price', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.81,
+        tokenQuantity: 100,
+        holdsOutcomeToken: true,
+      });
+      expect(resolveCustomExitPrice(pos, 0.96)).toBeCloseTo(0.04, 6);
+    });
+
+    it('clamps converted YES-complement price into [0, 1]', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.5,
+        tokenQuantity: 100,
+        holdsOutcomeToken: true,
+      });
+      expect(resolveCustomExitPrice(pos, 1.05)).toBe(0);
+      expect(resolveCustomExitPrice(pos, -0.1)).toBe(1);
+    });
+
+    it('leaves price unchanged for YES positions and legacy NO positions', () => {
+      const yesPos = makePosition({ side: 'yes', tokenQuantity: 50, holdsOutcomeToken: true });
+      const legacyNoPos = makePosition({ side: 'no', tokenQuantity: 50 });
+      expect(resolveCustomExitPrice(yesPos, 0.72)).toBe(0.72);
+      expect(resolveCustomExitPrice(legacyNoPos, 0.28)).toBe(0.28);
+    });
   });
 
   describe('evaluateExitCondition', () => {
@@ -105,6 +167,34 @@ describe('base-polymarket-strategy-exits', () => {
       const pos = makePosition({ side: 'no', entryPrice: 0.5, openedAt: now - 1000 });
       // gain = (0.5 - 0.52) / 0.5 = -0.04, -gain = 0.04 >= 0.02
       const r = evaluateExitCondition(pos, 0.52, DEFAULT_CONFIG, undefined, now);
+      expect(r.shouldExit).toBe(true);
+      expect(r.reason).toContain('stop-loss');
+    });
+
+    it('returns take-profit when held NO outcome token rises above takeProfitPct', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.45,
+        tokenQuantity: 200,
+        holdsOutcomeToken: true,
+        openedAt: now - 1000,
+      });
+      const r = evaluateExitCondition(pos, 0.50, DEFAULT_CONFIG, undefined, now);
+      expect(r.shouldExit).toBe(true);
+      expect(r.reason).toContain('take-profit');
+    });
+
+    it('returns stop-loss when held NO outcome token falls below -stopLossPct', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.45,
+        tokenQuantity: 200,
+        holdsOutcomeToken: true,
+        openedAt: now - 1000,
+      });
+      const r = evaluateExitCondition(pos, 0.40, DEFAULT_CONFIG, undefined, now);
       expect(r.shouldExit).toBe(true);
       expect(r.reason).toContain('stop-loss');
     });
@@ -251,6 +341,35 @@ describe('base-polymarket-strategy-exits', () => {
       const pos = makePosition({ side: 'yes', entryPrice: 0.333, sizeUsdc: 12.5, openedAt: now - 1000 });
       // (0.3663 - 0.333) * (12.5 / 0.333) = 0.0333 * 37.54 = ~1.25
       expect(computeExitPnl(pos, 0.3663)).toBeCloseTo(1.25, 2);
+    });
+
+    it('returns positive PnL when selling held NO outcome token at a higher price', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.45,
+        sizeUsdc: 90,
+        tokenQuantity: 200,
+        entryFeesUsdc: 0.25,
+        holdsOutcomeToken: true,
+        openedAt: now - 1000,
+      });
+      // (0.50 - 0.45) * 200 - 0.25 - 0.15 = 10.00 - 0.40 = 9.60
+      expect(computeExitPnl(pos, 0.50, 0.15)).toBeCloseTo(9.6, 6);
+    });
+
+    it('returns negative PnL when selling held NO outcome token at a lower price', () => {
+      const pos = makePosition({
+        tokenId: 'no-1',
+        side: 'no',
+        entryPrice: 0.45,
+        sizeUsdc: 90,
+        tokenQuantity: 200,
+        holdsOutcomeToken: true,
+        openedAt: now - 1000,
+      });
+      // (0.40 - 0.45) * 200 = -10.00
+      expect(computeExitPnl(pos, 0.40)).toBeCloseTo(-10, 6);
     });
   });
 });

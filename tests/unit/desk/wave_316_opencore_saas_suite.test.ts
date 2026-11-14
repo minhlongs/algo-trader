@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OpenCoreSaas2026Monetization } from '../../../src/desk/index';
 import {
   OPEN_CORE_25_STEPS,
@@ -9,12 +9,34 @@ import {
   LicenseGate,
   BillingMeter,
 } from '../../../src/desk/opencoresaas2026monetization/index';
+import { probeQuotaMetering } from '../../../src/desk/opencoresaas2026monetization/step-gate-probes';
+import { MCU_LIMITS, usageMetering } from '../../../src/platform/signals-api/usage-metering-service';
+
+// Stateful in-memory stand-in for usage_metrics keyed by `${subscriberId}:${period}`.
+const usageMetricsRows = vi.hoisted(() => new Map<string, number>());
+
+vi.mock('../../../src/db/postgres-client', () => ({
+  query: vi.fn(async (sql: string, params?: unknown[]): Promise<{ rows: Array<{ mcu_this_period: number }> }> => {
+    if (/INSERT\s+INTO\s+usage_metrics[\s\S]*ON\s+CONFLICT\s*\(\s*subscriber_id\s*,\s*period\s*\)\s+DO\s+UPDATE[\s\S]*RETURNING\s+mcu_this_period/i.test(sql)) {
+      const key = `${String(params?.[1] ?? '')}:${String(params?.[2] ?? '')}`;
+      const next = (usageMetricsRows.get(key) ?? 0) + Number(params?.[3] ?? 0);
+      usageMetricsRows.set(key, next);
+      return { rows: [{ mcu_this_period: next }] };
+    }
+    if (/SELECT\s+mcu_this_period\s+FROM\s+usage_metrics\s+WHERE\s+subscriber_id\s*=\s*\$1\s+AND\s+period\s*=\s*\$2/i.test(sql)) {
+      const mcu = usageMetricsRows.get(`${String(params?.[0] ?? '')}:${String(params?.[1] ?? '')}`);
+      return { rows: mcu === undefined ? [] : [{ mcu_this_period: mcu }] };
+    }
+    throw new Error(`Unexpected SQL in usage_metrics stand-in: ${sql}`);
+  }),
+}));
 
 const companyConfigPath = path.resolve(__dirname, '../../../.mekong/company.json');
 // .mekong/ is gitignored operator state; skip on clean CI checkouts.
 const hasCompanyConfig = fs.existsSync(companyConfigPath);
 
 describe('Wave 316: 25-Step Open-Core Public GitHub + SaaS Monetization Suite (Core & Control Plane)', () => {
+  beforeEach(() => usageMetricsRows.clear());
   it('blocks public release or SaaS flywheel when secrets leak or license gate is disabled', () => {
     const res = OpenCoreSaas2026Monetization.OpenCoreSaasMonetizationCoordinator.evaluate({
       completedRestructuringSteps: 25,
@@ -152,6 +174,24 @@ describe('Wave 316: 25-Step Open-Core Public GitHub + SaaS Monetization Suite (C
     expect(meter.checkQuota(tenantId, 'PREMIUM', 1).statusCode).toBe(200);
     meter.resetUsage(tenantId);
     expect(meter.getUsage(tenantId)).toBe(0);
+  });
+
+  it('verifies probeQuotaMetering and stateful durable MCU exhaustion on usageMetering', async () => {
+    const probe = await probeQuotaMetering();
+    expect(probe.verified).toBe(true);
+    expect(probe.kind).toBe('behavioral');
+    const subscriberId = 'tenant-durable-mcu-pro';
+    const before = await usageMetering.checkMcu(subscriberId, 'PRO', 1);
+    expect(before.isAllowed).toBe(true);
+    expect(before.statusCode).toBe(200);
+    expect(before.used).toBe(0);
+    expect(await usageMetering.recordMcu(subscriberId, 'PRO', 10_000)).toBe(10_000);
+    expect((await usageMetering.checkMcu(subscriberId, 'PRO', 1)).statusCode).toBe(200);
+    expect(await usageMetering.recordMcu(subscriberId, 'PRO', MCU_LIMITS.PRO - 10_000)).toBe(MCU_LIMITS.PRO);
+    const exhausted = await usageMetering.checkMcu(subscriberId, 'PRO', 1);
+    expect(exhausted.isAllowed).toBe(false);
+    expect(exhausted.statusCode).toBe(402);
+    expect(exhausted.used).toBe(MCU_LIMITS.PRO);
   });
 
   it.skipIf(!hasCompanyConfig)('audits live repository blueprint tree, OSS governance files, and SHA-256 digest', async () => {

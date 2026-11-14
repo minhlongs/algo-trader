@@ -31,6 +31,9 @@ export type LegFee =
   | { available: false; venue: string; symbol: string };
 
 function polymarketScheduleLegFee(schedule: PolymarketFeeSchedule, leg: VenueTradeLeg, notionalUsd: number): LegFee {
+  if (!Number.isFinite(schedule.rate) || !Number.isFinite(schedule.exponent) || !Number.isFinite(schedule.rebateRate)) {
+    return { available: false, venue: leg.venue, symbol: leg.symbol };
+  }
   if (schedule.rate <= 0) {
     return { available: true, rate: 0, feeUsd: 0 };
   }
@@ -94,10 +97,10 @@ export function calculatePolymarketFee(
   probability: number,
   notionalUsd: number,
 ): { rate: number; feeUsd: number; rebateUsd: number } {
+  if (!Number.isFinite(probability) || !Number.isFinite(notionalUsd)) {
+    return { rate: 0, feeUsd: 0, rebateUsd: 0 };
+  }
   if (typeof scheduleOrCategory === 'string') {
-    if (!Number.isFinite(probability) || !Number.isFinite(notionalUsd)) {
-      return { rate: 0, feeUsd: 0, rebateUsd: 0 };
-    }
     const clampedP = Math.min(Math.max(probability, 0.001), 0.999);
     const rate = calcQuadraticTakerFeeRateV2(scheduleOrCategory, clampedP);
     const feeUsd = notionalUsd * rate;
@@ -107,6 +110,13 @@ export function calculatePolymarketFee(
       feeUsd,
       rebateUsd: Number.isFinite(rebateUsd) && rebateUsd > 0 ? rebateUsd : 0,
     };
+  }
+  if (
+    !Number.isFinite(scheduleOrCategory.rate) ||
+    !Number.isFinite(scheduleOrCategory.exponent) ||
+    !Number.isFinite(scheduleOrCategory.rebateRate)
+  ) {
+    return { rate: 0, feeUsd: 0, rebateUsd: 0 };
   }
   const rate = calcTakerFeeRate(scheduleOrCategory, probability);
   const feeUsd = notionalUsd * rate;

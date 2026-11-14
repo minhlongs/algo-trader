@@ -198,6 +198,39 @@ describe('regime-adaptive-momentum-evaluators branch coverage', () => {
       const res = evaluateRegimeExit(pos, 0.51, 2000, 'trending', [0.51, 0.51], [0.50, 0.50], baseConfig);
       expect(res.shouldExit).toBe(false);
     });
+
+    it('evaluates held NO outcome token (holdsOutcomeToken: true) in native NO price space', () => {
+      const heldNo: OpenPosition = {
+        tokenId: 'no-1',
+        conditionId: 'm1',
+        side: 'no',
+        entryPrice: 0.50,
+        sizeUsdc: 50,
+        tokenQuantity: 100,
+        holdsOutcomeToken: true,
+        orderId: 'o1',
+        openedAt: 1000,
+      };
+      const tp = evaluateRegimeExit(heldNo, 0.60, 2000, 'trending', [0.5], [0.5], baseConfig);
+      expect(tp.shouldExit).toBe(true);
+      expect(tp.reason).toContain('take-profit');
+
+      const sl = evaluateRegimeExit(heldNo, 0.45, 2000, 'trending', [0.5], [0.5], baseConfig);
+      expect(sl.shouldExit).toBe(true);
+      expect(sl.reason).toContain('stop-loss');
+
+      const shift = evaluateRegimeExit(
+        heldNo,
+        0.50,
+        2000,
+        'ranging',
+        [0.45, 0.44, 0.43, 0.42, 0.41],
+        [0.50, 0.51, 0.52, 0.53, 0.54],
+        baseConfig,
+      );
+      expect(shift.shouldExit).toBe(true);
+      expect(shift.reason).toContain('regime shift');
+    });
   });
 
   describe('evaluateRegimeEntrySignal', () => {

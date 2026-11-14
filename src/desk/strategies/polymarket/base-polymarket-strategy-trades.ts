@@ -36,6 +36,9 @@ export async function performEntry(
   entryPrice: number,
   sizeUsdc: number,
 ): Promise<void> {
+  if (!Number.isFinite(entryPrice) || entryPrice <= 0 || !Number.isFinite(sizeUsdc) || sizeUsdc <= 0) {
+    throw new Error(`Invalid entry: ${sizeUsdc} USDC at ${entryPrice} does not buy any tokens`);
+  }
   const requestedQuantity = Math.round(sizeUsdc / entryPrice);
   if (requestedQuantity <= 0) {
     throw new Error(`Invalid entry: ${sizeUsdc} USDC at ${entryPrice} does not buy any tokens`);
@@ -83,6 +86,7 @@ export async function performEntry(
     sizeUsdc: actualNotionalUsdc,
     tokenQuantity,
     entryFeesUsdc,
+    holdsOutcomeToken: true,
     orderId: order.id,
     openedAt: Date.now(),
   });

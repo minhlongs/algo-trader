@@ -41,6 +41,15 @@ interface CacheEntry {
   schedule: PolymarketFeeSchedule | null;
 }
 
+function parseFiniteNumber(raw: unknown): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 /**
  * The API returns `feeSchedule` either as a JSON object or (older payloads) as
  * a JSON-encoded string. Both shapes carry the same four fields.
@@ -54,12 +63,16 @@ function parseFeeSchedule(raw: unknown): PolymarketFeeSchedule | null {
       return null;
     }
   }
-  if (!value || typeof value !== 'object') return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const obj = value as Record<string, unknown>;
-  const rate = Number(obj['rate']);
-  const exponent = Number(obj['exponent'] ?? 1);
-  const rebateRate = Number(obj['rebateRate'] ?? 0);
-  if (!Number.isFinite(rate) || !Number.isFinite(exponent) || !Number.isFinite(rebateRate)) {
+  const rate = parseFiniteNumber(obj['rate']);
+  const exponent = obj['exponent'] === undefined ? 1 : parseFiniteNumber(obj['exponent']);
+  const rebateRate = obj['rebateRate'] === undefined ? 0 : parseFiniteNumber(obj['rebateRate']);
+  if (
+    rate === null || rate < 0 ||
+    exponent === null || exponent <= 0 ||
+    rebateRate === null || rebateRate < 0 || rebateRate > 1
+  ) {
     return null;
   }
   return {
@@ -99,12 +112,16 @@ function selectMarket(payload: unknown, tokenId: string): Record<string, unknown
 
 function extractSchedule(market: Record<string, unknown>): PolymarketFeeSchedule | null {
   if (market['feesEnabled'] === false) return null;
-  const schedule = parseFeeSchedule(market['feeSchedule']);
+  const rawSchedule = market['feeSchedule'];
+  const schedule = parseFeeSchedule(rawSchedule);
   if (schedule) return schedule;
-  // `feesEnabled` missing/true but no schedule object: the venue did not tell
-  // us the rate. Treat as unevaluable rather than assuming zero.
+  // `feesEnabled` true, or a non-null `feeSchedule` payload that failed to parse:
+  // fail closed rather than silently treating corrupt metadata as fee-exempt.
   if (market['feesEnabled'] === true) {
     throw new Error('Gamma market has feesEnabled=true but no parsable feeSchedule');
+  }
+  if (rawSchedule !== undefined && rawSchedule !== null) {
+    throw new Error('Gamma market has unparsable feeSchedule payload');
   }
   return null;
 }

@@ -112,8 +112,10 @@ export function createPolyKillSwitch(opts: PolyKillSwitchOptions): PolyKillSwitc
 export interface PolyCancelAllTransportOptions {
   /** Injected fetch; defaults to the global. */
   fetchImpl?: typeof fetch;
-  /** Auth headers (POLY_API_KEY / SIGNATURE / TIMESTAMP / PASSPHRASE...). Never read from code. */
+  /** Static auth headers. Never read from code. */
   headers?: Record<string, string>;
+  /** Dynamic header builder invoked on each cancel-all so timestamps and L2 HMAC signatures stay fresh. */
+  getHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
   /** Defaults to `https://clob.polymarket.com`. */
   host?: string;
 }
@@ -121,18 +123,18 @@ export interface PolyCancelAllTransportOptions {
 /**
  * Default CLOB cancel-all transport: `DELETE {host}/cancel-all`.
  *
- * NOT VERIFIED against the live endpoint — no credentials exist in this repo.
- * Callers supply auth headers; nothing is hardcoded here.
+ * Callers supply static `headers` and/or per-request `getHeaders`; nothing is hardcoded here.
  */
 export function createPolyCancelAllTransport(
   options: PolyCancelAllTransportOptions = {},
 ): PolyCancelAllTransport {
-  const host = options.host ?? 'https://clob.polymarket.com';
+  const host = (options.host ?? 'https://clob.polymarket.com').replace(/\/+$/, '');
   return async () => {
     const doFetch = options.fetchImpl ?? fetch;
+    const dynamicHeaders = options.getHeaders ? await options.getHeaders() : undefined;
     const response = await doFetch(`${host}/cancel-all`, {
       method: 'DELETE',
-      headers: { ...(options.headers ?? {}) },
+      headers: { ...(options.headers ?? {}), ...(dynamicHeaders ?? {}) },
     });
     const body = await response.text();
     return { ok: response.ok, status: response.status, body };

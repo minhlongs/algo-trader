@@ -25,6 +25,7 @@ import {
   createPolyKillSwitch,
   type PolyKillSwitch,
 } from '../risk/poly-kill-switch';
+import { buildPolymarketHeaders } from '../execution/polymarket-adapter-transport';
 import { recordPaperOrderCancel } from './live-trading-adapter-setup';
 
 export interface OrchestratorPolyRiskDeps {
@@ -62,6 +63,18 @@ async function resolveRiskFeeState(
   }
 }
 
+function buildLiveCancelAllHeaders(host?: string): Record<string, string> {
+  const apiKey = process.env['POLYMARKET_API_KEY'] || process.env['POLY_API_KEY'] || '';
+  const apiSecret = process.env['POLYMARKET_API_SECRET'] || process.env['POLY_API_SECRET'] || '';
+  const passphrase = process.env['POLYMARKET_PASSPHRASE'] || process.env['POLY_PASSPHRASE'] || '';
+  if (!apiKey || !apiSecret) {
+    throw new Error('Missing Polymarket L2 API credentials for live cancel-all');
+  }
+  const base = (host || 'https://clob.polymarket.com').replace(/\/+$/, '');
+  const path = new URL(`${base}/cancel-all`).pathname;
+  return buildPolymarketHeaders(apiKey, apiSecret, passphrase, 'DELETE', path);
+}
+
 export function createOrchestratorPolyRiskRuntime(
   deps: OrchestratorPolyRiskDeps,
 ): OrchestratorPolyRiskRuntime {
@@ -69,9 +82,16 @@ export function createOrchestratorPolyRiskRuntime(
   let lastObservedAtMs: number | 'unknown' = 'unknown';
   let peakEquityUsdc = deps.config.capitalUsdc;
   const isGateEnforced = () => deps.config.enforcePolyRiskGate ?? !deps.config.paperTrading;
+  const resolveLiveHost = () => deps.config.apiUrl ?? (process.env['POLY_CLOB_HOST'] || undefined);
+  const liveHost = resolveLiveHost();
   const liveTransport =
     deps.config.killSwitchTransport ??
-    (deps.config.paperTrading ? undefined : createPolyCancelAllTransport());
+    (deps.config.paperTrading
+      ? undefined
+      : createPolyCancelAllTransport({
+          ...(liveHost ? { host: liveHost } : {}),
+          getHeaders: () => buildLiveCancelAllHeaders(liveHost),
+        }));
 
   const killSwitch = createPolyKillSwitch({
     cancelAll: async (req) => {
@@ -96,10 +116,7 @@ export function createOrchestratorPolyRiskRuntime(
     const journal = deps.getJournal();
     const safeTokenPrefix = String(order.tokenId ?? '').slice(0, 12);
     if (killSwitch.isFired()) {
-      journal.recordEvent('guard_reject', {
-        tokenId: safeTokenPrefix,
-        reason: 'KILL_SWITCH_ACTIVE',
-      });
+      journal.recordEvent('guard_reject', { tokenId: safeTokenPrefix, reason: 'KILL_SWITCH_ACTIVE' });
       throw new Error('PolyRisk blocked [KILL_SWITCH_ACTIVE]: kill switch is latched; no new order');
     }
     if (!isGateEnforced()) return;
