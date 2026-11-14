@@ -1,4 +1,5 @@
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
@@ -92,9 +93,8 @@ export class MomentumExhaustionStrategy extends BasePolymarketStrategy {
         this.prevVelocity.set(market.yesTokenId, priceVel);
 
         const side: 'yes' | 'no' = signal;
-        const tokenId = side === 'yes'
-          ? market.yesTokenId
-          : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 

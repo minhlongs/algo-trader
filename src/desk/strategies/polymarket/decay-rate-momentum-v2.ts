@@ -6,6 +6,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
@@ -128,7 +129,8 @@ export class DecayRateMomentumStrategy extends BasePolymarketStrategy {
         if (signal === null) continue;
 
         const side: 'yes' | 'no' = signal;
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
         await this.enterPosition(tokenId, market.conditionId, side, entryPrice, parseFloat(this.cfg.positionSize));

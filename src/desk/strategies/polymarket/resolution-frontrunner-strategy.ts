@@ -3,6 +3,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
@@ -96,7 +97,8 @@ export class ResolutionFrontrunnerStrategy extends BasePolymarketStrategy {
         if (!hasMomentum(history, direction, this.cfg.momentumTicks)) continue;
 
         const side: 'yes' | 'no' = signal === 'buy-yes' ? 'yes' : 'no';
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
         await this.enterPosition(tokenId, market.conditionId, side, entryPrice,

@@ -7,6 +7,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import { BasePolymarketStrategy, type BaseStrategyConfig, type StrategyDeps } from './base-polymarket-strategy';
@@ -123,7 +124,8 @@ export class SpreadMeanReversionStrategy extends BasePolymarketStrategy {
         if (Math.abs(deviation) <= Math.abs(calcSpreadDeviation(spreadEma))) continue;
 
         const side = determineCheapSide(yesBa.mid, noMid);
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? yesBa.ask : (1 - yesBa.bid);
         const posSize = parseFloat(this.cfg.positionSize);
 

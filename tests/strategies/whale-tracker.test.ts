@@ -694,9 +694,7 @@ describe('createWhaleTrackerTick', () => {
     await tick();
     await tick();
 
-    // Should still place order using yesTokenId as fallback
-    expect(deps.orderManager.placeOrder).toHaveBeenCalled();
-    const call = (deps.orderManager.placeOrder as any).mock.calls[0][0];
-    expect(call.tokenId).toBe('yes-1');
+    // Missing noTokenId on a NO signal must skip entry rather than buying yesTokenId
+    expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 });

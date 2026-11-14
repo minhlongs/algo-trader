@@ -6,6 +6,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
@@ -118,9 +119,8 @@ export class WeightedSentimentAggregatorStrategy extends BasePolymarketStrategy 
         const signal = determineSignal(score, this.cfg.scoreThreshold);
         if (signal === null) continue;
 
-        const tokenId = signal === 'yes'
-          ? market.yesTokenId
-          : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, signal);
+        if (!tokenId) continue;
         const entryPrice = signal === 'yes' ? ba.ask : (1 - ba.bid);
 
         await this.enterPosition(tokenId, market.conditionId, signal, entryPrice,

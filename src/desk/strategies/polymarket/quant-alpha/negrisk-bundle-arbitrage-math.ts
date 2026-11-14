@@ -32,6 +32,41 @@ export function bestAskPrice(levels: PriceSizeLevel[], tickSize: number): number
   return best === 0 ? 0 : snapToTick(best, tickSize);
 }
 
+/** Highest bid price across a level set. 0 when the side is empty. */
+export function bestBidPrice(levels: ReadonlyArray<{ price: string }>): number {
+  let best = 0;
+  for (const level of levels) {
+    const price = parseFloat(level.price);
+    if (price > best) best = price;
+  }
+  return best;
+}
+
+/**
+ * Non-crossing passive maker bid price for a thin leg, snapped to `tickSize`.
+ *
+ * Returns 0 when `liveBestAsk <= tickSize` or no valid price in `(0, liveBestAsk)`
+ * exists, preserving the post-only invariant (`limitPrice < liveBestAsk`).
+ */
+export function passiveMakerBidPrice(
+  placement: 'touch' | 'one-tick-inside',
+  liveBestBid: number,
+  liveBestAsk: number,
+  quotedAskPrice: number,
+  tickSize: number,
+): number {
+  if (!(tickSize > 0) || !(liveBestAsk > tickSize)) return 0;
+  const maxPassive = snapToTick(liveBestAsk - tickSize, tickSize);
+  if (!(maxPassive > 0) || !(maxPassive < liveBestAsk - 1e-9)) return 0;
+  const candidate = placement === 'touch'
+    ? (liveBestBid > 0
+        ? snapToTick(liveBestBid, tickSize)
+        : Math.max(tickSize, snapToTick(quotedAskPrice - tickSize, tickSize)))
+    : (liveBestBid > 0 ? snapToTick(liveBestBid + tickSize, tickSize) : 0);
+  const clamped = Math.min(candidate, maxPassive);
+  return clamped > 0 && clamped < liveBestAsk - 1e-9 ? clamped : 0;
+}
+
 /** Size resting exactly at `price`. A leg can only cross what is displayed. */
 export function sizeAtLevel(levels: PriceSizeLevel[], price: number): number {
   let total = 0;

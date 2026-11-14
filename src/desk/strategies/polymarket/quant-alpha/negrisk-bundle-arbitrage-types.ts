@@ -113,6 +113,8 @@ export interface BundleLeg {
   outcome: string;
   /** Best ask, snapped to the tick. 0 when the side is empty. */
   askPrice: number;
+  /** Best bid observed at pricing time when `book.bids` is non-empty. */
+  bidPrice?: number;
   /** Size resting exactly at `askPrice` — the only size we can cross. */
   displayedShares: number;
 }

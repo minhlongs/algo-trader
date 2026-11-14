@@ -3,6 +3,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import { BasePolymarketStrategy, type StrategyDeps } from './base-polymarket-strategy';
 import {
@@ -98,7 +99,8 @@ export class MomentumCascadeStrategy extends BasePolymarketStrategy {
         if (Math.abs(cascadeScore) < this.cfg.cascadeThreshold) continue;
 
         const side: 'yes' | 'no' = leader.momentum > 0 ? 'yes' : 'no';
-        const tokenId = side === 'yes' ? market.yesTokenId! : (market.noTokenId ?? market.yesTokenId!);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
 
         try {
           const book = await this.deps.clob.getOrderBook(tokenId);
