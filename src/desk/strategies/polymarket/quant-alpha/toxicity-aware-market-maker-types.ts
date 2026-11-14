@@ -9,6 +9,11 @@
  */
 
 import type { StrategyName } from '../../../core/types';
+import type { CtfPreflightResult } from '../../../polymarket/ctf-eth-call-preflight';
+import type {
+  LiquidityRegimeConfig,
+  LiquidityRegimeTelemetrySnapshot,
+} from '../../../polymarket/liquidity-regime-types';
 import type { BaseStrategyConfig } from '../base-polymarket-strategy';
 
 /** Which side of the touch a post-only quote is written on. */
@@ -60,6 +65,8 @@ export interface ToxicityAwareConfig extends BaseStrategyConfig {
   volatilityScale: number;
   /** Market's price tick. No desk-layer API exposes it, so it is parameterised. */
   tickSize: number;
+  /** Optional Strategy 7 Liquidity Regime Machine overrides. */
+  regimeConfig?: Partial<LiquidityRegimeConfig>;
 }
 
 export const DEFAULT_CONFIG: ToxicityAwareConfig = {
@@ -110,4 +117,24 @@ export interface PairQuote {
   rewardPlusRebate: number;
   realizedVol: number;
   rankScore: number;
+}
+
+export interface MergeEligiblePair {
+  conditionId: string;
+  yesTokenId: string;
+  noTokenId: string;
+  matchedShares: number;
+  mergeableCollateralPusd: number;
+  mergeEligible: boolean;
+}
+
+export interface MergeEligiblePairEvent extends MergeEligiblePair {
+  preflight?: CtfPreflightResult;
+}
+
+export interface MakerRegimeTelemetry {
+  regime: LiquidityRegimeTelemetrySnapshot;
+  mergeEligiblePairs: MergeEligiblePair[];
+  excludedFiveMinuteMarkets: number;
+  mergePreflightFailures: number;
 }
