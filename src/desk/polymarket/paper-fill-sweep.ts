@@ -17,23 +17,14 @@ import type { PolymarketOrderBook } from '../execution/polymarket-adapter';
 import { calcMakerFeeRate, calcTakerFeeRate, type PolymarketFeeSchedule } from './polymarket-fee-calculator';
 import { isMarketable, LEVEL_PRICE_EPSILON, parseLevels } from './orderbook-levels';
 import {
-  buildQueueModel,
-  estimateMakerQueue,
-  simulateMakerFill,
-  takerMatchDelayMsForTier,
-  type FillBookLevel,
-  type RandomSource,
+  buildQueueModel, estimateMakerQueue, simulateMakerFill, takerMatchDelayMsForTier,
+  type FillBookLevel, type RandomSource,
 } from './queue-aware-fill-simulator';
 
 /**
- * Schedule used only when PAPER mode runs with no market lookup configured —
- * the contract the G2 shadow harness depends on: an immediate paper fill at the
- * limit price must still carry a non-zero fee, or the reconciler's drift and the
- * KPI cost lines are wrong by omission.
- *
- * Live mid-band rates are 0.04 (Politics/Finance/Tech) to 0.07 (Crypto); 0.05 is
- * the conservative middle of that band. Wire a `FeeScheduleResolver` and the
- * market's own schedule replaces this.
+ * Fallback schedule when PAPER mode runs with no market lookup configured so an
+ * immediate paper fill still carries a non-zero fee until `FeeScheduleResolver`
+ * supplies the market's published curve (0.04–0.07 live mid-band).
  */
 export const DEFAULT_PAPER_FEE_SCHEDULE: PolymarketFeeSchedule = Object.freeze({
   exponent: 1,
@@ -152,7 +143,7 @@ export function sweepOrderBookLevels(params: SweepOrderParams): PaperSweepOutcom
   };
 }
 
-/** Resting-order path: join the back of the queue at the limit price; reject when no resting size exists. */
+/** Resting-order path: join back of queue at limit price, or front of queue when improving a two-sided spread. */
 function fillRestingQueue(params: SweepOrderParams): PaperSweepOutcome {
   const { book, side, requestedSize, limitPrice, schedule } = params;
   const ourSide = parseLevels(side === 'BUY' ? (book?.bids ?? []) : (book?.asks ?? []));
@@ -167,7 +158,15 @@ function fillRestingQueue(params: SweepOrderParams): PaperSweepOutcome {
   });
 
   if (queue.queueAheadSize <= LEVEL_PRICE_EPSILON) {
-    return rejectSweep(requestedSize, limitPrice, 'maker', 'no resting liquidity at the limit price');
+    const bestOur = side === 'BUY'
+      ? ourSide.reduce((m, l) => Math.max(m, l.price), -Infinity)
+      : ourSide.reduce((m, l) => Math.min(m, l.price), Infinity);
+    const improvesSpread = opposite.length > 0 && ourSide.length > 0 && (
+      side === 'BUY' ? limitPrice > bestOur + LEVEL_PRICE_EPSILON : limitPrice < bestOur - LEVEL_PRICE_EPSILON
+    );
+    if (!improvesSpread) {
+      return rejectSweep(requestedSize, limitPrice, 'maker', 'no resting liquidity at the limit price');
+    }
   }
 
   const bestOpp = opposite.length === 0

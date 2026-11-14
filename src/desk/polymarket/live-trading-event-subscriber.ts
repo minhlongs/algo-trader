@@ -16,6 +16,7 @@ export class LiveTradingEventSubscriber {
   constructor(
     private readonly getStatus: () => OrchestratorStatus,
     private readonly positionTracker: LivePositionTracker,
+    private readonly onMarketObservation?: (ts: number) => void,
   ) {}
 
   public subscribe(): void {
@@ -38,6 +39,9 @@ export class LiveTradingEventSubscriber {
       const prices = new Map<string, { bid: number; ask: number }>();
       prices.set(tokenId, { bid, ask });
       this.positionTracker.updatePrices(prices);
+      if (tokenId !== 'tick-trigger') {
+        this.onMarketObservation?.(payload.timestamp || Date.now());
+      }
     }
   }
 }

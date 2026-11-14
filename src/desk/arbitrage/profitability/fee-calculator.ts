@@ -31,6 +31,9 @@ export type LegFee =
   | { available: false; venue: string; symbol: string };
 
 function polymarketScheduleLegFee(schedule: PolymarketFeeSchedule, leg: VenueTradeLeg, notionalUsd: number): LegFee {
+  if (!Number.isFinite(schedule.rate) || !Number.isFinite(schedule.exponent) || !Number.isFinite(schedule.rebateRate)) {
+    return { available: false, venue: leg.venue, symbol: leg.symbol };
+  }
   if (schedule.rate <= 0) {
     return { available: true, rate: 0, feeUsd: 0 };
   }

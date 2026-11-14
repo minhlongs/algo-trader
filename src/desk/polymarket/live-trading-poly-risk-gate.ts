@@ -25,6 +25,7 @@ import {
   createPolyKillSwitch,
   type PolyKillSwitch,
 } from '../risk/poly-kill-switch';
+import { buildPolymarketHeaders } from '../execution/polymarket-adapter-transport';
 import { recordPaperOrderCancel } from './live-trading-adapter-setup';
 
 export interface OrchestratorPolyRiskDeps {
@@ -62,6 +63,15 @@ async function resolveRiskFeeState(
   }
 }
 
+function buildLiveCancelAllHeaders(): Record<string, string> {
+  const apiKey = process.env['POLYMARKET_API_KEY'] || process.env['POLY_API_KEY'] || '';
+  const apiSecret = process.env['POLYMARKET_API_SECRET'] || process.env['POLY_API_SECRET'] || '';
+  const passphrase = process.env['POLYMARKET_PASSPHRASE'] || process.env['POLY_PASSPHRASE'] || '';
+  return apiKey && apiSecret
+    ? buildPolymarketHeaders(apiKey, apiSecret, passphrase, 'DELETE', '/cancel-all')
+    : {};
+}
+
 export function createOrchestratorPolyRiskRuntime(
   deps: OrchestratorPolyRiskDeps,
 ): OrchestratorPolyRiskRuntime {
@@ -71,7 +81,12 @@ export function createOrchestratorPolyRiskRuntime(
   const isGateEnforced = () => deps.config.enforcePolyRiskGate ?? !deps.config.paperTrading;
   const liveTransport =
     deps.config.killSwitchTransport ??
-    (deps.config.paperTrading ? undefined : createPolyCancelAllTransport());
+    (deps.config.paperTrading
+      ? undefined
+      : createPolyCancelAllTransport({
+          ...(deps.config.apiUrl ? { host: deps.config.apiUrl } : {}),
+          getHeaders: buildLiveCancelAllHeaders,
+        }));
 
   const killSwitch = createPolyKillSwitch({
     cancelAll: async (req) => {

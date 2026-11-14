@@ -9,7 +9,11 @@ import type {
   CustomExitVerdict,
   OpenPosition,
 } from './base-polymarket-strategy-types';
-import { computePositionGain, evaluateExitCondition } from './base-polymarket-strategy-exits';
+import {
+  computePositionGain,
+  evaluateExitCondition,
+  resolveCustomExitPrice,
+} from './base-polymarket-strategy-exits';
 import { logger } from '../../core/logger';
 
 export interface ExitCheckContext {
@@ -33,11 +37,12 @@ export async function processPositionExits(
     const { mid: currentPrice, fromCache } = await ctx.getCurrentPrice(pos.tokenId);
     const book = ctx.getCachedOrderbook(pos.tokenId);
 
-    if (currentPrice === 0) continue;
+    if (!(currentPrice > 0) || !Number.isFinite(currentPrice)) continue;
 
     let { shouldExit, reason } = evaluateExitCondition(pos, currentPrice, ctx.config, undefined, now);
     if (!shouldExit) {
-      const custom = ctx.getCustomExitCondition(pos, currentPrice, book);
+      const customPrice = resolveCustomExitPrice(pos, currentPrice);
+      const custom = ctx.getCustomExitCondition(pos, customPrice, book);
       ({ shouldExit, reason } = evaluateExitCondition(pos, currentPrice, ctx.config, custom, now));
     }
 

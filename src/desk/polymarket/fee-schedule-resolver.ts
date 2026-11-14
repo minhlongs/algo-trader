@@ -54,12 +54,13 @@ function parseFeeSchedule(raw: unknown): PolymarketFeeSchedule | null {
       return null;
     }
   }
-  if (!value || typeof value !== 'object') return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const obj = value as Record<string, unknown>;
+  if (obj['rate'] === null || obj['rate'] === '' || typeof obj['rate'] === 'boolean') return null;
   const rate = Number(obj['rate']);
   const exponent = Number(obj['exponent'] ?? 1);
   const rebateRate = Number(obj['rebateRate'] ?? 0);
-  if (!Number.isFinite(rate) || !Number.isFinite(exponent) || !Number.isFinite(rebateRate)) {
+  if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(exponent) || !Number.isFinite(rebateRate)) {
     return null;
   }
   return {
@@ -99,12 +100,16 @@ function selectMarket(payload: unknown, tokenId: string): Record<string, unknown
 
 function extractSchedule(market: Record<string, unknown>): PolymarketFeeSchedule | null {
   if (market['feesEnabled'] === false) return null;
-  const schedule = parseFeeSchedule(market['feeSchedule']);
+  const rawSchedule = market['feeSchedule'];
+  const schedule = parseFeeSchedule(rawSchedule);
   if (schedule) return schedule;
-  // `feesEnabled` missing/true but no schedule object: the venue did not tell
-  // us the rate. Treat as unevaluable rather than assuming zero.
+  // `feesEnabled` true, or a non-null `feeSchedule` payload that failed to parse:
+  // fail closed rather than silently treating corrupt metadata as fee-exempt.
   if (market['feesEnabled'] === true) {
     throw new Error('Gamma market has feesEnabled=true but no parsable feeSchedule');
+  }
+  if (rawSchedule !== undefined && rawSchedule !== null) {
+    throw new Error('Gamma market has unparsable feeSchedule payload');
   }
   return null;
 }

@@ -17,12 +17,30 @@ import type { BaseStrategyConfig, CustomExitVerdict, ExitEvaluation, OpenPositio
 
 /**
  * Direction-aware fractional gain for a position at a given price.
- * 'yes' profits when price rises, 'no' when it falls.
+ * Positions that hold the outcome token directly (`holdsOutcomeToken: true`)
+ * profit when that token's price rises regardless of `side`. Legacy positions
+ * without `holdsOutcomeToken` treat `side === 'no'` prices as YES quotes
+ * (profiting when YES price falls).
  */
 export function computePositionGain(pos: OpenPosition, currentPrice: number): number {
-  return pos.side === 'yes'
+  if (!(pos.entryPrice > 0) || !Number.isFinite(pos.entryPrice) || !Number.isFinite(currentPrice)) {
+    return 0;
+  }
+  return pos.holdsOutcomeToken || pos.side === 'yes'
     ? (currentPrice - pos.entryPrice) / pos.entryPrice
     : (pos.entryPrice - currentPrice) / pos.entryPrice;
+}
+
+/**
+ * Convert the held token's mid price into the YES-equivalent price expected by
+ * subclass `getCustomExitCondition` overrides (`1 - noMid` when holding a
+ * distinct NO outcome token; unchanged otherwise).
+ */
+export function resolveCustomExitPrice(pos: OpenPosition, currentPrice: number): number {
+  if (pos.holdsOutcomeToken && pos.side === 'no') {
+    return Math.max(0, Math.min(1, 1 - currentPrice));
+  }
+  return currentPrice;
 }
 
 /**
@@ -65,8 +83,10 @@ export function evaluateExitCondition(
  * and venue fees.
  */
 export function computeExitPnl(pos: OpenPosition, currentPrice: number, exitFeesUsdc = 0): number {
-  const qty = pos.tokenQuantity > 0 ? pos.tokenQuantity : pos.sizeUsdc / pos.entryPrice;
-  const gross = pos.side === 'yes'
+  const qty = pos.tokenQuantity > 0
+    ? pos.tokenQuantity
+    : (pos.entryPrice > 0 ? pos.sizeUsdc / pos.entryPrice : 0);
+  const gross = pos.holdsOutcomeToken || pos.side === 'yes'
     ? (currentPrice - pos.entryPrice) * qty
     : (pos.entryPrice - currentPrice) * qty;
   const entryFees = pos.entryFeesUsdc ?? 0;

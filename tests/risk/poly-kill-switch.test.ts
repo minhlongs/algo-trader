@@ -167,4 +167,27 @@ describe('createPolyCancelAllTransport', () => {
     expect(init.headers).toEqual({});
     expect(result).toEqual({ ok: false, status: 401, body: '' });
   });
+
+  it('evaluates getHeaders dynamically on every request so signatures never go stale', async () => {
+    let seq = 100;
+    const fetchImpl = vi.fn(async () => new Response('{"canceled":["o1"]}', { status: 200 }));
+    const transport = createPolyCancelAllTransport({
+      host: 'https://clob.polymarket.com/',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      headers: { 'X-Static': '1' },
+      getHeaders: () => {
+        seq += 1;
+        return { 'POLY-TIMESTAMP': String(seq) };
+      },
+    });
+
+    await transport({ reason: 'first', firedAtMs: 1_000 });
+    await transport({ reason: 'second', firedAtMs: 2_000 });
+
+    const [url1, init1] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const [, init2] = fetchImpl.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url1).toBe('https://clob.polymarket.com/cancel-all');
+    expect(init1.headers).toEqual({ 'X-Static': '1', 'POLY-TIMESTAMP': '101' });
+    expect(init2.headers).toEqual({ 'X-Static': '1', 'POLY-TIMESTAMP': '102' });
+  });
 });

@@ -55,7 +55,10 @@ export abstract class BasePolymarketStrategy {
   /** Strategy-specific entry scanning. Called each execution after exit checks. */
   protected abstract scanEntries(markets: GammaMarket[]): Promise<void>;
 
-  /** Override to add strategy-specific exit conditions beyond TP/SL/maxHold. */
+  /**
+   * Override to add strategy-specific exit conditions beyond TP/SL/maxHold.
+   * Receives YES-equivalent `currentPrice` (`1 - noMid` when holding an outcome NO token).
+   */
   protected getCustomExitCondition(
     _pos: OpenPosition,
     _currentPrice: number,
@@ -116,7 +119,7 @@ export abstract class BasePolymarketStrategy {
     await processPositionExits(ctx, now);
   }
 
-  /** Place an IOC exit order, log pnl, emit the trade, set cooldown. Swallows errors (logged). */
+  /** Place an IOC exit order, log pnl, emit the trade, set cooldown. */
   protected async exitPosition(pos: OpenPosition, currentPrice: number, reason: string): Promise<void> {
     await performExit(this.tradeCtx, pos, currentPrice, reason);
   }

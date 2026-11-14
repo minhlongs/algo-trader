@@ -12,7 +12,7 @@ import type { PositionSummary } from '../execution/live-position-tracker';
 import type { ReconciliationSummary } from '../execution/polymarket-order-reconciler';
 import { logger } from '@shared/utils/logger';
 import { tradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
-import type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
+import type { StrategyRunnerConfig, StrategyConstructor } from './strategy-runner-types';
 import { createTickTimer, type TickTimerContext } from './strategy-runner-tick-timer';
 import { createEventBusSubscription, type EventHandlerContext } from './strategy-runner-event-handlers';
 import { buildRunnerStatusSnapshot } from './strategy-runner-status-builder';
@@ -71,7 +71,30 @@ export class StrategyRunner {
 
     this.bridge = new StrategyLiveBridge(this.orchestrator);
     this.proxy = new LiveOrderManagerProxy(this.bridge, this.strategyName);
-    const deps = createRunnerStrategyDeps(this.proxy, this.config.deps);
+    const feeResolver =
+      this.config.tradingConfig.feeScheduleResolver ?? this.orchestrator.getFeeScheduleResolver?.();
+    const deps = createRunnerStrategyDeps(this.proxy, this.config.deps, feeResolver);
+    if (this.orchestrator.getMode() === 'LIVE' && deps.clob) {
+      const baseClob = deps.clob;
+      deps.clob = {
+        ...baseClob,
+        getOrderBook: async (tokenId: string) => {
+          const book = await baseClob.getOrderBook(tokenId);
+          this.orchestrator.recordMarketObservation(Date.now());
+          return book;
+        },
+        getPrice: async (tokenId: string, side?: string) => {
+          const price = await baseClob.getPrice(tokenId, side);
+          if (Number.isFinite(price)) this.orchestrator.recordMarketObservation(Date.now());
+          return price;
+        },
+        getMidPrice: async (tokenId: string) => {
+          const mid = await baseClob.getMidPrice(tokenId);
+          if (Number.isFinite(mid)) this.orchestrator.recordMarketObservation(Date.now());
+          return mid;
+        },
+      };
+    }
     if (this.orchestrator.getMode() === 'PAPER' && deps.clob && typeof deps.clob.getOrderBook === 'function') {
       this.orchestrator.setPaperOrderBookProvider((tokenId) => deps.clob!.getOrderBook(tokenId));
     }

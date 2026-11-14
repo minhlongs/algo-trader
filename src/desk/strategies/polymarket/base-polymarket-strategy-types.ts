@@ -40,6 +40,13 @@ export interface OpenPosition {
   tokenQuantity: number;
   /** Venue fees paid on entry in USDC (default 0 when venue reports none). */
   entryFeesUsdc?: number;
+  /**
+   * True when `tokenId` was bought directly as an outcome token (so both
+   * `entryPrice` and `getCurrentPrice(tokenId)` are in the held token's own
+   * price space and profit when the token price rises, even when `side === 'no'`).
+   * When omitted, legacy callers treat `side === 'no'` prices as YES-complement quotes.
+   */
+  holdsOutcomeToken?: boolean;
   orderId: string;
   openedAt: number;
 }

@@ -69,8 +69,12 @@ describe('Gamma fee schedule resolver', () => {
       });
     });
 
-    it('returns null for a market the exchange publishes as exempt', async () => {
-      const row = { feesEnabled: false, clobTokenIds: JSON.stringify([TOKEN_YES]) };
+    it('returns null for a market the exchange publishes as exempt even if stale feeSchedule metadata exists', async () => {
+      const row = {
+        feesEnabled: false,
+        clobTokenIds: JSON.stringify([TOKEN_YES]),
+        feeSchedule: { exponent: 1, rate: 0.07, takerOnly: true, rebateRate: 0.2 },
+      };
       const { resolver } = makeResolver(() => jsonResponse([row]));
       await expect(resolver.resolve(TOKEN_YES)).resolves.toBeNull();
     });
@@ -84,6 +88,12 @@ describe('Gamma fee schedule resolver', () => {
       const row = { feesEnabled: true, feeSchedule: 'not-json' };
       const { resolver } = makeResolver(() => jsonResponse([row]));
       await expect(resolver.resolve(TOKEN_YES)).rejects.toThrow(/feesEnabled=true/);
+    });
+
+    it('throws when feesEnabled is omitted and feeSchedule payload is corrupt', async () => {
+      const row = { clobTokenIds: JSON.stringify([TOKEN_YES]), feeSchedule: 'corrupt-payload' };
+      const { resolver } = makeResolver(() => jsonResponse([row]));
+      await expect(resolver.resolve(TOKEN_YES)).rejects.toThrow(/unparsable feeSchedule/);
     });
   });
 

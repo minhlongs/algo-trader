@@ -58,16 +58,16 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.config = normalizeConfig(rawConfig);
     this.assignCore(buildCoreComponents(this.config));
     this.polyRisk = createOrchestratorPolyRiskRuntime({
-      config: this.config, getOrderManager: () => this.orderManager,
+      config: this.config, getOrderManager: () => this.orderManager, getJournal: () => this.journal,
       getPositionTracker: () => this.positionTracker, getReconciler: () => this.reconciler,
-      getJournal: () => this.journal,
     });
   }
   private assignCore(c: OrchestratorComponents): void {
     Object.assign(this, c);
-    this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
+    this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker, (ts) => this.polyRisk?.recordMarketObservation(ts));
   }
   setPaperOrderBookProvider(provider: PaperOrderBookProvider | null): void { this.paperOrderBookProvider = provider; }
+  getFeeScheduleResolver(): FeeScheduleResolver | null | undefined { return this.polyRisk.getFeeScheduleResolver(); }
   setFeeScheduleResolver(resolver: FeeScheduleResolver | null): void { this.polyRisk.setFeeScheduleResolver(resolver); }
   recordMarketObservation(observedAtMs = Date.now()): void { this.polyRisk.recordMarketObservation(observedAtMs); }
   getPolyKillSwitch(): PolyKillSwitch { return this.polyRisk.killSwitch; }

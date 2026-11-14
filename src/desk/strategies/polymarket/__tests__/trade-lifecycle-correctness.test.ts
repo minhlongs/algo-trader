@@ -79,8 +79,18 @@ describe('performEntry', () => {
     await performEntry(ctx, 'no-token-1', 'cond-1', 'no', 0.45, 90);
 
     // The recorded token quantity is round(90 / 0.45) = 200, not the USDC notional.
-    const recorded = ctx.positions[0] as unknown as { tokenQuantity?: number };
-    expect(recorded.tokenQuantity).toBe(200);
+    const recorded = ctx.positions[0];
+    expect(recorded?.tokenQuantity).toBe(200);
+    expect(recorded?.holdsOutcomeToken).toBe(true);
+  });
+
+  it('rejects non-positive or non-finite entryPrice or sizeUsdc before placing an order', async () => {
+    const { ctx, orderManager } = makeCtx();
+    await expect(performEntry(ctx, 'no-token-1', 'cond-1', 'no', 0, 90)).rejects.toThrow(/Invalid entry/);
+    await expect(performEntry(ctx, 'no-token-1', 'cond-1', 'no', -0.2, 90)).rejects.toThrow(/Invalid entry/);
+    await expect(performEntry(ctx, 'no-token-1', 'cond-1', 'no', Number.NaN, 90)).rejects.toThrow(/Invalid entry/);
+    await expect(performEntry(ctx, 'no-token-1', 'cond-1', 'no', 0.45, 0)).rejects.toThrow(/Invalid entry/);
+    expect(orderManager.placeOrder).not.toHaveBeenCalled();
   });
 });
 
