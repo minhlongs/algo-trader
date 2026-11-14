@@ -1,7 +1,7 @@
 ---
 title: "Poly Bot vNext Hybrid IC Architecture (Rust poly-book + GhostGuard sidecars + algo-trader TypeScript core)"
 description: "Integrate MIT-licensed Rust sidecars (weiminglong/poly-book & OrderBookTrade/GhostGuard) with algo-trader's TypeScript core, remediate 3 open Polymarket defects (#268, NegRisk thin-leg legPlacement, kpi-poly preflight), and deliver Strategy 3+7 5-state Regime + CLOB V2 Pilot-Ready surface, Strategy 2 eth_call + Poly1271/Relayer dry-run, Strategy 4+6 Dual-Stream + Arbiter News & Market-Blind Bayesian Shrunk Fair-Value, Strategy 8 Lockup-Adjusted Kelly, Governance Tooling, and kpi:poly --stress."
-status: in_progress
+status: completed
 priority: P0
 issue: 269
 closes_issues: [268, 269]
@@ -34,8 +34,8 @@ created: 2026-11-15
 
 - [x] Quarantine & audit `weiminglong/poly-book` (MIT, `unsafe_code = "forbid"`) and `OrderBookTrade/GhostGuard` (MIT)
 - [x] Create tracking GitHub Issue #269 (`in progress`)
-- [ ] Wave 1 Parallel Execution: P1 (Defects & `#268`), P2 (Rust Sidecars & Bridges), P4 (Market-Blind & Arbiter), P5 (Lockup Kelly & Risk Engine)
-- [ ] Wave 2 Execution: P3 (5-State Regime + Pilot-Ready Surface wired into Strategy 3 & Strategy 2)
-- [ ] Wave 3 Execution: P6 (Governance Tooling + `kpi:poly --stress` + full wiring)
-- [ ] Live Verification Drills: `cargo build --release` both sidecars, live Polymarket WS -> `poly-book` WAL/Parquet -> `algo-trader` replay, live `GhostGuard` `status=0` (`test_known_ghost_fill`) -> `PolyKillSwitch` latch `<1s`, `npm run kpi:poly -- --stress`
+- [x] Wave 1 Parallel Execution: P1 (Defects & `#268`), P2 (Rust Sidecars & Bridges), P4 (Market-Blind & Arbiter), P5 (Lockup Kelly & Risk Engine)
+- [x] Wave 2 Execution: P3 (5-State Regime + Pilot-Ready Surface wired into Strategy 3 & Strategy 2)
+- [x] Wave 3 Execution: P6 (Governance Tooling + `kpi:poly --stress` + full wiring)
+- [x] Live Verification Drills: `cargo build --release` both sidecars, live Polymarket WS -> `poly-book` WAL/Parquet -> `algo-trader` replay, live `GhostGuard` `status=0` (`test_known_ghost_fill`) -> `PolyKillSwitch` latch `<1s`, `npm run kpi:poly -- --stress`
 - [ ] Isolated `code-reviewer` (`>= 9.0/10`), remediate any findings, open & squash-merge PR, transition Issue #269 `in review` -> `done` -> `shipped`, close `#268`, verify zero orphan processes/worktrees
