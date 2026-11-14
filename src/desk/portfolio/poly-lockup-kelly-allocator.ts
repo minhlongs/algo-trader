@@ -97,6 +97,7 @@ export function computeNaiveIndependentKellyWeights(
 export function buildPortfolioKellyRiskState(params: BuildPortfolioKellyRiskParams): PolyPortfolioKellyRiskState {
   const { limits, tokenId, clusterId, currentTokenExposureUsd, projectedClusterWorstCaseLossUsd } = params;
   return {
+    tokenId: tokenId || 'unknown',
     frozen: limits.frozen,
     umaDisputedNavPct: limits.umaDisputedNavPct,
     portfolioDrawdownPct: limits.portfolioDrawdownPct,
@@ -104,7 +105,7 @@ export function buildPortfolioKellyRiskState(params: BuildPortfolioKellyRiskPara
     tokenCapUsd: limits.maxNotionalPerTokenUsd.get(tokenId) ?? 0,
     currentTokenExposureUsd,
     projectedClusterWorstCaseLossUsd,
-    maxClusterWorstCaseLossUsd: limits.maxClusterWorstCaseLossUsd.get(clusterId),
+    maxClusterWorstCaseLossUsd: limits.maxClusterWorstCaseLossUsd.get(clusterId) ?? 'unknown',
   };
 }
 
@@ -138,6 +139,9 @@ export class PolyLockupKellyAllocator {
     }
     const mergedConfig: PolyKellySolverConfig = { ...this.defaultSolverConfig, ...input.solverConfig };
     const maxClusterLoss = mergedConfig.maxClusterLoss ?? DEFAULT_MAX_CLUSTER_LOSS;
+    if (!isFiniteNum(maxClusterLoss) || maxClusterLoss <= 0 || maxClusterLoss >= 1) {
+      throw new RangeError('Invalid maxClusterLoss: must be finite in (0, 1)');
+    }
     const umaDisputedRatio = disputedLockedPusd / navPusd;
     const umaDisputedNavPct = umaDisputedRatio * 100;
 

@@ -113,6 +113,9 @@ export function checkPortfolioKelly(
   if (kellyInput === undefined) return null;
   const kelly = resolved(kellyInput);
   if (!kelly || typeof kelly.frozen !== 'boolean') return deny('UNRESOLVED_STATE', 'portfolioKelly state or frozen flag is unresolved');
+  if (kelly.tokenId !== undefined && kelly.tokenId !== intent.tokenId) {
+    return deny('UNRESOLVED_STATE', `portfolioKelly resolved for token ${String(kelly.tokenId)}, not ${intent.tokenId}`);
+  }
   const { umaDisputedNavPct, portfolioDrawdownPct, navUsd, tokenCapUsd, currentTokenExposureUsd, projectedClusterWorstCaseLossUsd, maxClusterWorstCaseLossUsd } = kelly;
   const validCapOverride = maxClusterWorstCaseLossUsd === undefined || (isNumber(maxClusterWorstCaseLossUsd) && maxClusterWorstCaseLossUsd > 0);
   if (
@@ -126,6 +129,8 @@ export function checkPortfolioKelly(
   ) {
     return deny('UNRESOLVED_STATE', 'portfolioKelly contains an unknown, NaN, or invalid numeric field');
   }
+  // Polymarket CLOB V2 has no naked short-selling; `sell` disposes held ERC-1155 shares (`REDUCE_ONLY` exit).
+  if (intent.side === 'sell') return null;
   if (umaDisputedNavPct > PORTFOLIO_UMA_DISPUTE_MAX_NAV_PCT) {
     return deny('UMA_DISPUTE_LOCKUP_HALT', `UMA disputed capital ${umaDisputedNavPct.toFixed(2)}% exceeds ${PORTFOLIO_UMA_DISPUTE_MAX_NAV_PCT}% NAV cap`);
   }

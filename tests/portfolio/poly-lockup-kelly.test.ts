@@ -451,5 +451,27 @@ describe('evaluatePolyRisk Integration (portfolioKelly)', () => {
         feeSchedule: { tokenId: 'unapproved-token', rate: 0.02, exponent: 1 },
       }),
     ).toMatchObject({ allowed: false, reason: 'TOKEN_KELLY_CAP_EXCEEDED' });
+
+    // Unknown clusterId fails closed with UNRESOLVED_STATE; tokenId mismatch fails closed; SELL reduce-only is allowed
+    const missingClusterRisk = buildPortfolioKellyRiskState({
+      limits,
+      tokenId: 'tok-pa',
+      clusterId: 'unknown-cluster',
+      currentTokenExposureUsd: 0,
+      projectedClusterWorstCaseLossUsd: 10,
+    });
+    expect(evaluatePolyRisk(baseIntent, baseRiskState(missingClusterRisk))).toMatchObject({
+      allowed: false,
+      reason: 'UNRESOLVED_STATE',
+    });
+    expect(
+      evaluatePolyRisk({ ...baseIntent, tokenId: 'other-tok' }, {
+        ...baseRiskState(okRisk),
+        feeSchedule: { tokenId: 'other-tok', rate: 0.02, exponent: 1 },
+      }),
+    ).toMatchObject({ allowed: false, reason: 'UNRESOLVED_STATE' });
+    expect(
+      evaluatePolyRisk({ ...baseIntent, side: 'sell' }, baseRiskState({ ...okRisk, frozen: true })),
+    ).toEqual({ allowed: true });
   });
 });
