@@ -32,7 +32,10 @@ export function formatKpiEvaluationReport(report: KpiEvaluationReport): string {
   const thin = '-'.repeat(totalW);
 
   lines.push(rule);
-  lines.push(`POLYMARKET QUANT ALPHA — 11 GOVERNANCE KPIs (PAPER / OBSERVED DATA ONLY) | ${generatedAtIso}`);
+  const modeTag = report.stressMode?.enabled
+    ? ` [STRESS: ${report.stressMode.slippageCancelLatencyMultiplier}x cost/latency, -${(report.stressMode.liquidityRewardHaircutFraction * 100).toFixed(0)}% reward, ${(report.stressMode.annualLockedCapitalCarryRate * 100).toFixed(1)}%/yr carry]`
+    : '';
+  lines.push(`POLYMARKET QUANT ALPHA — 11 GOVERNANCE KPIs (PAPER / OBSERVED DATA ONLY)${modeTag} | ${generatedAtIso}`);
   lines.push(
     `Provenance verified: sources=[${provenance.sourcesSeen.join(', ')}] | ` +
       `snapshots=${provenance.snapshotCount} (ticks=${provenance.marketTickCount}) | ` +
