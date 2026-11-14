@@ -174,7 +174,7 @@ function fillRestingQueue(params: SweepOrderParams): PaperSweepOutcome {
     : side === 'BUY'
       ? opposite.reduce((m, l) => Math.min(m, l.price), Infinity)
       : opposite.reduce((m, l) => Math.max(m, l.price), -Infinity);
-  const touchSize = bestOpp === null
+  const touchSize = bestOpp === null || Math.abs(bestOpp - limitPrice) > 0.5
     ? 0
     : opposite.reduce((s, l) => (Math.abs(l.price - bestOpp) <= LEVEL_PRICE_EPSILON ? s + l.size : s), 0);
   const arrivalRate = params.aggressiveVolumePerMs ?? touchSize / TOUCH_TURNOVER_MS;
