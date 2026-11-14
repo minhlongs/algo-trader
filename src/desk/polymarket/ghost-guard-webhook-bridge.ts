@@ -130,7 +130,7 @@ export async function startGhostGuardWebhookServer(
     const readRes = await readWebhookBody(req);
     if (!readRes.ok) {
       stats.invalidPayloads += 1;
-      sendWebhookJson(res, readRes.status, { ok: false, error: readRes.error });
+      sendWebhookJson(res, readRes.status, { ok: false, error: readRes.error }, true);
       return;
     }
     let decoded: unknown;

@@ -16,12 +16,22 @@ export function isAuthorizedBearer(header: string | undefined, expectedToken: st
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-export function sendWebhookJson(res: ServerResponse, status: number, body: Record<string, unknown>): void {
+export function sendWebhookJson(
+  res: ServerResponse,
+  status: number,
+  body: Record<string, unknown>,
+  closeConnection = false,
+): void {
   const raw = JSON.stringify(body);
-  res.writeHead(status, {
+  const headers: Record<string, string | number> = {
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(raw),
-  });
+  };
+  if (closeConnection) {
+    headers.connection = 'close';
+    res.once('finish', () => { res.socket?.destroy(); });
+  }
+  res.writeHead(status, headers);
   res.end(raw);
 }
 
@@ -60,16 +70,20 @@ export function readWebhookBody(
     const chunks: Buffer[] = [];
     let total = 0;
     let settled = false;
-    req.on('data', (chunk: Buffer) => {
+    const onData = (chunk: Buffer): void => {
       if (settled) return;
       total += chunk.length;
       if (total > MAX_WEBHOOK_BODY_BYTES) {
         settled = true;
+        chunks.length = 0;
+        req.off('data', onData);
+        req.pause();
         resolve({ ok: false, status: 413, error: 'Payload exceeds maximum allowed size' });
         return;
       }
       chunks.push(chunk);
-    });
+    };
+    req.on('data', onData);
     req.on('end', () => {
       if (!settled) {
         settled = true;
