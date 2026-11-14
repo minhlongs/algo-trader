@@ -53,6 +53,25 @@ export interface PolyRiskBudgetState {
   currentDrawdownPct: number | 'unknown';
 }
 
+export interface PolyPortfolioKellyRiskState {
+  /** True when portfolio allocator kill-switch froze all new disbursements. */
+  frozen: boolean | 'unknown';
+  /** Active UMA-disputed locked capital as percent of NAV (10 means 10%). */
+  umaDisputedNavPct: number | 'unknown';
+  /** Portfolio-level peak-to-trough drawdown in percent (5.0 means 5.0%). */
+  portfolioDrawdownPct: number | 'unknown';
+  /** Total portfolio NAV in USDC/pUSD. */
+  navUsd: number | 'unknown';
+  /** Lockup-adjusted Kelly notional cap for `intent.tokenId` in USDC. */
+  tokenCapUsd: number | 'unknown';
+  /** Existing open notional exposure on `intent.tokenId` in USDC. */
+  currentTokenExposureUsd: number | 'unknown';
+  /** Worst-case cluster loss in USDC after including this order intent. */
+  projectedClusterWorstCaseLossUsd: number | 'unknown';
+  /** Optional explicit cluster loss ceiling in USDC (defaults to 3% of NAV). */
+  maxClusterWorstCaseLossUsd?: number | 'unknown';
+}
+
 export type PolyKillSwitchState = 'inactive' | 'active' | 'unknown' | undefined;
 
 export interface PolyRiskState {
@@ -63,6 +82,8 @@ export interface PolyRiskState {
   feeSchedule?: PolyFeeScheduleState | Unresolved;
   positionReconciliation?: PolyPositionReconciliationState | Unresolved;
   riskBudget?: PolyRiskBudgetState | Unresolved;
+  /** Optional multi-market Lockup-Adjusted Kelly limits; fail-closed when supplied. */
+  portfolioKelly?: PolyPortfolioKellyRiskState | Unresolved;
 }
 
 export const MARKET_DATA_MAX_AGE_MS = 5_000;
@@ -71,6 +92,12 @@ export const POSITION_RECONCILIATION_MAX_AGE_MS = 60_000;
 export const MIN_RESTING_ORDER_SIZE_SHARES = 5;
 /** Auto-halt threshold: at or beyond this drawdown, no new order is allowed. */
 export const DRAWDOWN_AUTO_HALT_PCT = 3.0;
+/** Freeze new disbursements when active UMA-disputed capital exceeds 10% of NAV. */
+export const PORTFOLIO_UMA_DISPUTE_MAX_NAV_PCT = 10.0;
+/** Freeze new disbursements when portfolio drawdown reaches or exceeds 5.0% of NAV. */
+export const PORTFOLIO_KELLY_DRAWDOWN_FREEZE_PCT = 5.0;
+/** Hard cluster worst-case tail-loss cap as a fraction of NAV (3.0%). */
+export const CLUSTER_TAIL_LOSS_MAX_NAV_FRACTION = 0.03;
 
 export type PolyRiskBlockReason =
   | 'KILL_SWITCH_ACTIVE'
@@ -81,6 +108,10 @@ export type PolyRiskBlockReason =
   | 'ORDER_BELOW_MIN_SIZE'
   | 'NOTIONAL_ABOVE_CAP'
   | 'DRAWDOWN_AUTO_HALT'
+  | 'PORTFOLIO_KELLY_FROZEN'
+  | 'UMA_DISPUTE_LOCKUP_HALT'
+  | 'TOKEN_KELLY_CAP_EXCEEDED'
+  | 'CLUSTER_TAIL_LOSS_ABOVE_CAP'
   | 'INVALID_INTENT'
   /** Default deny: state absent, malformed, or a required value never established. */
   | 'UNRESOLVED_STATE';
