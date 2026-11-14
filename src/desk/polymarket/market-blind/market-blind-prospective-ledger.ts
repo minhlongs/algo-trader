@@ -145,7 +145,16 @@ export class MarketBlindProspectiveLedger {
     if (!this.byHash.has(params.receipt.entryHash)) {
       throw new MarketBlindError('UNSEALED_FORECAST_RECEIPT', 'Receipt is not recorded in this prospective ledger');
     }
+    if (this.resolved.has(params.receipt.entryHash)) {
+      throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'Forecast receipt resolution is already recorded');
+    }
     validateProbabilityOpen('marketPriceAtCommit', params.marketPriceAtCommit);
+    if (!Number.isFinite(params.marketObservedAtMs) || !Number.isFinite(params.resolvedAtMs)) {
+      throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'marketObservedAtMs and resolvedAtMs must be finite timestamps');
+    }
+    if (params.outcome !== 0 && params.outcome !== 1) {
+      throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'outcome must be 0 or 1');
+    }
     if (params.marketObservedAtMs < params.receipt.loggedAtMs) {
       throw new MarketBlindError(
         'INVALID_MARKET_BLIND_INPUT',

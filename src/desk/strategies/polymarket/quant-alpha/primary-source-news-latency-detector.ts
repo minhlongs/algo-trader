@@ -23,8 +23,10 @@ import type {
 } from './primary-source-news-latency-types';
 import {
   absoluteConsensus,
+  containsTerm,
   entryPriceEligible,
   ladderHorizonOk,
+  normaliseText,
   withinDualVerifyWindow,
 } from './primary-source-news-latency-math';
 
@@ -35,16 +37,30 @@ export interface Verification {
 }
 
 function normalizeHost(raw: string): string {
-  const trimmed = raw.trim().toLowerCase();
+  const trimmed = raw.trim();
   if (!trimmed) return '';
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    try {
-      return new URL(trimmed).hostname.toLowerCase().replace(/^www\./, '');
-    } catch {
-      return '';
-    }
+  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed);
+  try {
+    const parsed = new URL(hasScheme ? trimmed : `https://${trimmed}`);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    if (parsed.username || parsed.password) return '';
+    if (!hasScheme && (parsed.pathname !== '/' || parsed.search || parsed.hash)) return '';
+    return parsed.hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
   }
-  return trimmed.replace(/^www\./, '').replace(/[:/].*$/, '');
+}
+
+function normalizeUrlHost(rawUrl: string): string {
+  const candidate = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    if (parsed.username || parsed.password) return '';
+    return parsed.hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
 }
 
 function isBulletinSourceWhitelisted(bulletin: Bulletin, check: MarketCheck): boolean {
@@ -54,14 +70,14 @@ function isBulletinSourceWhitelisted(bulletin: Bulletin, check: MarketCheck): bo
   const host = normalizeHost(bulletin.sourceHost);
   if (!host || !allowed.has(host)) return false;
   const rawUrl = bulletin.url?.trim() ?? '';
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-    const urlHost = normalizeHost(rawUrl);
+  if (rawUrl.length > 0) {
+    const urlHost = normalizeUrlHost(rawUrl);
     if (!urlHost || !allowed.has(urlHost)) return false;
   }
   return true;
 }
 
-/** Pre-screens source host, runs dual streams in parallel, and arbitrates splits if opted in. */
+/** Pre-screens source host & forbidden terms, runs dual streams in parallel, and arbitrates 1-of-2 splits if opted in. */
 export async function verifyBulletin(
   bulletin: Bulletin,
   check: MarketCheck,
@@ -71,6 +87,11 @@ export async function verifyBulletin(
 ): Promise<Verification> {
   if (!isBulletinSourceWhitelisted(bulletin, check)) {
     return { confirmed: false, elapsedMs: 0, reason: 'unwhitelisted-source-host' };
+  }
+  const normalizedCorpus = normaliseText(`${bulletin.title} ${bulletin.body}`);
+  const vetoTerm = check.forbiddenTerms.find((term) => containsTerm(normalizedCorpus, term));
+  if (vetoTerm) {
+    return { confirmed: false, elapsedMs: 0, reason: `forbidden-term-veto: ${vetoTerm}` };
   }
   const started = clock();
   let verdicts: Awaited<ReturnType<NewsStreams['term']>>[];
@@ -90,9 +111,12 @@ export async function verifyBulletin(
 
   const termOk = term.matches && term.confidence >= config.minStreamConfidence;
   const numericOk = numeric.matches && numeric.confidence >= config.minStreamConfidence;
+  const affirmativeHasCriteria =
+    (termOk && !numericOk && check.requiredTerms.length > 0) ||
+    (numericOk && !termOk && check.requiredNumbers.length > 0);
   const arbiterOptedIn = config.requireArbiterOnSplit === true || config.allowArbiterTiebreak === true;
 
-  if (termOk !== numericOk && arbiterOptedIn && streams.arbiter) {
+  if (affirmativeHasCriteria && arbiterOptedIn && streams.arbiter) {
     let arbiterVerdict: Awaited<ReturnType<NewsStreams['term']>>;
     try {
       arbiterVerdict = await streams.arbiter(bulletin, check);

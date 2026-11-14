@@ -140,15 +140,20 @@ export class PrimarySourceNewsLatencyStrategy extends BasePolymarketStrategy {
     if (!this.marketBlindEvaluator) return { effectiveConfig: this.cfg, posteriorAllowsTrade: true };
     try {
       const mb = await this.marketBlindEvaluator({ event, bulletin, nowMs });
-      if (!mb) return { effectiveConfig: this.cfg, posteriorAllowsTrade: true };
+      if (!mb) return { effectiveConfig: this.cfg, posteriorAllowsTrade: false };
       verifySealedForecastReceipt(mb.receipt);
+      if ((mb.receipt.questionId !== event.id && mb.receipt.questionId !== event.slug) || mb.receipt.loggedAtMs > nowMs) {
+        logger.warn('Market-blind receipt event/timestamp mismatch', this.strategyName, { eventId: event.id, questionId: mb.receipt.questionId });
+        return null;
+      }
       const theta = mb.thetaSafety ?? this.cfg.posteriorSafetyMarginPusd;
-      if (!Number.isFinite(mb.pPost) || mb.pPost <= 0 || mb.pPost >= 1 || !Number.isFinite(theta) || theta < 0) {
+      const validWSkill = typeof mb.wSkill === 'number' && Number.isFinite(mb.wSkill) && mb.wSkill >= 0;
+      if (!Number.isFinite(mb.pPost) || mb.pPost <= 0 || mb.pPost >= 1 || !Number.isFinite(theta) || theta < 0 || !validWSkill) {
         logger.warn('Invalid market-blind posterior parameters', this.strategyName, { eventId: event.id });
         return null;
       }
       const pMax = Math.min(this.cfg.maxEntryPricePusd, Math.max(0, mb.pPost - theta));
-      return { effectiveConfig: { ...this.cfg, maxEntryPricePusd: pMax }, posteriorAllowsTrade: mb.wSkill === undefined || mb.wSkill > 0 };
+      return { effectiveConfig: { ...this.cfg, maxEntryPricePusd: pMax }, posteriorAllowsTrade: mb.wSkill! > 0 };
     } catch (err) {
       logger.warn('Market-blind posterior rejected', this.strategyName, { eventId: event.id, err: String(err) });
       return null;

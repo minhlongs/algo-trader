@@ -157,7 +157,7 @@ export async function verifyFillAgainstJsonRpc(rpcUrl: string, txHash: string): 
   const tx = txRes.result as { from?: string; to?: string; input?: string } | null | undefined;
   const callRes = await rpc('eth_call', [{ from: tx?.from, to: tx?.to, data: tx?.input ?? '0x' }, rcpt.blockNumber ?? 'latest']);
   const errMsg = `${callRes.error?.message ?? ''} ${callRes.error?.data ?? ''}`;
-  const reason = errMsg.includes('TRANSFER_FROM_FAILED') ? 'TRANSFER_FROM_FAILED' : (callRes.error?.message ?? 'unknown revert');
+  const reason = errMsg.includes('TRANSFER_FROM_FAILED') ? 'TRANSFER_FROM_FAILED' : (callRes.error?.message || 'unknown revert');
   return { verdict: 'Ghost', tx_hash: txHash, reason, counterparty: tx?.input ? extractCounterparty(tx.input) : null };
 }
 

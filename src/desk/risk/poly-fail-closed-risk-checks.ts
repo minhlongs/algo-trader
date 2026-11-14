@@ -113,7 +113,7 @@ export function checkPortfolioKelly(
   if (kellyInput === undefined) return null;
   const kelly = resolved(kellyInput);
   if (!kelly || typeof kelly.frozen !== 'boolean') return deny('UNRESOLVED_STATE', 'portfolioKelly state or frozen flag is unresolved');
-  if (kelly.tokenId !== undefined && kelly.tokenId !== intent.tokenId) {
+  if (typeof kelly.tokenId !== 'string' || !kelly.tokenId.trim() || kelly.tokenId === 'unknown' || kelly.tokenId !== intent.tokenId) {
     return deny('UNRESOLVED_STATE', `portfolioKelly resolved for token ${String(kelly.tokenId)}, not ${intent.tokenId}`);
   }
   const { umaDisputedNavPct, portfolioDrawdownPct, navUsd, tokenCapUsd, currentTokenExposureUsd, projectedClusterWorstCaseLossUsd, maxClusterWorstCaseLossUsd } = kelly;
@@ -129,21 +129,27 @@ export function checkPortfolioKelly(
   ) {
     return deny('UNRESOLVED_STATE', 'portfolioKelly contains an unknown, NaN, or invalid numeric field');
   }
-  // Polymarket CLOB V2 has no naked short-selling; `sell` disposes held ERC-1155 shares (`REDUCE_ONLY` exit).
-  if (intent.side === 'sell') return null;
+  const intentNotional = intent.price * intent.size;
+  if (!isNumber(intentNotional)) return deny('INVALID_INTENT', 'order notional is not a finite number');
+  const navTailCapUsd = CLUSTER_TAIL_LOSS_MAX_NAV_FRACTION * navUsd;
+  const clusterCapUsd = maxClusterWorstCaseLossUsd !== undefined ? Math.min(maxClusterWorstCaseLossUsd, navTailCapUsd) : navTailCapUsd;
+  // Polymarket CLOB V2 has no naked short-selling; a `sell` within held long exposure (`<= currentTokenExposureUsd`)
+  // disposes ERC-1155 shares (`REDUCE_ONLY` exit), while still enforcing the cluster tail-loss ceiling.
+  if (intent.side === 'sell' && currentTokenExposureUsd > 0 && intentNotional <= currentTokenExposureUsd) {
+    if (projectedClusterWorstCaseLossUsd > clusterCapUsd) {
+      return deny('CLUSTER_TAIL_LOSS_ABOVE_CAP', `projected cluster tail loss $${projectedClusterWorstCaseLossUsd.toFixed(2)} exceeds cap $${clusterCapUsd.toFixed(2)}`);
+    }
+    return null;
+  }
   if (umaDisputedNavPct > PORTFOLIO_UMA_DISPUTE_MAX_NAV_PCT) {
     return deny('UMA_DISPUTE_LOCKUP_HALT', `UMA disputed capital ${umaDisputedNavPct.toFixed(2)}% exceeds ${PORTFOLIO_UMA_DISPUTE_MAX_NAV_PCT}% NAV cap`);
   }
   if (kelly.frozen || portfolioDrawdownPct >= PORTFOLIO_KELLY_DRAWDOWN_FREEZE_PCT) {
     return deny('PORTFOLIO_KELLY_FROZEN', `portfolio Kelly disbursements frozen (drawdown ${portfolioDrawdownPct.toFixed(2)}%)`);
   }
-  const intentNotional = intent.price * intent.size;
-  if (!isNumber(intentNotional)) return deny('INVALID_INTENT', 'order notional is not a finite number');
   if (currentTokenExposureUsd + intentNotional > tokenCapUsd) {
     return deny('TOKEN_KELLY_CAP_EXCEEDED', `projected token exposure $${(currentTokenExposureUsd + intentNotional).toFixed(2)} exceeds Kelly cap $${tokenCapUsd.toFixed(2)}`);
   }
-  const navTailCapUsd = CLUSTER_TAIL_LOSS_MAX_NAV_FRACTION * navUsd;
-  const clusterCapUsd = maxClusterWorstCaseLossUsd !== undefined ? Math.min(maxClusterWorstCaseLossUsd, navTailCapUsd) : navTailCapUsd;
   if (projectedClusterWorstCaseLossUsd > clusterCapUsd) {
     return deny('CLUSTER_TAIL_LOSS_ABOVE_CAP', `projected cluster tail loss $${projectedClusterWorstCaseLossUsd.toFixed(2)} exceeds cap $${clusterCapUsd.toFixed(2)}`);
   }

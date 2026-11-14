@@ -97,7 +97,7 @@ export function computeNaiveIndependentKellyWeights(
 export function buildPortfolioKellyRiskState(params: BuildPortfolioKellyRiskParams): PolyPortfolioKellyRiskState {
   const { limits, tokenId, clusterId, currentTokenExposureUsd, projectedClusterWorstCaseLossUsd } = params;
   return {
-    tokenId: tokenId || 'unknown',
+    tokenId: tokenId.trim() || 'unknown',
     frozen: limits.frozen,
     umaDisputedNavPct: limits.umaDisputedNavPct,
     portfolioDrawdownPct: limits.portfolioDrawdownPct,

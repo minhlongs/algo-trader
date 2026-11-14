@@ -26,7 +26,7 @@ export const fillVerdictRealSchema = z.object({
 export const fillVerdictGhostSchema = z.object({
   verdict: z.literal('Ghost'),
   tx_hash: txHashSchema,
-  reason: z.string().min(1),
+  reason: z.string(),
   counterparty: evmAddressSchema.nullable().optional(),
 });
 
@@ -48,12 +48,12 @@ export type FillVerdict = z.infer<typeof fillVerdictSchema>;
 
 export const ghostFillEventSchema = z.object({
   tx_hash: txHashSchema,
-  market: z.string().min(1),
-  side: z.string().min(1),
+  market: z.string(),
+  side: z.string(),
   size: z.number().finite().nonnegative(),
   price: z.number().finite().nonnegative(),
   counterparty: evmAddressSchema.nullable().optional(),
-  reason: z.string().min(1),
+  reason: z.string(),
   timestamp: z.number().int().nonnegative(),
 });
 

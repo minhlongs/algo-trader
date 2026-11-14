@@ -6,10 +6,15 @@
  * CLOB `DELETE /cancel-all` on the first trigger.
  */
 
-import { timingSafeEqual } from 'node:crypto';
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer } from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
 import type { PolyKillSwitch } from '../risk/poly-kill-switch';
+import {
+  LOOPBACK_HOSTS,
+  guardLoopbackAndAuth,
+  readWebhookBody,
+  sendWebhookJson,
+} from './ghost-guard-http-helpers';
 import {
   createEmptyGhostGuardStats,
   ghostGuardWebhookPayloadSchema,
@@ -20,15 +25,6 @@ import {
   type GhostGuardWebhookServer,
   type GhostGuardWebhookServerOptions,
 } from './ghost-guard-types';
-
-const MAX_BODY_BYTES = 256 * 1024;
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
-
-function isAuthorized(header: string | undefined, expectedToken: string): boolean {
-  const expected = Buffer.from(`Bearer ${expectedToken}`, 'utf8');
-  const actual = Buffer.from(header ?? '', 'utf8');
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
-}
 
 export async function handleGhostGuardPayload(
   payload: unknown,
@@ -69,13 +65,13 @@ export async function handleGhostGuardPayload(
 
   if ('verdict' in data) {
     if (data.verdict === 'Ghost') {
-      stats.ghostVerdicts += 1; verdictKind = 'Ghost'; reason = data.reason; counterparty = data.counterparty;
+      stats.ghostVerdicts += 1; verdictKind = 'Ghost'; reason = data.reason || 'unspecified'; counterparty = data.counterparty;
     } else {
       stats.timeoutVerdicts += 1; verdictKind = 'Timeout'; reason = 'timeout';
     }
   } else {
     stats.ghostFillEvents += 1; verdictKind = 'GhostFillEvent';
-    reason = data.reason; counterparty = data.counterparty; market = data.market;
+    reason = data.reason || 'unspecified'; counterparty = data.counterparty; market = data.market || 'unknown';
   }
 
   const fireReason = `ghost-guard:${verdictKind}:tx=${data.tx_hash}:reason=${reason}`;
@@ -99,32 +95,6 @@ export async function handleGhostGuardPayload(
   };
 }
 
-function sendJson(res: ServerResponse, status: number, body: Record<string, unknown>): void {
-  const raw = JSON.stringify(body);
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(raw) });
-  res.end(raw);
-}
-
-function readRequestBody(req: IncomingMessage): Promise<{ ok: true; body: string } | { ok: false; status: number; error: string }> {
-  return new Promise((resolve) => {
-    const chunks: Buffer[] = [];
-    let total = 0, settled = false;
-    req.on('data', (chunk: Buffer) => {
-      if (settled) return;
-      total += chunk.length;
-      if (total > MAX_BODY_BYTES) {
-        settled = true;
-        resolve({ ok: false, status: 413, error: 'Payload exceeds maximum allowed size' });
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => { if (!settled) { settled = true; resolve({ ok: true, body: Buffer.concat(chunks).toString('utf8') }); } });
-    req.on('error', (err) => { if (!settled) { settled = true; resolve({ ok: false, status: 400, error: err.message }); } });
-  });
-}
-
 export async function startGhostGuardWebhookServer(
   options: GhostGuardWebhookServerOptions,
 ): Promise<GhostGuardWebhookServer> {
@@ -138,36 +108,42 @@ export async function startGhostGuardWebhookServer(
   const sockets = new Set<Socket>();
 
   const server = createServer(async (req, res) => {
-    if (options.authToken && !isAuthorized(req.headers.authorization, options.authToken)) {
-      stats.unauthorizedRequests += 1;
-      sendJson(res, 401, { ok: false, error: 'Unauthorized' });
-      return;
-    }
-    if (req.method === 'GET' && req.url === '/health') {
-      sendJson(res, 200, { ok: true, latched: options.killSwitch.isFired() });
+    const pathname = (req.url ?? '/').split('?')[0];
+    if (!guardLoopbackAndAuth(req, res, host, options.authToken, stats)) return;
+    if (req.method === 'GET' && pathname === '/health') {
+      sendWebhookJson(res, 200, { ok: true, latched: options.killSwitch.isFired() });
       return;
     }
     if (req.method !== 'POST') {
-      sendJson(res, 405, { ok: false, error: 'Method Not Allowed' });
+      sendWebhookJson(res, 405, { ok: false, error: 'Method Not Allowed' });
       return;
     }
-    const readRes = await readRequestBody(req);
+    if (pathname !== '/ghost-alert') {
+      sendWebhookJson(res, 404, { ok: false, error: 'Not Found' });
+      return;
+    }
+    if (!/^application\/json\b/i.test(String(req.headers['content-type'] ?? ''))) {
+      stats.invalidPayloads += 1;
+      sendWebhookJson(res, 415, { ok: false, error: 'Expected application/json content-type' });
+      return;
+    }
+    const readRes = await readWebhookBody(req);
     if (!readRes.ok) {
       stats.invalidPayloads += 1;
-      sendJson(res, readRes.status, { ok: false, error: readRes.error });
+      sendWebhookJson(res, readRes.status, { ok: false, error: readRes.error });
       return;
     }
     let decoded: unknown;
     try { decoded = JSON.parse(readRes.body); }
     catch {
       stats.invalidPayloads += 1;
-      sendJson(res, 400, { ok: false, error: 'Malformed JSON body' });
+      sendWebhookJson(res, 400, { ok: false, error: 'Malformed JSON body' });
       return;
     }
     const result = await handleGhostGuardPayload(decoded, options.killSwitch, {
       stats, onGhostFill: options.onGhostFill, nowMs: options.nowMs,
     });
-    sendJson(res, result.ok ? 200 : 400, { ...result });
+    sendWebhookJson(res, result.ok ? 200 : 400, { ...result });
   });
 
   server.on('connection', (socket) => { sockets.add(socket); socket.on('close', () => sockets.delete(socket)); });
@@ -177,8 +153,9 @@ export async function startGhostGuardWebhookServer(
   });
 
   const addr = server.address() as AddressInfo;
+  const formattedHost = host.includes(':') ? `[${host}]` : host;
   return {
-    host, port: addr.port, url: `http://${host}:${addr.port}/ghost-alert`,
+    host, port: addr.port, url: `http://${formattedHost}:${addr.port}/ghost-alert`,
     getStats: () => ({ ...stats }),
     close: () => new Promise<void>((resolve, reject) => {
       for (const s of sockets) s.destroy();

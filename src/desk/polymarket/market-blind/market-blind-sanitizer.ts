@@ -1,10 +1,9 @@
 /**
  * Market-Blind Context Sanitizer (IC Report Strategy 6 & Agent #3).
  *
- * Eliminates market-price / implied-probability / orderbook / crowd anchoring
- * (remediating the 21/21 anchoring echo), enforces strict per-document and
- * total context character caps (remediating the 17M-char overflow defect),
- * and blocks hindcast-contaminated evaluations on or before model cutoff.
+ * Eliminates market-price / implied-probability / orderbook / crowd anchoring,
+ * enforces strict per-document and total context character caps, and blocks
+ * hindcast-contaminated evaluations on or before model cutoff.
  */
 
 import { createHash } from 'node:crypto';
@@ -18,6 +17,8 @@ import {
 } from './market-blind-types';
 
 const REDACTION_TOKEN = '[REDACTED_MARKET_ANCHOR]';
+const MAX_ANCHOR_SPAN_SLACK = 320;
+const MAX_SANITIZED_DOCUMENTS = 128;
 
 const FORBIDDEN_NORMALIZED_KEYS = new Set<string>([
   'midprice', 'bestbid', 'bestask', 'lasttradeprice', 'marketprice',
@@ -29,34 +30,19 @@ const FORBIDDEN_NORMALIZED_KEYS = new Set<string>([
 ]);
 
 const INLINE_LEAKAGE_PATTERNS: ReadonlyArray<{ label: string; regex: RegExp }> = [
-  {
-    label: 'venue-price-or-odds',
-    regex: /\b(?:polymarket|kalshi|predictit|manifold|metaculus)\b[^.\n]{0,80}?(?:\d+(?:\.\d+)?\s*(?:%|¢|cents?\b)|\$?0\.\d+\b)(?:\s+chance\b)?/gi,
-  },
-  {
-    label: 'trading-at-quote',
-    regex: /\btrading\s+at\s+\$?\d+(?:\.\d+)?\s*(?:¢|%|cents?\b)?|\btrading\s+at\s+\$?0\.\d+\b/gi,
-  },
-  {
-    label: 'share-cents-quote',
-    regex: /\b\d+(?:\.\d+)?\s*¢/g,
-  },
-  {
-    label: 'implied-or-crowd-odds',
-    regex: /\b(?:market|implied|crowd|consensus)\s+(?:odds|prob(?:ability)?|forecast)\b[^.\n]{0,40}?(?:\d+(?:\.\d+)?\s*(?:%|¢)?|\$?0\.\d+\b)/gi,
-  },
-  {
-    label: 'clob-quote-level',
-    regex: /\b(?:best\s+(?:ask|bid)|(?:mid|yes|no|last\s+trade|market)\s*price)\b[\s:=]*\$?\d+(?:\.\d+)?%?/gi,
-  },
-  {
-    label: 'serialized-anchor-field',
-    regex: /["']?(?:midPrice|bestBid|bestAsk|lastTradePrice|marketPrice|yesPrice|noPrice|impliedProb(?:ability)?|crowdProb(?:ability)?|polymarketPrice|outcomePrices|orderbook|orderBook)["']?\s*[:=]\s*(?:\[[^\]]*\]|\{[^}]*\}|["']?\$?\d+(?:\.\d+)?%?["']?)/gi,
-  },
-  {
-    label: 'orderbook-commentary',
-    regex: /\border\s*book\b[^.\n]{0,80}?\d+(?:\.\d+)?/gi,
-  },
+  { label: 'venue-price-or-odds', regex: /\b(?:polymarket|kalshi|predictit|manifold|metaculus)\b[\s\S]{0,80}?(?:\d+(?:\.\d+)?\s*(?:%|¢|cents?\b)|\$?0\.\d+\b)(?:\s+chance\b)?/gi },
+  { label: 'trading-at-quote', regex: /\btrading\s+at\s+\$?\d+(?:\.\d+)?\s*(?:¢|%|cents?\b)?/gi },
+  { label: 'share-cents-quote', regex: /\b\d+(?:\.\d+)?\s*¢/g },
+  { label: 'implied-or-crowd-odds', regex: /\b(?:market|implied|crowd|consensus)\s+(?:odds|prob(?:ability)?|forecast)\b[\s\S]{0,60}?(?:\d+(?:\.\d+)?\s*(?:%|¢)?|\$?0\.\d+\b)/gi },
+  { label: 'clob-quote-level', regex: /\b(?:best\s+(?:ask|bid)|(?:mid|yes|no|last\s+trade|market)\s*price)\b[\s:=]*\$?\d+(?:\.\d+)?%?/gi },
+  { label: 'serialized-anchor-field', regex: /["']?(?:midPrice|bestBid|bestAsk|lastTradePrice|marketPrice|yesPrice|noPrice|impliedProb(?:ability)?|crowdProb(?:ability)?|polymarketPrice|outcomePrices|orderbook|orderBook)["']?\s*[:=]\s*(?:\[[^\]]*\]|\{[^}]*\}|["']?\$?\d+(?:\.\d+)?%?["']?)/gi },
+  { label: 'orderbook-commentary', regex: /\border\s*book\b[\s\S]{0,80}?\d+(?:\.\d+)?/gi },
+];
+
+const INDEPENDENT_PROBE_PATTERNS: ReadonlyArray<{ label: string; regex: RegExp }> = [
+  { label: 'cents-token', regex: /\d\s*¢/ },
+  { label: 'venue-proximity-quote', regex: /\b(?:polymarket|kalshi|predictit|manifold|metaculus)\b[\s\S]{0,80}?(?:\d\s*(?:%|¢|cents?\b)|\$?0\.\d+)/i },
+  { label: 'quote-field-token', regex: /\b(?:best\s*(?:bid|ask)|(?:mid|yes|no|market|last\s*trade)\s*price|implied\s*(?:odds|prob)|crowd\s*(?:odds|prob)|outcomePrices|midPrice|bestBid|bestAsk)\b[\s\S]{0,30}?\d/i },
 ];
 
 function normalizeKey(key: string): string {
@@ -79,9 +65,8 @@ export function scrubMarketAnchors(text: string): string {
 
 /** Hard-blocks if any unredacted market-price or implied-odds leakage token remains. */
 export function assertMarketBlindClean(text: string): void {
-  for (const { label, regex } of INLINE_LEAKAGE_PATTERNS) {
-    const probe = new RegExp(regex.source, regex.flags.replace('g', ''));
-    const match = probe.exec(text);
+  for (const { label, regex } of [...INLINE_LEAKAGE_PATTERNS, ...INDEPENDENT_PROBE_PATTERNS]) {
+    const match = new RegExp(regex.source, regex.flags.replace('g', '')).exec(text);
     if (match) {
       throw new MarketBlindError(
         'MARKET_ANCHOR_LEAKAGE_DETECTED',
@@ -97,13 +82,10 @@ export function stripForbiddenMarketKeys(value: unknown, seen = new WeakSet<obje
   if (value === null || typeof value !== 'object') return value;
   if (seen.has(value)) return '[CIRCULAR]';
   seen.add(value);
-  if (Array.isArray(value)) {
-    return value.map((item) => stripForbiddenMarketKeys(item, seen));
-  }
+  if (Array.isArray(value)) return value.map((item) => stripForbiddenMarketKeys(item, seen));
   const out: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (FORBIDDEN_NORMALIZED_KEYS.has(normalizeKey(key))) continue;
-    out[key] = stripForbiddenMarketKeys(child, seen);
+    if (!FORBIDDEN_NORMALIZED_KEYS.has(normalizeKey(key))) out[key] = stripForbiddenMarketKeys(child, seen);
   }
   return out;
 }
@@ -130,14 +112,24 @@ export function assertProspectiveCutoff(params: {
   }
 }
 
-function sliceCleanly(scrubbed: string, maxChars: number): { text: string; truncated: boolean } {
-  if (scrubbed.length <= maxChars) return { text: scrubbed, truncated: false };
+function sliceCleanly(scrubbed: string, maxChars: number, alreadyTruncated = false): { text: string; truncated: boolean } {
+  if (scrubbed.length <= maxChars) return { text: scrubbed, truncated: alreadyTruncated };
   let sliced = scrubbed.slice(0, maxChars);
   const openIdx = sliced.lastIndexOf('[REDACTED_');
-  if (openIdx !== -1 && sliced.indexOf(']', openIdx) === -1) {
-    sliced = sliced.slice(0, openIdx);
-  }
+  if (openIdx !== -1 && sliced.indexOf(']', openIdx) === -1) sliced = sliced.slice(0, openIdx);
   return { text: sliced, truncated: true };
+}
+
+function sanitizeSourceUrl(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return undefined;
+  try {
+    const parsed = new URL(rawUrl);
+    parsed.search = '';
+    parsed.hash = '';
+    return scrubMarketAnchors(parsed.toString()).slice(0, 256);
+  } catch {
+    return scrubMarketAnchors(rawUrl.split(/[?#]/)[0] ?? '').slice(0, 256);
+  }
 }
 
 /** Sanitizes evidence documents, enforces char caps, blocks hindcasts, and seals context hash. */
@@ -150,40 +142,37 @@ export function sanitizeMarketBlindContext(
       !Number.isFinite(cfg.maxTotalContextChars) || cfg.maxTotalContextChars <= 0) {
     throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'Character caps must be positive finite numbers');
   }
-  assertProspectiveCutoff({
-    modelKnowledgeCutoffMs: cfg.modelKnowledgeCutoffMs,
-    eventResolutionOrCutoffMs: input.eventResolutionOrCutoffMs,
-  });
+  assertProspectiveCutoff({ modelKnowledgeCutoffMs: cfg.modelKnowledgeCutoffMs, eventResolutionOrCutoffMs: input.eventResolutionOrCutoffMs });
 
   const sanitizedDocs: SanitizedMarketBlindDocument[] = [];
-  let totalChars = 0;
-  let droppedDocuments = 0;
-  let truncatedDocuments = 0;
+  let totalChars = 0, droppedDocuments = 0, truncatedDocuments = 0;
 
   for (const doc of input.documents) {
     const remainingTotal = cfg.maxTotalContextChars - totalChars;
-    if (remainingTotal <= 0) {
-      droppedDocuments += 1;
-      continue;
-    }
+    if (remainingTotal <= 0 || sanitizedDocs.length >= MAX_SANITIZED_DOCUMENTS) { droppedDocuments += 1; continue; }
     const docBudget = Math.min(cfg.maxDocumentChars, remainingTotal);
-    const titleSlice = sliceCleanly(scrubMarketAnchors(doc.title), docBudget);
+    const safeId = scrubMarketAnchors(doc.id).slice(0, 128);
+    const safeUrl = sanitizeSourceUrl(doc.sourceUrl);
+    let cleanedMeta = (stripForbiddenMarketKeys(doc.metadata ?? {}) ?? {}) as Record<string, unknown>;
+    if (JSON.stringify(cleanedMeta).length > Math.min(1_024, Math.floor(docBudget / 2))) cleanedMeta = {};
+
+    const rawTitlePre = doc.title.slice(0, docBudget + MAX_ANCHOR_SPAN_SLACK);
+    const titleSlice = sliceCleanly(scrubMarketAnchors(rawTitlePre), docBudget, doc.title.length > rawTitlePre.length);
     const contentBudget = Math.max(0, docBudget - titleSlice.text.length);
-    const contentSlice = sliceCleanly(scrubMarketAnchors(doc.content), contentBudget);
-    const cleanedMeta = (stripForbiddenMarketKeys(doc.metadata ?? {}) ?? {}) as Record<string, unknown>;
+    const rawContentPre = contentBudget > 0 ? doc.content.slice(0, contentBudget + MAX_ANCHOR_SPAN_SLACK) : '';
+    const contentSlice = contentBudget > 0
+      ? sliceCleanly(scrubMarketAnchors(rawContentPre), contentBudget, doc.content.length > rawContentPre.length)
+      : { text: '', truncated: doc.content.length > 0 };
 
-    assertMarketBlindClean(titleSlice.text);
-    assertMarketBlindClean(contentSlice.text);
-    assertMarketBlindClean(JSON.stringify(cleanedMeta));
-
-    const truncated = titleSlice.truncated || contentSlice.truncated;
-    if (truncated) truncatedDocuments += 1;
-    totalChars += titleSlice.text.length + contentSlice.text.length;
-    sanitizedDocs.push({
-      id: doc.id, title: titleSlice.text, content: contentSlice.text,
-      sourceUrl: doc.sourceUrl, publishedAtMs: doc.publishedAtMs,
-      metadata: cleanedMeta, truncated,
-    });
+    const built: SanitizedMarketBlindDocument = {
+      id: safeId, title: titleSlice.text, content: contentSlice.text,
+      sourceUrl: safeUrl, publishedAtMs: doc.publishedAtMs, metadata: cleanedMeta,
+      truncated: titleSlice.truncated || contentSlice.truncated,
+    };
+    assertMarketBlindClean(JSON.stringify(built));
+    if (built.truncated) truncatedDocuments += 1;
+    totalChars += built.title.length + built.content.length;
+    sanitizedDocs.push(built);
   }
 
   const contextHash = createHash('sha256').update(JSON.stringify(sanitizedDocs)).digest('hex');

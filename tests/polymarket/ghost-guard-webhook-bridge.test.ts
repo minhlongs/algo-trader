@@ -169,10 +169,18 @@ describe('GhostGuard webhook bridge + kill-switch fuse + mock RPC drill', () => 
       });
       expect(unauthResp.status).toBe(401);
 
+      // Non-JSON content-type -> 415
+      const badContentTypeResp = await fetch(server.url, {
+        method: 'POST',
+        headers: { authorization: 'Bearer secret-sidecar-token', 'content-type': 'text/plain' },
+        body: '{}',
+      });
+      expect(badContentTypeResp.status).toBe(415);
+
       // Malformed JSON -> 400 without crashing server
       const badJsonResp = await fetch(server.url, {
         method: 'POST',
-        headers: { authorization: 'Bearer secret-sidecar-token' },
+        headers: { authorization: 'Bearer secret-sidecar-token', 'content-type': 'application/json' },
         body: '{not-valid-json',
       });
       expect(badJsonResp.status).toBe(400);
@@ -181,7 +189,7 @@ describe('GhostGuard webhook bridge + kill-switch fuse + mock RPC drill', () => 
       // Schema-invalid JSON -> 400
       const badSchemaResp = await fetch(server.url, {
         method: 'POST',
-        headers: { authorization: 'Bearer secret-sidecar-token' },
+        headers: { authorization: 'Bearer secret-sidecar-token', 'content-type': 'application/json' },
         body: JSON.stringify({ verdict: 'Unknown', tx_hash: '0x123' }),
       });
       expect(badSchemaResp.status).toBe(400);
@@ -209,7 +217,7 @@ describe('GhostGuard webhook bridge + kill-switch fuse + mock RPC drill', () => 
       expect(killSwitch.isFired()).toBe(true);
       expect(roundtripMs).toBeLessThan(100);
       expect(server.getStats().unauthorizedRequests).toBe(1);
-      expect(server.getStats().invalidPayloads).toBe(2);
+      expect(server.getStats().invalidPayloads).toBe(3);
       expect(server.getStats().killSwitchFires).toBe(1);
     } finally {
       await server.close();

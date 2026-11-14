@@ -54,8 +54,8 @@ export interface PolyRiskBudgetState {
 }
 
 export interface PolyPortfolioKellyRiskState {
-  /** Token identity this Kelly limit row was resolved for (checked against `intent.tokenId` when present). */
-  tokenId?: string | 'unknown';
+  /** Token identity this Kelly limit row was resolved for (must match `intent.tokenId`). */
+  tokenId: string | 'unknown';
   /** True when portfolio allocator kill-switch froze all new disbursements. */
   frozen: boolean | 'unknown';
   /** Active UMA-disputed locked capital as percent of NAV (10 means 10%). */

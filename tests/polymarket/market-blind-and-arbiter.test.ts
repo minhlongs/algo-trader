@@ -814,7 +814,7 @@ describe('Strategy 4 — Host Whitelist Pre-Screen, 3rd Arbiter Split Resolution
     });
     expect(noBidPostOnly.proposal?.limitPrice).toBeCloseTo(0.55, 6);
 
-    // Detector malformed URL, primary stream error, and >800ms primary window
+    // Detector malformed URL, userinfo/protocol-relative URL bypasses, forbidden-term veto before arbiter, and >800ms primary window
     const malformedUrlRes = await verifyBulletin(
       { id: 'b-u', title: 'FOMC', body: '4.25', sourceHost: 'federalreserve.gov', url: 'http://[invalid', publishedAtMs: BASE_NOW },
       CHECK,
@@ -823,6 +823,40 @@ describe('Strategy 4 — Host Whitelist Pre-Screen, 3rd Arbiter Split Resolution
       () => BASE_NOW,
     );
     expect(malformedUrlRes.reason).toBe('unwhitelisted-source-host');
+
+    const userinfoBypassRes = await verifyBulletin(
+      { id: 'b-ui', title: 'FOMC', body: '4.25', sourceHost: 'federalreserve.gov@attacker.tld', url: '//attacker.tld/release', publishedAtMs: BASE_NOW },
+      CHECK,
+      { term: () => ({ matches: true, confidence: 1, reason: 'ok' }), numeric: () => ({ matches: true, confidence: 1, reason: 'ok' }) },
+      NEWS_DEFAULT_CONFIG,
+      () => BASE_NOW,
+    );
+    expect(userinfoBypassRes.reason).toBe('unwhitelisted-source-host');
+
+    const arbiterFn = vi.fn(() => ({ matches: true, confidence: 1, reason: 'arbiter-override' }));
+    const vetoRes = await verifyBulletin(
+      { id: 'b-veto', title: 'FOMC lowers target range to 4.25 rumor', body: '', sourceHost: 'federalreserve.gov', publishedAtMs: BASE_NOW },
+      CHECK,
+      { term: () => ({ matches: false, confidence: 0, reason: 'veto' }), numeric: () => ({ matches: true, confidence: 1, reason: '4.25' }), arbiter: arbiterFn },
+      { ...NEWS_DEFAULT_CONFIG, requireArbiterOnSplit: true },
+      () => BASE_NOW,
+    );
+    expect(vetoRes.confirmed).toBe(false);
+    expect(vetoRes.reason).toContain('forbidden-term-veto');
+    expect(arbiterFn).not.toHaveBeenCalled();
+
+    // Ledger duplicate resolution & NaN timestamp rejection
+    const dupLedger = new MarketBlindProspectiveLedger();
+    const dupReceipt = dupLedger.commitForecast({
+      modelVersionId: 'm1', stateVariant: 'v1', questionId: 'qd', category: 'macro', pRaw: 0.6, loggedAtMs: BASE_NOW,
+    });
+    expect(() =>
+      dupLedger.recordResolution({ receipt: dupReceipt, marketPriceAtCommit: 0.5, marketObservedAtMs: Number.NaN, outcome: 1, resolvedAtMs: BASE_NOW + 10 }),
+    ).toThrow(/finite timestamps/);
+    dupLedger.recordResolution({ receipt: dupReceipt, marketPriceAtCommit: 0.5, marketObservedAtMs: BASE_NOW + 5, outcome: 1, resolvedAtMs: BASE_NOW + 10 });
+    expect(() =>
+      dupLedger.recordResolution({ receipt: dupReceipt, marketPriceAtCommit: 0.5, marketObservedAtMs: BASE_NOW + 5, outcome: 0, resolvedAtMs: BASE_NOW + 20 }),
+    ).toThrow(/already recorded/);
 
     const streamErrRes = await verifyBulletin(
       { id: 'b-se', title: 'FOMC', body: '4.25', sourceHost: 'federalreserve.gov', publishedAtMs: BASE_NOW },

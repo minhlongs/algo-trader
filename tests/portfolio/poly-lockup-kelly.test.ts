@@ -345,6 +345,7 @@ describe('PolyLockupKellyAllocator, Kill-Switch & Early Rotation', () => {
 
 describe('evaluatePolyRisk Integration (portfolioKelly)', () => {
   const healthyKelly: PolyPortfolioKellyRiskState = {
+    tokenId: 'tok-pa',
     frozen: false,
     umaDisputedNavPct: 3.5,
     portfolioDrawdownPct: 1.8,
@@ -365,6 +366,9 @@ describe('evaluatePolyRisk Integration (portfolioKelly)', () => {
     expect(wholeUnknown).toMatchObject({ allowed: false, reason: 'UNRESOLVED_STATE' });
 
     const fieldOverrides: Array<Partial<PolyPortfolioKellyRiskState>> = [
+      { tokenId: 'unknown' },
+      { tokenId: 'tok-other' },
+      { tokenId: '   ' },
       { frozen: 'unknown' },
       { umaDisputedNavPct: 'unknown' },
       { umaDisputedNavPct: Number.NaN },

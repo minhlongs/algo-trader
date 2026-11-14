@@ -171,16 +171,22 @@ export async function readPolyBookWalDirectory(walDir: string, options: PolyBook
     const data = new Uint8Array(await readFile(seg.path));
     if (options.onCorruption === 'skip') {
       const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-      let off = 0;
+      let off = 0, cleanZeroTail = false;
       while (off + WAL_FRAME_HEADER_BYTES <= data.length) {
         const len = view.getUint32(off, true);
-        if (len === 0) break;
+        if (len === 0) {
+          cleanZeroTail = view.getUint32(off + 4, true) === 0 && data.subarray(off).every((b) => b === 0);
+          if (!cleanZeroTail) corruptFrames += 1;
+          off = data.length;
+          break;
+        }
         const end = off + WAL_FRAME_HEADER_BYTES + len;
-        if (end > data.length) { if (!isLast) corruptFrames += 1; break; }
+        if (end > data.length) { if (!isLast) corruptFrames += 1; off = data.length; break; }
         try { records.push(decodePolyBookWalRecord(scanPolyBookWalFrames(data.subarray(off, end), seg.id, { isLastSegment: false }).frames[0]!.payload, seg.id, off)); }
         catch (e) { if (e instanceof PolyBookWalCorruptionError) corruptFrames += 1; else throw e; }
         off = end;
       }
+      if (off < data.length && !isLast && !data.subarray(off).every((b) => b === 0)) corruptFrames += 1;
     } else {
       for (const frame of scanPolyBookWalFrames(data, seg.id, { isLastSegment: isLast }).frames) {
         records.push(decodePolyBookWalRecord(frame.payload, seg.id, frame.offset));
