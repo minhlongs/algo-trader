@@ -102,7 +102,7 @@ export function applyVenueCosts(
   let feeUsd: number;
   let rebateUsd = 0;
 
-  if (clobV2Category) {
+  if (schedule === undefined && clobV2Category) {
     const entryProb = entryPrice ?? price;
     const exitProb = price;
     if (postOnly) {

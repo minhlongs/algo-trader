@@ -70,7 +70,7 @@ export function calculateLegFee(
     if (leg.polymarketFeeSchedule) {
       return polymarketScheduleLegFee(leg.polymarketFeeSchedule, leg, notionalUsd);
     }
-    if (leg.polymarketCategory !== undefined || leg.marketDescription !== undefined) {
+    if (leg.polymarketCategory !== undefined || (leg.marketDescription !== undefined && leg.marketDescription.trim().length > 0)) {
       const category = leg.polymarketCategory ?? classifyMarketCategory(leg.marketDescription!);
       return polymarketCategoryLegFee(category, leg, notionalUsd);
     }
@@ -89,6 +89,9 @@ export function calculatePolymarketFee(
   notionalUsd: number,
 ): { rate: number; feeUsd: number; rebateUsd: number } {
   if (typeof scheduleOrCategory === 'string') {
+    if (!Number.isFinite(probability) || !Number.isFinite(notionalUsd)) {
+      return { rate: 0, feeUsd: 0, rebateUsd: 0 };
+    }
     const clampedP = Math.min(Math.max(probability, 0.001), 0.999);
     const rate = calcQuadraticTakerFeeRateV2(scheduleOrCategory, clampedP);
     const feeUsd = notionalUsd * rate;

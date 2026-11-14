@@ -12,7 +12,10 @@ import { DEFAULT_FEE_GAS_PROFILES } from '../sor/fee-gas-model';
 import type { FeeScheduleResolver } from '../polymarket/fee-schedule-resolver';
 import {
   calcMakerFeeRate,
+  calcMakerRebateV2,
+  calcQuadraticTakerFeeV2,
   calcTakerFeePerShare,
+  type PolymarketCategory,
 } from '../polymarket/polymarket-fee-calculator';
 import { BACKTEST_VENUE } from './backtest-fee-application';
 import type { FillCostDetail } from './backtest-order-manager';
@@ -48,6 +51,8 @@ export interface BundleLedgerContext {
   setCurrentEquity: (next: number) => void;
   currentTimestampIso?: string | null;
   feeResolver?: FeeScheduleResolver;
+  clobV2Category?: PolymarketCategory;
+  postOnly?: boolean;
 }
 
 function roundUsd(value: number): number {
@@ -100,10 +105,19 @@ export async function settleBacktestBundleConversion(
 
     const schedule = ctx.feeResolver ? await ctx.feeResolver.resolve(leg.tokenId) : undefined;
     let feeUsd = 0;
+    let rebateUsd = 0;
     if (schedule === undefined) {
-      feeUsd = leg.aggressive
-        ? existing.avgPrice * closeSize * (profile.takerFeeBps / 10_000)
-        : 0;
+      if (ctx.clobV2Category) {
+        if (!leg.aggressive || ctx.postOnly) {
+          rebateUsd = calcMakerRebateV2(ctx.clobV2Category, existing.avgPrice, closeSize);
+        } else {
+          feeUsd = calcQuadraticTakerFeeV2(ctx.clobV2Category, existing.avgPrice, closeSize, false);
+        }
+      } else {
+        feeUsd = leg.aggressive
+          ? existing.avgPrice * closeSize * (profile.takerFeeBps / 10_000)
+          : 0;
+      }
     } else if (schedule !== null) {
       if (leg.aggressive) {
         feeUsd = calcTakerFeePerShare(schedule, existing.avgPrice) * closeSize;
@@ -118,8 +132,9 @@ export async function settleBacktestBundleConversion(
     const gasFills = (fullyClosed ? existing.entryFills : 0) + (idx === activeLegs.length - 1 ? 1 : 0);
     const feeRounded = roundUsd(feeUsd);
     const gasRounded = roundUsd(profile.gasCostUsd * gasFills);
+    const rebateRounded = roundUsd(rebateUsd);
     const venueCostUsd = roundUsd(Math.max(0, feeRounded + gasRounded));
-    const netPnl = roundUsd(roundUsd(grossPnl) - roundUsd(feeRounded + gasRounded));
+    const netPnl = roundUsd(roundUsd(grossPnl) - roundUsd(feeRounded + gasRounded) + rebateRounded);
 
     const trade: BacktestTrade = {
       timestamp: ts,
@@ -138,6 +153,7 @@ export async function settleBacktestBundleConversion(
       grossPnlUsd: roundUsd(grossPnl),
       feeUsd: feeRounded,
       gasUsd: gasRounded,
+      ...(ctx.clobV2Category ? { rebateUsd: rebateRounded } : {}),
       netPnlUsd: netPnl,
     });
     const nextEq = roundUsd(ctx.getCurrentEquity() + netPnl);

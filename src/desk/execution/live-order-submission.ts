@@ -47,6 +47,7 @@ function assertPolymarketV2OrderAllowed(host: LiveOrderManagerCtx, order: Polyma
       side: order.side,
       price: order.price,
       size: order.size,
+      orderType: order.orderType,
       timestamp: Date.now(),
     },
     {

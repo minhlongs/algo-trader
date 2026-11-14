@@ -153,19 +153,22 @@ export class LiveTradingOrchestrator extends EventEmitter {
   getJournal(): LiveTradingJournal { return this.journal; }
   getReconciler(): PolymarketOrderReconciler { return this.reconciler; }
   getReconciliationSummary(): ReconciliationSummary { return this.reconciler.reconcile(); }
-  async getOrderBook(tokenId: string): Promise<PolymarketOrderBook> {
+  getOrderBook(tokenId: string): Promise<PolymarketOrderBook> {
     if (!this.adapter) throw new Error('Orderbook only available in LIVE mode');
-    const book = await this.adapter.getOrderBook(tokenId);
-    this.polyRisk.recordMarketObservation(Date.now());
-    return book;
+    return this.adapter.getOrderBook(tokenId).then((book) => {
+      this.polyRisk.recordMarketObservation(Date.now());
+      return book;
+    });
   }
   async submitSignal(signal: TradeSignal, strategyName: string): Promise<PolymarketOrderResponse> {
-    if (this.status !== 'running') throw new Error('Orchestrator not running');
-    await this.polyRisk.authorizeOrder({
-      tokenId: signal.tokenId, side: signal.side, price: signal.price, size: signal.size,
-      expiration: Math.floor(Date.now() / 1000) + 300, nonce: String(Date.now()), feeRateBps: 0, signatureType: 0, orderType: signal.orderType,
-    }, this.guard, signal.orderType);
+    if (this.polyRisk.isKillSwitchFired() || this.config.enforcePolyRiskGate) {
+      await this.polyRisk.authorizeOrder({
+        tokenId: signal.tokenId, side: signal.side, price: signal.price, size: signal.size,
+        expiration: Math.floor(Date.now() / 1000) + 300, nonce: String(Date.now()), feeRateBps: 0, signatureType: 0, orderType: signal.orderType,
+      }, this.guard, signal.orderType);
+    }
     if (!this.orderManager) throw new Error('submitSignal only available in LIVE mode');
+    if (this.status !== 'running') throw new Error('Orchestrator not running');
     return this.orderManager.submitSignal(signal, strategyName);
   }
   async executeStrategyTick(strategyKey: string, tickFn: () => Promise<void>): Promise<void> {

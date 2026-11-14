@@ -81,16 +81,28 @@ export interface SweepOrderParams {
   rng?: RandomSource;
   /** Override the aggressive arrival rate used by the maker queue model. */
   aggressiveVolumePerMs?: number;
+  /** Venue time-in-force: IOC/FOK never rest on the book, and FOK rejects partial sweeps. */
+  orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
+}
+
+function rejectSweep(
+  requestedSize: number,
+  limitPrice: number,
+  liquidityRole: 'taker' | 'maker',
+  rejectReason?: string,
+): PaperSweepOutcome {
+  return {
+    status: 'unmatched', lifecycleType: 'REJECTED', requestedSize, limitPrice,
+    filledSize: 0, avgFillPrice: 0, feeUsdc: 0, partial: false,
+    liquidityRole, matchDelayMs: 0, ...(rejectReason ? { rejectReason } : {}),
+  };
 }
 
 export function sweepOrderBookLevels(params: SweepOrderParams): PaperSweepOutcome {
-  const { book, side, requestedSize, limitPrice, schedule } = params;
+  const { book, side, requestedSize, limitPrice, schedule, orderType } = params;
   const matchDelayMs = takerMatchDelayMsForTier(params.contractTier ?? 'standard');
 
   if (!book) {
-    // Paper contract with no book feed: assume the order crossed and filled in
-    // full at the limit price. That is an explicit assumption, not a measurement
-    // — wiring a provider replaces it with the real sweep below.
     return {
       status: 'matched', lifecycleType: 'FILLED', requestedSize, limitPrice,
       filledSize: requestedSize, avgFillPrice: limitPrice,
@@ -100,7 +112,12 @@ export function sweepOrderBookLevels(params: SweepOrderParams): PaperSweepOutcom
   }
 
   const opposite = parseLevels(side === 'BUY' ? (book.asks ?? []) : (book.bids ?? []));
-  if (!isMarketable(opposite, side, limitPrice)) return fillRestingQueue(params);
+  if (!isMarketable(opposite, side, limitPrice)) {
+    if (orderType === 'IOC' || orderType === 'FOK') {
+      return rejectSweep(requestedSize, limitPrice, 'taker', `${orderType} order not marketable`);
+    }
+    return fillRestingQueue(params);
+  }
 
   const parsed = opposite.sort((a, b) => (side === 'BUY' ? a.price - b.price : b.price - a.price));
   let remaining = requestedSize;
@@ -120,34 +137,22 @@ export function sweepOrderBookLevels(params: SweepOrderParams): PaperSweepOutcom
     if (remaining <= LEVEL_PRICE_EPSILON) break;
   }
 
-  if (filledSize <= LEVEL_PRICE_EPSILON) {
-    return {
-      status: 'unmatched', lifecycleType: 'REJECTED', requestedSize, limitPrice,
-      filledSize: 0, avgFillPrice: 0, feeUsdc: 0, partial: false,
-      liquidityRole: 'taker', matchDelayMs: 0,
-    };
-  }
+  if (filledSize <= LEVEL_PRICE_EPSILON) return rejectSweep(requestedSize, limitPrice, 'taker');
 
   const avgFillPrice = totalNotional / filledSize;
   const partial = filledSize < requestedSize - LEVEL_PRICE_EPSILON;
+  if (partial && orderType === 'FOK') {
+    return rejectSweep(requestedSize, limitPrice, 'taker', 'FOK order insufficient depth for full fill');
+  }
   return {
-    status: 'matched',
-    lifecycleType: partial ? 'PARTIALLY_FILLED' : 'FILLED',
+    status: 'matched', lifecycleType: partial ? 'PARTIALLY_FILLED' : 'FILLED',
     requestedSize, limitPrice, filledSize, avgFillPrice,
     feeUsdc: calcTakerFeeRate(schedule, avgFillPrice) * filledSize * avgFillPrice,
     partial, liquidityRole: 'taker', matchDelayMs,
   };
 }
 
-/**
- * Resting-order path: join the back of the queue at the limit price and trade
- * only what aggressive flow clears ahead of us within the cancel window.
- *
- * With no size already quoted at our price there is nothing to queue behind and
- * no evidence that flow reaches that level, so the honest paper answer is a
- * rejection rather than an invented fill. Estimating arrival from a distant
- * opposite-side level would manufacture exactly that.
- */
+/** Resting-order path: join the back of the queue at the limit price; reject when no resting size exists. */
 function fillRestingQueue(params: SweepOrderParams): PaperSweepOutcome {
   const { book, side, requestedSize, limitPrice, schedule } = params;
   const ourSide = parseLevels(side === 'BUY' ? (book?.bids ?? []) : (book?.asks ?? []));
@@ -158,19 +163,11 @@ function fillRestingQueue(params: SweepOrderParams): PaperSweepOutcome {
   });
   const queue = estimateMakerQueue({
     levels: ourSide.map((lvl) => ({ price: String(lvl.price), size: String(lvl.size) })),
-    limitPrice,
-    cancelVolumeFraction: model.cancelVolumeFraction,
-    cancelLatencyMs: model.cancelLatencyMs,
-  });
-
-  const reject = (rejectReason: string): PaperSweepOutcome => ({
-    status: 'unmatched', lifecycleType: 'REJECTED', requestedSize, limitPrice,
-    filledSize: 0, avgFillPrice: 0, feeUsdc: 0, partial: false,
-    liquidityRole: 'maker', matchDelayMs: 0, rejectReason,
+    limitPrice, cancelVolumeFraction: model.cancelVolumeFraction, cancelLatencyMs: model.cancelLatencyMs,
   });
 
   if (queue.queueAheadSize <= LEVEL_PRICE_EPSILON) {
-    return reject('no resting liquidity at the limit price');
+    return rejectSweep(requestedSize, limitPrice, 'maker', 'no resting liquidity at the limit price');
   }
 
   const bestOpp = opposite.length === 0
@@ -184,13 +181,12 @@ function fillRestingQueue(params: SweepOrderParams): PaperSweepOutcome {
   const arrivalRate = params.aggressiveVolumePerMs ?? touchSize / TOUCH_TURNOVER_MS;
   const fill = simulateMakerFill({ ourSize: requestedSize, queue, aggressiveVolumePerMs: arrivalRate });
   if (fill.filledSize <= LEVEL_PRICE_EPSILON) {
-    return reject('resting order not reached by end of cancel window');
+    return rejectSweep(requestedSize, limitPrice, 'maker', 'resting order not reached by end of cancel window');
   }
 
   const partial = fill.filledSize < requestedSize - LEVEL_PRICE_EPSILON;
   return {
-    status: 'matched',
-    lifecycleType: partial ? 'PARTIALLY_FILLED' : 'FILLED',
+    status: 'matched', lifecycleType: partial ? 'PARTIALLY_FILLED' : 'FILLED',
     requestedSize, limitPrice, filledSize: fill.filledSize, avgFillPrice: limitPrice,
     feeUsdc: calcMakerFeeRate(schedule, limitPrice) * fill.filledSize * limitPrice,
     partial, liquidityRole: 'maker', matchDelayMs: 0,

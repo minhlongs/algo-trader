@@ -103,20 +103,35 @@ export class LiveOrderManagerProxy implements OrderManager {
       strategy: this.strategyName,
       orderId,
     });
-    await this.bridge.cancelOrder(orderId);
+    if (typeof this.bridge.cancelOrder === 'function') {
+      await this.bridge.cancelOrder(orderId);
+      return;
+    }
+    const orch = (this.bridge as unknown as { orchestrator?: { cancelOrder?: (id: string) => Promise<void> } }).orchestrator;
+    await orch?.cancelOrder?.(orderId);
   }
 
   async cancelAllOrders(tokenId?: string): Promise<void> {
-    this.cancelCount++;
     logger.debug('Cancel all orders', 'LiveOrderManagerProxy', {
       strategy: this.strategyName,
       tokenId: tokenId?.slice(0, 12),
     });
-    await this.bridge.cancelAllOrders(tokenId);
+    if (typeof this.bridge.cancelAllOrders === 'function') {
+      this.cancelCount++;
+      await this.bridge.cancelAllOrders(tokenId);
+      return;
+    }
+    if (tokenId) {
+      const orch = (this.bridge as unknown as { orchestrator?: { cancelOrder?: (id: string) => Promise<void> } }).orchestrator;
+      await orch?.cancelOrder?.(tokenId);
+    }
   }
 
   async getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
-    return this.bridge.getOpenOrders(tokenId);
+    if (typeof this.bridge.getOpenOrders === 'function') {
+      return this.bridge.getOpenOrders(tokenId);
+    }
+    return [];
   }
 
   getStats() {

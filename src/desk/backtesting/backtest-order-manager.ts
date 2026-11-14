@@ -102,6 +102,7 @@ export class BacktestOrderManager implements OrderManager {
         fillEquityCurve: this.fillEquityCurve, capital: this.capital,
         getCurrentEquity: () => this.currentEquity, setCurrentEquity: (next) => { this.currentEquity = next; },
         currentTimestampIso: this.currentTimestampIso, feeResolver: this.feeResolver,
+        clobV2Category: this.feeOptions.clobV2Category, postOnly: this.feeOptions.postOnly,
       },
       params,
     );

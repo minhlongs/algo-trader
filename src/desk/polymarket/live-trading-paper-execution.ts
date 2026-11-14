@@ -63,6 +63,7 @@ export async function executePaperOrderPlacement(params: {
     requestedSize,
     limitPrice,
     schedule,
+    orderType: params.order.orderType,
   });
   params.legDecayTracker.recordOrderOutcome(params.order.tokenId, side, outcome);
   applyPaperOrderOutcome({
