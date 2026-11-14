@@ -1,12 +1,10 @@
 /**
  * Detection and ladder building for Primary-Source News-to-Probability Latency.
  *
- * `verifyBulletin` runs both classifier streams concurrently and accepts only
- * absolute consensus inside the dual-verify window. `buildLadder` turns one
- * Gamma event into the deadline ladder the sweep will cross: every open
- * contract resolving inside the horizon, priced off its own ask book, with the
- * taker fee its own market publishes. A Geopolitics market's zero fee falls
- * out of the resolved schedule (`rate: 0`), not out of a category branch.
+ * `verifyBulletin` strictly enforces the normalized `allowedSourceHosts`
+ * whitelist before invoking any classifier, runs `term` and `numeric` streams
+ * concurrently inside `dualVerifyWindowMs`, and optionally resolves 1-of-2
+ * split disagreements via a 3rd `arbiter` stream within the remaining budget.
  */
 
 import type { ClobClient } from '../../../polymarket/clob-client';
@@ -36,7 +34,34 @@ export interface Verification {
   reason: string;
 }
 
-/** Both streams, in parallel, timed together against the 800 ms window. */
+function normalizeHost(raw: string): string {
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      return new URL(trimmed).hostname.toLowerCase().replace(/^www\./, '');
+    } catch {
+      return '';
+    }
+  }
+  return trimmed.replace(/^www\./, '').replace(/[:/].*$/, '');
+}
+
+function isBulletinSourceWhitelisted(bulletin: Bulletin, check: MarketCheck): boolean {
+  if (check.allowedSourceHosts.length === 0) return false;
+  const allowed = new Set(check.allowedSourceHosts.map(normalizeHost).filter((h) => h.length > 0));
+  if (allowed.size === 0) return false;
+  const host = normalizeHost(bulletin.sourceHost);
+  if (!host || !allowed.has(host)) return false;
+  const rawUrl = bulletin.url?.trim() ?? '';
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    const urlHost = normalizeHost(rawUrl);
+    if (!urlHost || !allowed.has(urlHost)) return false;
+  }
+  return true;
+}
+
+/** Pre-screens source host, runs dual streams in parallel, and arbitrates splits if opted in. */
 export async function verifyBulletin(
   bulletin: Bulletin,
   check: MarketCheck,
@@ -44,6 +69,9 @@ export async function verifyBulletin(
   config: PrimarySourceNewsLatencyConfig,
   clock: () => number,
 ): Promise<Verification> {
+  if (!isBulletinSourceWhitelisted(bulletin, check)) {
+    return { confirmed: false, elapsedMs: 0, reason: 'unwhitelisted-source-host' };
+  }
   const started = clock();
   let verdicts: Awaited<ReturnType<NewsStreams['term']>>[];
   try {
@@ -56,8 +84,34 @@ export async function verifyBulletin(
   if (!withinDualVerifyWindow(elapsedMs, config.dualVerifyWindowMs)) {
     return { confirmed: false, elapsedMs, reason: `streams took ${elapsedMs} ms` };
   }
-  const confirmed = absoluteConsensus(term, numeric, config.minStreamConfidence);
-  return { confirmed, elapsedMs, reason: `term: ${term.reason}; numeric: ${numeric.reason}` };
+  if (absoluteConsensus(term, numeric, config.minStreamConfidence)) {
+    return { confirmed: true, elapsedMs, reason: `term: ${term.reason}; numeric: ${numeric.reason}` };
+  }
+
+  const termOk = term.matches && term.confidence >= config.minStreamConfidence;
+  const numericOk = numeric.matches && numeric.confidence >= config.minStreamConfidence;
+  const arbiterOptedIn = config.requireArbiterOnSplit === true || config.allowArbiterTiebreak === true;
+
+  if (termOk !== numericOk && arbiterOptedIn && streams.arbiter) {
+    let arbiterVerdict: Awaited<ReturnType<NewsStreams['term']>>;
+    try {
+      arbiterVerdict = await streams.arbiter(bulletin, check);
+    } catch (err) {
+      return { confirmed: false, elapsedMs: clock() - started, reason: `arbiter error: ${String(err)}` };
+    }
+    const totalElapsedMs = clock() - started;
+    if (!withinDualVerifyWindow(totalElapsedMs, config.dualVerifyWindowMs)) {
+      return { confirmed: false, elapsedMs: totalElapsedMs, reason: `arbiter exceeded window (${totalElapsedMs} ms)` };
+    }
+    const arbiterOk = arbiterVerdict.matches && arbiterVerdict.confidence >= config.minStreamConfidence;
+    return {
+      confirmed: arbiterOk,
+      elapsedMs: totalElapsedMs,
+      reason: `term: ${term.reason}; numeric: ${numeric.reason}; arbiter: ${arbiterVerdict.reason}`,
+    };
+  }
+
+  return { confirmed: false, elapsedMs, reason: `term: ${term.reason}; numeric: ${numeric.reason}` };
 }
 
 export interface LadderOptions {
@@ -75,11 +129,6 @@ export function ladderMarkets(event: GammaEvent, nowMs: number, maxHorizonMs: nu
     .sort((left, right) => expiryOf(left) - expiryOf(right));
 }
 
-/**
- * Price every ladder contract. A leg with an empty ask side, a price outside
- * [min, p_max] or an unknown fee schedule is dropped; it is never priced from
- * a guess. The caller decides whether what remains is still a ladder.
- */
 export async function buildLadder(event: GammaEvent, nowMs: number, options: LadderOptions): Promise<LadderLeg[]> {
   const { config } = options;
   const legs: LadderLeg[] = [];
@@ -105,7 +154,6 @@ async function priceLadderLeg(market: GammaMarket, options: LadderOptions): Prom
   const displayedShares = sizeAtLevel(asks, askPrice);
   if (!(displayedShares > 0)) return null;
   const schedule = await resolveStrategyFeeSchedule(options.feeResolver, market.yesTokenId, options.strategyName);
-  // Unknown cost is not a cost of zero.
   if (!schedule) return null;
   return {
     tokenId: market.yesTokenId,
@@ -118,7 +166,6 @@ async function priceLadderLeg(market: GammaMarket, options: LadderOptions): Prom
   };
 }
 
-/** `endDate` parsed once; an unparseable date is no expiry, so it never qualifies. */
 function expiryOf(market: GammaMarket): number {
   const parsed = Date.parse(market.endDate);
   return Number.isFinite(parsed) ? parsed : 0;
