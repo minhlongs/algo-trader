@@ -57,6 +57,14 @@ export function applyPaperOrderOutcome(params: {
     orderId, type: outcome.lifecycleType, fillSize: outcome.filledSize,
     fillPrice: outcome.avgFillPrice, feeUsdc: outcome.feeUsdc, timestamp: ts,
   });
+  if (outcome.lifecycleType === 'PARTIALLY_FILLED' && order.orderType === 'IOC') {
+    reconciler.applyEvent({
+      eventId: `${orderId}:ioc-cancelled`,
+      orderId,
+      type: 'CANCELLED',
+      timestamp: ts,
+    });
+  }
 
   const fillRecord: FilledOrder = {
     orderId, tokenId: order.tokenId, side, price: outcome.avgFillPrice,

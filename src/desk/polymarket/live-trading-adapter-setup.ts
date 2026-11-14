@@ -54,7 +54,7 @@ export function normalizeConfig(raw: LiveTradingConfig): LiveTradingConfig {
     chainId: raw.chainId,
     apiUrl: raw.apiUrl,
     feeScheduleResolver: raw.feeScheduleResolver,
-    enforcePolyRiskGate: raw.enforcePolyRiskGate ?? (!paperTrading && raw.feeScheduleResolver !== undefined),
+    enforcePolyRiskGate: raw.enforcePolyRiskGate ?? !paperTrading,
     killSwitchTransport: raw.killSwitchTransport,
     allowCohortContinuation: raw.allowCohortContinuation ?? false,
     preTradeRiskGateConfigV2: raw.preTradeRiskGateConfigV2,

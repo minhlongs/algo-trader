@@ -28,7 +28,7 @@ export function calcQuadraticTakerFeeRateV2(
   probability: number,
   postOnly = false,
 ): number {
-  if (postOnly) return 0;
+  if (postOnly || !Number.isFinite(probability)) return 0;
   const p = Math.max(0, Math.min(1, probability));
   const { rCat } = CLOB_V2_QUADRATIC_RATES[category];
   if (rCat <= 0) return 0;

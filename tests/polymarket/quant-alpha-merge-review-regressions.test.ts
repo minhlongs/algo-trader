@@ -3,9 +3,12 @@ import { calculateLegFee, calculatePolymarketFee } from '../../src/desk/arbitrag
 import { BacktestOrderManager } from '../../src/desk/backtesting/backtest-order-manager';
 import { applyVenueCosts } from '../../src/desk/backtesting/backtest-fee-application';
 import { submitAndTrackOrder, type SubmissionHost } from '../../src/desk/execution/live-order-submission';
+import { calcQuadraticTakerFeeRateV2 } from '../../src/desk/execution/polymarket-clob-v2-fee-math';
 import { PolymarketOrderReconciler } from '../../src/desk/execution/polymarket-order-reconciler';
 import { PolymarketV2PreTradeRiskGate } from '../../src/desk/execution/polymarket-v2-pretrade-risk-gate';
 import type { PolymarketOrder } from '../../src/desk/execution/polymarket-signer';
+import { normalizeConfig } from '../../src/desk/polymarket/live-trading-adapter-setup';
+import { LiveTradingOrchestrator } from '../../src/desk/polymarket/live-trading-orchestrator';
 import { DEFAULT_PAPER_FEE_SCHEDULE, sweepOrderBookLevels } from '../../src/desk/polymarket/paper-fill-sweep';
 import type { PolymarketFeeSchedule } from '../../src/desk/polymarket/polymarket-fee-calculator';
 
@@ -46,17 +49,15 @@ describe('Quant Alpha merge & isolated code-review regressions', () => {
       orderType: 'IOC',
     };
 
-    // IOC passes V2 pre-trade gate (exempt from 5-share resting limit floor) and stops at paper-only env gate
     await expect(submitAndTrackOrder(host, order)).rejects.toThrow(/LIVE_TRADING_ENABLED/);
     expect(placeOrder).not.toHaveBeenCalled();
 
-    // Resting GTC order of 4 shares (< 5) is blocked by V2 pre-trade gate before reaching env gate
     await expect(
       submitAndTrackOrder(host, { ...order, orderType: 'GTC' }),
     ).rejects.toThrow(/RISK_GATE_REJECTED: BELOW_MIN_LIMIT_SHARES/);
   });
 
-  it('rejects non-marketable IOC/FOK orders and partial FOK sweeps in paper-fill-sweep', () => {
+  it('rejects non-marketable IOC/FOK, partial FOK sweeps, and cancels partial IOC remainders so getOpenOrders stays empty', async () => {
     const book = {
       bids: [{ price: '0.45', size: '50' }],
       asks: [{ price: '0.55', size: '10' }],
@@ -87,17 +88,36 @@ describe('Quant Alpha merge & isolated code-review regressions', () => {
     expect(partialFok.filledSize).toBe(0);
     expect(partialFok.rejectReason).toMatch(/FOK order insufficient depth/);
 
-    const partialIoc = sweepOrderBookLevels({
-      book,
-      side: 'BUY',
-      requestedSize: 25,
-      limitPrice: 0.60,
-      schedule: DEFAULT_PAPER_FEE_SCHEDULE,
-      orderType: 'IOC',
+    const orch = new LiveTradingOrchestrator({
+      capitalUsdc: 10_000,
+      paperTrading: true,
+      feeScheduleResolver: { resolve: async () => DEFAULT_PAPER_FEE_SCHEDULE },
     });
-    expect(partialIoc.status).toBe('matched');
-    expect(partialIoc.lifecycleType).toBe('PARTIALLY_FILLED');
-    expect(partialIoc.filledSize).toBe(10);
+    orch.setPaperOrderBookProvider(async () => book);
+    await orch.start();
+    try {
+      const res = await orch.placeOrder({
+        tokenId: 'tok-ioc-partial',
+        side: 'BUY',
+        price: 0.60,
+        size: 25,
+        orderType: 'IOC',
+      } as unknown as PolymarketOrder);
+      expect(res.status).toBe('matched');
+      expect(Number(res.filledSize)).toBe(10);
+      const openOrders = await orch.getOpenOrders('tok-ioc-partial');
+      expect(openOrders).toEqual([]);
+    } finally {
+      await orch.stop();
+    }
+  });
+
+  it('enforces PolyRisk fail-closed by default in LIVE mode even when feeScheduleResolver is omitted', () => {
+    const normalized = normalizeConfig({ capitalUsdc: 5_000, paperTrading: false });
+    expect(normalized.enforcePolyRiskGate).toBe(true);
+
+    const paperNormalized = normalizeConfig({ capitalUsdc: 5_000, paperTrading: true });
+    expect(paperNormalized.enforcePolyRiskGate).toBe(false);
   });
 
   it('credits negative maker feeUsdc into FIFO accruedRebateIncomeMicro without negative taker fees', () => {
@@ -130,7 +150,10 @@ describe('Quant Alpha merge & isolated code-review regressions', () => {
     expect(summary.fifoLedger?.openCostBasisMicroByToken['tok-1']).toBe(50_000_000);
   });
 
-  it('fails closed on whitespace marketDescription and handles NaN probability in fee-calculator', () => {
+  it('fails closed on whitespace marketDescription and non-finite inputs across fee-calculator and V2 math', () => {
+    expect(calcQuadraticTakerFeeRateV2('crypto', Number.NaN)).toBe(0);
+    expect(calcQuadraticTakerFeeRateV2('crypto', Number.POSITIVE_INFINITY)).toBe(0);
+
     const legFee = calculateLegFee(
       {
         venue: 'polymarket',
@@ -143,6 +166,28 @@ describe('Quant Alpha merge & isolated code-review regressions', () => {
       5,
     );
     expect(legFee).toEqual({ available: false, venue: 'polymarket', symbol: 'tok-blank' });
+
+    expect(
+      calculateLegFee(
+        {
+          venue: 'polymarket',
+          symbol: 'tok-nan',
+          side: 'buy',
+          price: Number.NaN,
+          size: 10,
+          polymarketCategory: 'crypto',
+        },
+        10,
+      ),
+    ).toEqual({ available: false, venue: 'polymarket', symbol: 'tok-nan' });
+
+    expect(
+      calculateLegFee(
+        { venue: 'binance', symbol: 'BTCUSDT', side: 'buy', price: 0.5, size: 10 },
+        10,
+        Number.NaN,
+      ),
+    ).toEqual({ available: false, venue: 'binance', symbol: 'BTCUSDT' });
 
     const nanRes = calculatePolymarketFee('crypto', Number.NaN, 100);
     expect(nanRes).toEqual({ rate: 0, feeUsd: 0, rebateUsd: 0 });

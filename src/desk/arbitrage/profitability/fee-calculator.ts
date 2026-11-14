@@ -63,7 +63,13 @@ export function calculateLegFee(
   notionalUsd: number,
   feeOverride?: number,
 ): LegFee {
+  if (!Number.isFinite(leg.price) || !Number.isFinite(notionalUsd)) {
+    return { available: false, venue: leg.venue, symbol: leg.symbol };
+  }
   if (feeOverride !== undefined) {
+    if (!Number.isFinite(feeOverride)) {
+      return { available: false, venue: leg.venue, symbol: leg.symbol };
+    }
     return { available: true, rate: feeOverride, feeUsd: notionalUsd * feeOverride };
   }
   if (leg.venue.toLowerCase() === 'polymarket') {

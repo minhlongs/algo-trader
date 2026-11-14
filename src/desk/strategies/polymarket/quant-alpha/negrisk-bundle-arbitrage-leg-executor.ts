@@ -26,7 +26,7 @@ import type {
   BundleQuote,
   NegRiskBundleConfig,
 } from './negrisk-bundle-arbitrage-types';
-import { shrinkToFirstFill, sizeAtLevel, sortLegsByLiquidity } from './negrisk-bundle-arbitrage-math';
+import { snapToTick, shrinkToFirstFill, sizeAtLevel, sortLegsByLiquidity } from './negrisk-bundle-arbitrage-math';
 import type { BundleBook, BundleFill } from './negrisk-bundle-arbitrage-state';
 
 export interface BundleLegExecutorOptions {
@@ -109,13 +109,17 @@ export class BundleLegExecutor {
     const orderType = aggressive
       ? this.opts.config.thickLegOrderType
       : this.opts.config.thinLegOrderType;
+    const tick = this.opts.config.tickSize;
+    const limitPrice = aggressive
+      ? leg.askPrice
+      : Math.max(tick, snapToTick(leg.askPrice - tick, tick));
 
     let order: Awaited<ReturnType<OrderManager['placeOrder']>>;
     try {
       order = await this.opts.orderManager.placeOrder({
         tokenId: leg.tokenId,
         side: 'buy',
-        price: leg.askPrice.toFixed(4),
+        price: limitPrice.toFixed(4),
         size: String(shares),
         orderType,
       });
@@ -140,7 +144,7 @@ export class BundleLegExecutor {
       return 0;
     }
 
-    const price = order.fillPrice !== undefined ? parseFloat(order.fillPrice) : leg.askPrice;
+    const price = order.fillPrice !== undefined ? parseFloat(order.fillPrice) : limitPrice;
     const quantity = order.filledSize !== undefined ? parseFloat(order.filledSize) : shares;
     if (!(quantity > 0) || !(price > 0)) return 0;
 

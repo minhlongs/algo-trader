@@ -109,6 +109,13 @@ export class StrategyLiveBridge {
             scanNumber: this.scanCount,
             totalMarkets: outcome.totalMarkets,
           });
+          if (typeof this.orchestrator.getMode === 'function' && this.orchestrator.getMode() === 'LIVE') {
+            for (const sig of outcome.signals) {
+              if (typeof this.orchestrator.getOrderBook === 'function') {
+                await this.orchestrator.getOrderBook(sig.tokenId).catch(() => undefined);
+              }
+            }
+          }
           await this.onSignals(outcome.signals);
         }
       } catch (err) {

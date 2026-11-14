@@ -68,7 +68,7 @@ export function createOrchestratorPolyRiskRuntime(
   let feeResolver: FeeScheduleResolver | null | undefined = deps.config.feeScheduleResolver;
   let lastObservedAtMs: number | 'unknown' = 'unknown';
   let peakEquityUsdc = deps.config.capitalUsdc;
-  const enforceGate = deps.config.enforcePolyRiskGate ?? !deps.config.paperTrading;
+  const isGateEnforced = () => deps.config.enforcePolyRiskGate ?? !deps.config.paperTrading;
   const liveTransport =
     deps.config.killSwitchTransport ??
     (deps.config.paperTrading ? undefined : createPolyCancelAllTransport());
@@ -94,14 +94,15 @@ export function createOrchestratorPolyRiskRuntime(
   ): Promise<void> => {
     const nowMs = Date.now();
     const journal = deps.getJournal();
+    const safeTokenPrefix = String(order.tokenId ?? '').slice(0, 12);
     if (killSwitch.isFired()) {
       journal.recordEvent('guard_reject', {
-        tokenId: order.tokenId.slice(0, 12),
+        tokenId: safeTokenPrefix,
         reason: 'KILL_SWITCH_ACTIVE',
       });
       throw new Error('PolyRisk blocked [KILL_SWITCH_ACTIVE]: kill switch is latched; no new order');
     }
-    if (!enforceGate) return;
+    if (!isGateEnforced()) return;
 
     const feeSchedule = await resolveRiskFeeState(feeResolver, order.tokenId);
     const posSummary = deps.getPositionTracker().getSummary();
@@ -131,7 +132,7 @@ export function createOrchestratorPolyRiskRuntime(
       if (verdict.allowed) return;
       if (verdict.reason === 'DRAWDOWN_AUTO_HALT') await killSwitch.fire(verdict.detail);
       journal.recordEvent('guard_reject', {
-        tokenId: order.tokenId.slice(0, 12), reason: `${verdict.reason}: ${verdict.detail}`,
+        tokenId: safeTokenPrefix, reason: `${verdict.reason}: ${verdict.detail}`,
       });
       throw new Error(`PolyRisk blocked [${verdict.reason}]: ${verdict.detail}`);
     };
@@ -160,7 +161,10 @@ export function createOrchestratorPolyRiskRuntime(
       await runBeforeOrder(order, orderType ?? order.orderType);
       const result = guard.guardOrder(order);
       if (!result.approved) {
-        deps.getJournal().recordEvent('guard_reject', { tokenId: order.tokenId.slice(0, 12), reason: result.reason });
+        deps.getJournal().recordEvent('guard_reject', {
+          tokenId: String(order.tokenId ?? '').slice(0, 12),
+          reason: result.reason,
+        });
         throw new Error(`Guard rejected: ${result.reason}`);
       }
     },
