@@ -89,6 +89,12 @@ export function replayRows(rows: readonly RecordedL2Row[], options: ReplayOption
       asks: asks.map((level) => ({ ...level })),
       tickSize: row.tickSize,
       lastTradePrice: row.lastTradePrice,
+      ...(row.recvTimestampUs !== undefined ? { recvTimestampUs: row.recvTimestampUs } : {}),
+      ...(row.exchangeTimestampUs !== undefined
+        ? { exchangeTimestampUs: row.exchangeTimestampUs }
+        : {}),
+      ...(row.sequence !== undefined ? { sequence: row.sequence } : {}),
+      ...(row.ingestOrdinal !== undefined ? { ingestOrdinal: row.ingestOrdinal } : {}),
       row,
     });
   }

@@ -1,20 +1,30 @@
 /**
  * Source labels for every point-in-time and retroactive Polymarket data row.
  *
- * - `recorded-l2`    : captured live from the CLOB market WebSocket by `l2-recorder`.
- * - `data-api-v2`    : retroactive trades / positions from https://data-api.polymarket.com/v2.
- * - `prices-history` : retroactive price points from https://clob.polymarket.com/prices-history.
+ * - `recorded-l2`       : captured live from the CLOB market WebSocket by `l2-recorder`.
+ * - `poly-book-wal`     : decoded from the `poly-book` Rust sidecar CRC32C WAL v3 segments.
+ * - `poly-book-parquet` : loaded from `poly-book` Rust sidecar Parquet storage partitions.
+ * - `data-api-v2`       : retroactive trades / positions from https://data-api.polymarket.com/v2.
+ * - `prices-history`    : retroactive price points from https://clob.polymarket.com/prices-history.
  *
- * This file is the single source of truth for those three strings. Downstream KPI code
+ * This file is the single source of truth for observed provenance strings. Downstream KPI code
  * must reject any row whose label is outside this union, so a synthetic price path can
  * never be presented as observed market data.
  */
 
-export const L2_SOURCE_LABELS = ['recorded-l2', 'data-api-v2', 'prices-history'] as const;
+export const L2_SOURCE_LABELS = [
+  'recorded-l2',
+  'poly-book-wal',
+  'poly-book-parquet',
+  'data-api-v2',
+  'prices-history',
+] as const;
 
 export type L2SourceLabel = (typeof L2_SOURCE_LABELS)[number];
 
 export const L2_SOURCE_RECORDED = 'recorded-l2' as const;
+export const L2_SOURCE_POLY_BOOK_WAL = 'poly-book-wal' as const;
+export const L2_SOURCE_POLY_BOOK_PARQUET = 'poly-book-parquet' as const;
 export const L2_SOURCE_DATA_API_V2 = 'data-api-v2' as const;
 export const L2_SOURCE_PRICES_HISTORY = 'prices-history' as const;
 
@@ -23,7 +33,7 @@ export function isL2SourceLabel(value: unknown): value is L2SourceLabel {
   return typeof value === 'string' && (L2_SOURCE_LABELS as readonly string[]).includes(value);
 }
 
-/** Throw unless `value` is one of the three known labels. */
+/** Throw unless `value` is one of the known observed source labels. */
 export function assertL2SourceLabel(value: unknown): asserts value is L2SourceLabel {
   if (!isL2SourceLabel(value)) {
     throw new Error(`Unknown data source label: ${JSON.stringify(value)}`);
