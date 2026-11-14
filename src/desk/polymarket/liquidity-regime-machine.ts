@@ -173,7 +173,10 @@ export class LiquidityRegimeMachine {
     allowNewQuotes: boolean, allowCloseOrMergeOnly: boolean, withdrawAllQuotes: boolean,
     cancelMarketOrders: boolean, optimizeIncentiveSpread: boolean, haltedUntilMs: number,
   ): LiquidityRegimeDecision {
-    if (previousState !== state) { this.transitionsCount += 1; mem.ordersConfirmedCancelled = false; }
+    if (previousState !== state) this.transitionsCount += 1;
+    if (previousState !== state || (!(mem.lastDecision?.withdrawAllQuotes) && withdrawAllQuotes)) {
+      mem.ordersConfirmedCancelled = false;
+    }
     mem.lastState = state;
     const d: LiquidityRegimeDecision = {
       marketId, state, previousState, transitioned: previousState !== state, reasons, sizeMultiplier,

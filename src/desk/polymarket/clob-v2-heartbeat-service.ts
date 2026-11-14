@@ -1,10 +1,6 @@
 /**
  * Polymarket CLOB V2 — Periodic `POST /heartbeats` Deadman Service.
- *
- * Maintains resting maker orders inside Polymarket's 10-second auto-cancel window
- * via a default 5-second heartbeat loop, enforces per-request AbortSignal timeouts
- * and monotonic tick ordering, notes HTTP 425 engine restarts, and fires
- * `killSwitch.fire('heartbeat-deadman-missed')` at `maxMissedHeartbeats` (default 2).
+ * Aborts overlapping ticks, notes HTTP 425 restarts, and fires killSwitch on >= 2 misses.
  */
 
 import type { PolyKillSwitch } from '../risk/poly-kill-switch';
@@ -62,7 +58,9 @@ export class ClobV2HeartbeatService {
   private readonly clock: () => number;
 
   private timer: ReturnType<typeof setInterval> | null = null;
+  private inFlightAbort: AbortController | null = null;
   private tickSequence = 0;
+  private lastSuccessSeq = 0;
   private totalSent = 0;
   private totalAcked = 0;
   private consecutiveMisses = 0;
@@ -70,7 +68,7 @@ export class ClobV2HeartbeatService {
   private maxLatencyMs = 0;
   private lastSuccessAtMs: number | null = null;
   private lastHeartbeatId = '';
-  private lastError: string | null;
+  private lastError: string | null = null;
   private deadmanTriggered = false;
 
   constructor(options: ClobV2HeartbeatOptions = {}) {
@@ -91,7 +89,6 @@ export class ClobV2HeartbeatService {
     this.killSwitch = options.killSwitch;
     this.engineCooldown = options.engineCooldown;
     this.clock = options.nowMs ?? (() => Date.now());
-    this.lastError = null;
   }
 
   start(): void {
@@ -103,14 +100,20 @@ export class ClobV2HeartbeatService {
 
   stop(): void {
     if (this.timer !== null) { clearInterval(this.timer); this.timer = null; }
+    this.inFlightAbort?.abort();
+    this.inFlightAbort = null;
   }
 
   async beatOnce(): Promise<ClobV2HeartbeatTickResult> {
+    this.inFlightAbort?.abort();
+    const ac = new AbortController();
+    this.inFlightAbort = ac;
     const seq = ++this.tickSequence;
     const startedAt = this.clock();
     this.totalSent += 1;
     const payload = JSON.stringify({ heartbeat_id: this.lastHeartbeatId });
-    const reqTimeoutMs = Math.max(250, Math.min(this.intervalMs, 4_500));
+    const reqTimeoutMs = Math.max(1, Math.min(Math.floor(this.intervalMs * 0.9), 4_500));
+    const timeoutTimer = setTimeout(() => ac.abort(new Error('heartbeat-timeout')), reqTimeoutMs);
 
     try {
       const doFetch = this.fetchImpl ?? fetch;
@@ -119,23 +122,22 @@ export class ClobV2HeartbeatService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(this.headers ?? {}), ...dynHeaders },
         body: payload,
-        signal: AbortSignal.timeout(reqTimeoutMs),
+        signal: ac.signal,
       });
       const finishedAt = this.clock();
       const latencyMs = Math.max(0, finishedAt - startedAt);
       this.lastLatencyMs = latencyMs;
       this.maxLatencyMs = Math.max(this.maxLatencyMs, latencyMs);
 
+      if (res.status === ENGINE_RESTARTING_HTTP_STATUS) this.engineCooldown?.noteEngineRestart(finishedAt);
       if (seq < this.tickSequence) return this.supersededResult(res.status, latencyMs);
-      if (res.status === ENGINE_RESTARTING_HTTP_STATUS) {
-        this.engineCooldown?.noteEngineRestart(finishedAt);
-        return await this.recordMiss(res.status, latencyMs, 'http 425 engine restarting');
-      }
+      if (res.status === ENGINE_RESTARTING_HTTP_STATUS) return await this.recordMiss(res.status, latencyMs, 'http 425 engine restarting');
       if (!res.ok) return await this.recordMiss(res.status, latencyMs, `http ${res.status}`);
 
       const rawText = await res.text();
       if (seq < this.tickSequence) return this.supersededResult(res.status, latencyMs);
       this.extractHeartbeatId(rawText);
+      this.lastSuccessSeq = seq;
       this.totalAcked += 1;
       this.consecutiveMisses = 0;
       this.lastSuccessAtMs = finishedAt;
@@ -148,7 +150,11 @@ export class ClobV2HeartbeatService {
       const latencyMs = Math.max(0, this.clock() - startedAt);
       this.lastLatencyMs = latencyMs;
       this.maxLatencyMs = Math.max(this.maxLatencyMs, latencyMs);
+      if (this.lastSuccessSeq > seq) return this.supersededResult(0, latencyMs);
       return await this.recordMiss(0, latencyMs, err instanceof Error ? err.message : String(err));
+    } finally {
+      clearTimeout(timeoutTimer);
+      if (this.inFlightAbort === ac) this.inFlightAbort = null;
     }
   }
 
@@ -174,9 +180,7 @@ export class ClobV2HeartbeatService {
     if (!rawText) return;
     try {
       const parsed = JSON.parse(rawText) as { heartbeat_id?: unknown; heartbeatID?: unknown };
-      const id = typeof parsed.heartbeat_id === 'string'
-        ? parsed.heartbeat_id
-        : typeof parsed.heartbeatID === 'string' ? parsed.heartbeatID : '';
+      const id = typeof parsed.heartbeat_id === 'string' ? parsed.heartbeat_id : typeof parsed.heartbeatID === 'string' ? parsed.heartbeatID : '';
       if (id) this.lastHeartbeatId = id;
     } catch { /* Non-JSON 200 ACK is valid */ }
   }

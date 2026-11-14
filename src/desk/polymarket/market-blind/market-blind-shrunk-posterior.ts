@@ -66,11 +66,12 @@ function validateOpenProb(label: string, value: number): void {
 
 function computePostOnlyPrice(askPrice: number, bestBid: number | undefined, tickSize: number): number {
   const snapDown = (v: number): number => Math.floor((v + 1e-9) / tickSize) * tickSize;
-  const maxMaker = Math.max(tickSize, Number(snapDown(askPrice - tickSize).toFixed(6)));
+  const rawMaxMaker = Number(snapDown(askPrice - tickSize).toFixed(6));
+  if (!(rawMaxMaker >= tickSize && rawMaxMaker < askPrice)) return 0;
   if (bestBid !== undefined && Number.isFinite(bestBid) && bestBid > 0) {
-    return Math.min(maxMaker, Number(snapDown(bestBid + tickSize).toFixed(6)));
+    return Math.min(rawMaxMaker, Number(snapDown(bestBid + tickSize).toFixed(6)));
   }
-  return maxMaker < askPrice ? maxMaker : Math.max(1e-6, Number((askPrice * 0.5).toFixed(6)));
+  return rawMaxMaker;
 }
 
 /**
@@ -92,6 +93,9 @@ export function computeShrunkPosterior(
     }
   }
   const cfg: MarketBlindPosteriorConfig = { ...DEFAULT_POSTERIOR_CONFIG, ...config };
+  if (!Number.isFinite(cfg.tickSize) || cfg.tickSize <= 0 || cfg.tickSize >= 1) {
+    throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', 'tickSize must lie in (0, 1)');
+  }
   validateOpenProb('marketPrice', input.marketPrice);
   validateOpenProb('pCal', input.pCal);
   const askPrice = input.askPrice ?? input.marketPrice;
@@ -142,6 +146,13 @@ export function computeShrunkPosterior(
   const limitPrice = executionStyle === 'taker'
     ? askPrice
     : computePostOnlyPrice(askPrice, input.bestBid, cfg.tickSize);
+  if (!(limitPrice > 0 && limitPrice <= askPrice)) {
+    return {
+      pPost, pCal: input.pCal, marketPrice: input.marketPrice, wSkill, loggingOnly: false,
+      skillGateReasons: [], edgeCons, netEdgeAfterTaker,
+      proposal: null, proposalRejectionReason: 'MARKET_PRICE_OUTSIDE_BAND',
+    };
+  }
 
   return {
     pPost,

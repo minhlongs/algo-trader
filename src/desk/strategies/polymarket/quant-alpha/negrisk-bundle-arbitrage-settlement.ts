@@ -3,11 +3,13 @@
  *
  * Verifies on-chain settlement preflight via `CtfEthCallPreflight` before booking
  * bundle conversions on `BundleBook` / `OrderManager`, failing closed on any
- * `negRiskMarketId` / bitmask mismatch or `eth_call` revert:
- *  - When an explicit `bytes32` `event.negRiskMarketId` is present with NO-slot
- *    conversion metadata, simulates `NegRiskAdapter.convertPositions`.
- *  - For exhaustive YES-bundle baskets (`sum(YES) < 1`), simulates CTF `mergePositions`
- *    / basket settlement against the canonical condition `bytes32`.
+ * `negRiskMarketId` / bitmask / condition mismatch or `eth_call` revert:
+ *  - When `event.negRiskMarketId` (`bytes32`) is present, maps each unique filled
+ *    leg to its canonical on-chain slot index in `event.markets` and simulates
+ *    `NegRiskAdapter.convertPositions`.
+ *  - When `event.negRiskMarketId` is omitted on a multi-outcome NegRisk event,
+ *    verifies per-condition `simulateMergePositions` across ALL unique filled
+ *    conditions (never just `fills[0]`).
  */
 
 import type { GammaEvent } from '../../../polymarket/gamma-client';
@@ -52,6 +54,58 @@ export function eventVolume(event: GammaEvent): number {
   return total;
 }
 
+async function runBundlePreflight(
+  event: GammaEvent,
+  fills: readonly BundleFill[],
+  amountRaw: bigint,
+  totalOutcomeCount: number,
+  ctfPreflight: CtfEthCallPreflight,
+): Promise<CtfPreflightResult> {
+  const uniqueByToken = new Map<string, BundleFill>();
+  for (const fill of fills) if (!uniqueByToken.has(fill.tokenId)) uniqueByToken.set(fill.tokenId, fill);
+  const uniqueFills = [...uniqueByToken.values()];
+
+  if (event.negRiskMarketId !== undefined) {
+    if (!BYTES32_HEX_RE.test(event.negRiskMarketId)) {
+      return { ok: false, to: '', calldata: '0x', mode: 'unconfigured', reason: 'invalid-negrisk-market-bytes32' };
+    }
+    const slotCount = Math.max(event.markets.length, totalOutcomeCount, uniqueFills.length);
+    const slots: number[] = [];
+    for (const fill of uniqueFills) {
+      const slotIdx = event.markets.findIndex(
+        (m) => m.conditionId === fill.conditionId || m.yesTokenId === fill.tokenId || m.noTokenId === fill.tokenId,
+      );
+      if (slotIdx < 0) {
+        return { ok: false, to: '', calldata: '0x', mode: 'unconfigured', reason: 'unmapped-outcome-slot' };
+      }
+      slots.push(slotIdx);
+    }
+    const indexSet = slots.reduce((m, s) => m | (1n << BigInt(s)), 0n);
+    return ctfPreflight.simulateConvertPositions({
+      marketId: event.negRiskMarketId,
+      indexSet,
+      amountRaw,
+      outcomeCount: slotCount,
+      heldNoSlots: slots,
+    });
+  }
+
+  // Without an explicit bytes32 negRiskMarketId, verify merge preflight on EVERY unique condition leg.
+  const conditionIds = [...new Set(uniqueFills.map((f) => f.conditionId).filter(Boolean))];
+  if (conditionIds.length === 0) {
+    return { ok: false, to: '', calldata: '0x', mode: 'unconfigured', reason: 'empty-bundle-conditions' };
+  }
+  let lastSim: CtfPreflightResult | undefined;
+  for (const condId of conditionIds) {
+    lastSim = await ctfPreflight.simulateMergePositions({
+      conditionId: toMarketBytes32(condId),
+      amountRaw,
+    });
+    if (!lastSim.ok) return lastSim;
+  }
+  return lastSim!;
+}
+
 /** Emits fills, verifies `eth_call` preflight when configured, settles complete baskets, and tracks residuals. */
 export async function settleOrRecordBundle(params: SettleBundleParams): Promise<void> {
   const { event, nowMs, totalOutcomeCount, book, cfg, orderManager, strategyName, positions, emitTrade, ctfPreflight, stats } = params;
@@ -63,37 +117,11 @@ export async function settleOrRecordBundle(params: SettleBundleParams): Promise<
     const qty = book.convertibleQuantity(eventId);
     if (qty > 0 && ctfPreflight) {
       const amountRaw = BigInt(Math.max(1, Math.round(qty * 1e6)));
-      let sim: CtfPreflightResult;
-      if (event.negRiskMarketId !== undefined) {
-        if (!BYTES32_HEX_RE.test(event.negRiskMarketId)) {
-          sim = { ok: false, to: '', calldata: '0x', mode: 'unconfigured', reason: 'invalid-negrisk-market-bytes32' };
-        } else {
-          const slotCount = Math.max(totalOutcomeCount, fills.length);
-          const slots = Array.from({ length: fills.length }, (_, idx) => idx);
-          const indexSet = slots.reduce((m, s) => m | (1n << BigInt(s)), 0n);
-          sim = await ctfPreflight.simulateConvertPositions({
-            marketId: event.negRiskMarketId,
-            indexSet,
-            amountRaw,
-            outcomeCount: slotCount,
-            heldNoSlots: slots,
-          });
-        }
-      } else {
-        const anchorConditionId = toMarketBytes32(fills[0]?.conditionId ?? eventId);
-        sim = await ctfPreflight.simulateMergePositions({
-          conditionId: anchorConditionId,
-          amountRaw,
-        });
-      }
-
+      const sim = await runBundlePreflight(event, fills, amountRaw, totalOutcomeCount, ctfPreflight);
       if (!sim.ok) {
         stats.preflightBlocked += 1;
         book.markKilled(eventId);
-        logger.warn('Bundle settlement blocked by eth_call preflight', strategyName, {
-          eventId,
-          reason: sim.reason,
-        });
+        logger.warn('Bundle settlement blocked by eth_call preflight', strategyName, { eventId, reason: sim.reason });
         for (const position of book.toPositions(eventId)) positions.push(position);
         return;
       }
@@ -116,19 +144,10 @@ export async function settleOrRecordBundle(params: SettleBundleParams): Promise<
   if (book.isComplete(eventId)) book.retire(eventId);
 }
 
-function emitBundleFill(
-  fill: BundleFill,
-  strategyName: StrategyName,
-  emitTrade: (trade: TradeEvent) => void,
-): void {
+function emitBundleFill(fill: BundleFill, strategyName: StrategyName, emitTrade: (trade: TradeEvent) => void): void {
   emitTrade({
-    orderId: fill.orderId,
-    marketId: fill.conditionId,
-    side: 'buy',
-    fillPrice: fill.price.toFixed(4),
-    fillSize: (fill.quantity * fill.price).toFixed(2),
-    fees: fill.fees ?? '0',
-    timestamp: fill.atMs,
-    strategy: strategyName,
+    orderId: fill.orderId, marketId: fill.conditionId, side: 'buy',
+    fillPrice: fill.price.toFixed(4), fillSize: (fill.quantity * fill.price).toFixed(2),
+    fees: fill.fees ?? '0', timestamp: fill.atMs, strategy: strategyName,
   });
 }
