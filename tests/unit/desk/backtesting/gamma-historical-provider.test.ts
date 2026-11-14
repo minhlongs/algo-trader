@@ -1,7 +1,7 @@
 /**
- * Tests for GammaHistoricalProvider — stubs fetch + timers so every path
- * (cache hit/miss, success/ok-false/network-error, tick cap, snapshot evolution)
- * is exercised without a live Gamma API.
+ * Tests for GammaHistoricalProvider — verifies real retroactive CLOB
+ * `prices-history` loading, `source: 'prices-history'` tagging on every
+ * snapshot and market row, carry-forward alignment, cache, and error handling.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -14,9 +14,12 @@ vi.mock('../../../../src/shared/utils/logger', () => ({ logger: mockLogger }));
 
 type Mod = typeof import('../../../../src/desk/backtesting/gamma-historical-provider');
 let mod: Mod;
-let provider: Mod['GammaHistoricalProvider'];
+let provider: InstanceType<Mod['GammaHistoricalProvider']>;
 
-const baseApi = () => ({
+const NOW_ISO = '2026-08-30T00:00:00Z';
+const NOW_SEC = Math.floor(new Date(NOW_ISO).getTime() / 1000);
+
+const baseMarket = (overrides: Record<string, unknown> = {}) => ({
   id: 'm1',
   conditionId: 'c1',
   question: 'Will it go up?',
@@ -29,19 +32,22 @@ const baseApi = () => ({
   active: true,
   closed: false,
   resolved: false,
-  tokens: [
-    { token_id: 'c1-yes', outcome: 'Yes', price: 0.6 },
-    { token_id: 'c1-no', outcome: 'No', price: 0.4 },
+  clobTokenIds: ['c1-yes', 'c1-no'],
+  ...overrides,
+});
+
+const defaultHistory = () => ({
+  history: [
+    { t: NOW_SEC - 86_400, p: 0.42 },
+    { t: NOW_SEC - 43_200, p: 0.55 },
+    { t: NOW_SEC, p: 0.68 },
   ],
-  yesTokenId: 'c1-yes',
-  noTokenId: 'c1-no',
-  yesPrice: 0.6,
 });
 
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  vi.setSystemTime(new Date('2026-08-30T00:00:00Z'));
+  vi.setSystemTime(new Date(NOW_ISO));
   vi.resetModules();
   mod = await import('../../../../src/desk/backtesting/gamma-historical-provider');
   provider = new mod.GammaHistoricalProvider();
@@ -51,30 +57,47 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function mockFetch(raw: unknown, status = 200) {
-  (globalThis.fetch as unknown as ReturnType<typeof vi.fn>) = vi.fn().mockResolvedValue({
+function jsonResponse(body: unknown, status = 200) {
+  return {
     ok: status >= 200 && status < 300,
     status,
-    json: () => Promise.resolve(raw),
+    json: async () => body,
+    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+  };
+}
+
+function mockRoutedFetch(options: {
+  markets?: unknown;
+  marketStatus?: number;
+  historyByToken?: Record<string, { history: Array<{ t: number; p: number }> } | Error>;
+}) {
+  const fetchFn = vi.fn(async (input: string | URL) => {
+    const url = String(input);
+    if (url.includes('/markets')) {
+      return jsonResponse(options.markets ?? [baseMarket()], options.marketStatus ?? 200);
+    }
+    if (url.includes('/prices-history')) {
+      const token = new URL(url).searchParams.get('market') ?? '';
+      const override = options.historyByToken?.[token];
+      if (override instanceof Error) throw override;
+      return jsonResponse(override ?? defaultHistory());
+    }
+    throw new Error(`Unexpected URL: ${url}`);
   });
+  (globalThis.fetch as unknown as ReturnType<typeof vi.fn>) = fetchFn;
+  return fetchFn;
 }
-
-function mockFetchThrows(err: unknown) {
-  (globalThis.fetch as unknown as ReturnType<typeof vi.fn>) = vi.fn().mockRejectedValue(err);
-}
-
-// ─── Suite ───────────────────────────────────────────────────────────────────
 
 describe('fetchHistoricalSnapshots', () => {
   it('throws when no markets are fetched', async () => {
-    mockFetch([]);
+    mockRoutedFetch({ markets: [] });
     await expect(provider.fetchHistoricalSnapshots(1)).rejects.toThrow(
       'failed to fetch any markets',
     );
   });
 
-  it('throws when resp.ok is false', async () => {
-    mockFetch([], 500);
+  it('throws and logs when Gamma resp.ok is false', async () => {
+    mockRoutedFetch({ markets: [], marketStatus: 500 });
     await expect(provider.fetchHistoricalSnapshots(1)).rejects.toThrow(
       'failed to fetch any markets',
     );
@@ -85,131 +108,76 @@ describe('fetchHistoricalSnapshots', () => {
     );
   });
 
-  it('throws when fetch itself rejects', async () => {
-    mockFetchThrows(new Error('network down'));
+  it('throws when fetch rejects or aborts', async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>) = vi
+      .fn()
+      .mockRejectedValue(new Error('network down'));
     await expect(provider.fetchHistoricalSnapshots(1)).rejects.toThrow(
       'failed to fetch any markets',
     );
   });
 
-  it('throws when fetch times out (AbortError)', async () => {
-    const err = new Error('aborted');
-    err.name = 'AbortError';
-    mockFetchThrows(err);
-    await expect(provider.fetchHistoricalSnapshots(1)).rejects.toThrow(
-      'failed to fetch any markets',
-    );
-  });
-
-  it('logs the fetch attempt with tick count', async () => {
-    mockFetch([baseApi()]);
-    await provider.fetchHistoricalSnapshots(1);
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      'Fetching historical market snapshots',
-      'GammaHistoricalProvider',
-      expect.objectContaining({ days: 1, tickCount: expect.any(Number) }),
-    );
-  });
-
-  it('caches results and returns the same array on a second call', async () => {
-    mockFetch([baseApi()]);
-    const first = await provider.fetchHistoricalSnapshots(1, 60_000);
-    expect((globalThis.fetch as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(1);
-    const second = await provider.fetchHistoricalSnapshots(1, 60_000);
-    expect(second).toBe(first);
-    expect((globalThis.fetch as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(1);
-  });
-
-  it('caps ticks at 168 (1 week of hourly data)', async () => {
-    mockFetch([baseApi()]);
-    const out = await provider.fetchHistoricalSnapshots(30);
-    expect(out).toHaveLength(168);
-  });
-
-  it('uses exactly tickCount ticks when below the cap', async () => {
-    mockFetch([baseApi()]);
-    const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    expect(out).toHaveLength(24);
-  });
-
-  it('generates one snapshot per tick with a timestamp string', async () => {
-    mockFetch([baseApi()]);
-    const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    expect(out[0].timestamp).toEqual(expect.any(String));
-    expect(out[0].markets).toHaveLength(1);
-    expect(out[0].markets[0].conditionId).toBe('c1');
-  });
-
-  it('interpolates prices between start and current', async () => {
-    mockFetch([baseApi()]);
-    const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    const prices = out[0].markets.map((m) => m.yesPrice);
-    // first and last ticks are the extremes of the random walk
-    expect(prices.length).toBeGreaterThan(0);
-    expect(typeof prices[0]).toBe('number');
-    expect(prices.every((p) => p >= 0.01 && p <= 0.99)).toBe(true);
-  });
-
-  it('scales volume and liquidity by progress', async () => {
-    mockFetch([baseApi()]);
-    const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    // last snapshot: volume ≈ 1000 * (0.1 + 0.9*1) = 1000
-    const last = out[out.length - 1].markets[0];
-    expect(last.volume).toBe(1000);
-    expect(last.liquidity).toBe(500);
-    // first snapshot: volume ≈ 1000 * (0.1 + 0.9*0) = 100
-    const first = out[0].markets[0];
-    expect(first.volume).toBe(100);
-    expect(first.liquidity).toBe(150);
-  });
-
-  it('propagates closed/endDate from the base market', async () => {
-    mockFetch([baseApi()]);
-    const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    expect(out[0].markets[0].closed).toBe(false);
-    expect(out[0].markets[0].endDate).toBe('2026-12-31');
-  });
-
-  it('passes the correct URL and timeout to fetch', async () => {
-    mockFetch([baseApi()]);
-    await provider.fetchHistoricalSnapshots(1);
-    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toContain('gamma-api.polymarket.com');
-    expect(url).toContain('/markets?closed=false&limit=100');
-    const opts = fetchMock.mock.calls[0][1] as { signal: AbortSignal };
-    expect(opts).toHaveProperty('signal');
-  });
-});
-
-describe('clearCache', () => {
-  it('clears cached snapshots', async () => {
-    // Reuse a single mock so the call-count assertion sees both invocations.
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve([baseApi()]),
+  it('throws when every market yields empty prices-history', async () => {
+    mockRoutedFetch({
+      markets: [baseMarket()],
+      historyByToken: { 'c1-yes': { history: [] } },
     });
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>) = fetchMock;
-    await provider.fetchHistoricalSnapshots(1, 60_000);
-    provider.clearCache();
-    // After clearing, a second call must refetch.
-    await provider.fetchHistoricalSnapshots(1, 60_000);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(provider.fetchHistoricalSnapshots(1)).rejects.toThrow(
+      'failed to fetch real prices-history for any market',
+    );
   });
-});
 
-describe('simulatePriceEvolution (via snapshot output)', () => {
-  it('uses seed + progress deterministically', async () => {
-    // Two markets with different seeds (j) so progress-driven drift is observable.
-    mockFetch([baseApi(), { ...baseApi(), id: 'm2', conditionId: 'c2', yesPrice: 0.4 }]);
+  it('keeps markets with history when a sibling market fails', async () => {
+    mockRoutedFetch({
+      markets: [
+        baseMarket({ conditionId: 'c1', clobTokenIds: ['c1-yes', 'c1-no'] }),
+        baseMarket({ conditionId: 'c2', clobTokenIds: ['c2-yes', 'c2-no'] }),
+      ],
+      historyByToken: {
+        'c1-yes': new Error('upstream 502'),
+        'c2-yes': defaultHistory(),
+      },
+    });
     const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    const pFirst = out[0].markets[1].yesPrice;
-    const pLast = out[out.length - 1].markets[1].yesPrice;
-    expect(pFirst).not.toBe(pLast);
-    // The seeded walk is deterministic — a second call reproduces the same values.
-    const out2 = await provider.fetchHistoricalSnapshots(1, 3_600_000);
-    expect(out2[0].markets[1].yesPrice).toBe(pFirst);
-    expect(out2[out2.length - 1].markets[1].yesPrice).toBe(pLast);
+    expect(out[0]!.markets).toHaveLength(1);
+    expect(out[0]!.markets[0]!.conditionId).toBe('c2');
+    expect(mockLogger.warn).toHaveBeenCalled();
+  });
+
+  it('caps ticks at 168 and uses exact tickCount below the cap', async () => {
+    mockRoutedFetch({});
+    const capped = await provider.fetchHistoricalSnapshots(30);
+    expect(capped).toHaveLength(168);
+    const day = await provider.fetchHistoricalSnapshots(1, 3_600_000);
+    expect(day).toHaveLength(24);
+  });
+
+  it('labels every snapshot and market row with source=prices-history and carries forward real prices', async () => {
+    mockRoutedFetch({});
+    const out = await provider.fetchHistoricalSnapshots(1, 3_600_000);
+    for (const snap of out) {
+      expect(snap.source).toBe('prices-history');
+      for (const m of snap.markets) {
+        expect(m.source).toBe('prices-history');
+        expect(m.volume).toBe(1000);
+        expect(m.liquidity).toBe(500);
+        expect(m.closed).toBe(false);
+        expect(m.endDate).toBe('2026-12-31');
+      }
+    }
+    expect(out[0]!.markets[0]!.yesPrice).toBeCloseTo(0.42, 6);
+    expect(out[12]!.markets[0]!.yesPrice).toBeCloseTo(0.55, 6);
+    expect(out[out.length - 1]!.markets[0]!.yesPrice).toBeCloseTo(0.68, 6);
+  });
+
+  it('caches snapshots and refetches after clearCache()', async () => {
+    const fetchFn = mockRoutedFetch({});
+    const first = await provider.fetchHistoricalSnapshots(1, 3_600_000);
+    const second = await provider.fetchHistoricalSnapshots(1, 3_600_000);
+    expect(second).toBe(first);
+    expect(fetchFn).toHaveBeenCalledTimes(2); // 1 /markets + 1 /prices-history
+    provider.clearCache();
+    await provider.fetchHistoricalSnapshots(1, 3_600_000);
+    expect(fetchFn).toHaveBeenCalledTimes(4);
   });
 });

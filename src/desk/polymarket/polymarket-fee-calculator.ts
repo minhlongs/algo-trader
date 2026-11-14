@@ -1,183 +1,78 @@
-// Polymarket dynamic fee calculator — March 30, 2026 & CLOB V2 Nov 2026 Quadratic Fee/Reward Engine
-// Legacy calcTakerFee kept for backwards-compatible backtests; V2 quadratic functions match CLOB V2.
-// Category tables and the keyword classifier live in ./polymarket-clob-v2-fee-categories and are
-// re-exported here so every existing import path stays source-compatible.
+/**
+ * Polymarket fee arithmetic, supporting both Gamma-published `PolymarketFeeSchedule`
+ * objects (per-market parabolic curves resolved by token id) and CLOB V2 quadratic
+ * category rates re-exported from the execution layer.
+ */
 
-export {
-  classifyMarketCategory,
-  CLOB_V2_MAX_BASE_FEE_BPS,
-  CLOB_V2_QUADRATIC_RATES,
-  FEE_SCHEDULES,
-  type FeeSchedule,
-  type PolymarketCategory,
-} from './polymarket-clob-v2-fee-categories';
+export * from './polymarket-clob-v2-fee-categories';
+export * from '../execution/polymarket-clob-v2-fee-math';
 
-import {
-  CLOB_V2_MAX_BASE_FEE_BPS,
-  CLOB_V2_QUADRATIC_RATES,
-  FEE_SCHEDULES,
-  type PolymarketCategory,
-} from './polymarket-clob-v2-fee-categories';
-
-/** Legacy linear fee estimator (kept for backwards-compatible backtest suite). */
-export function calcTakerFee(category: PolymarketCategory, probability: number): number {
-  const schedule = FEE_SCHEDULES[category];
-  if (schedule.exempt) return 0;
-  const distance = Math.abs(probability - 0.5);
-  const ratio = Math.min(distance / 0.5, 1.0);
-  return schedule.minTakerFee + (schedule.maxTakerFee - schedule.minTakerFee) * ratio;
+export interface PolymarketFeeSchedule {
+  /** Curve exponent the exchange applies. Live value: 1 (linear in p*(1-p)). */
+  exponent: number;
+  /** Base rate the exchange applies. Live values: 0.07, 0.05, 0.04, 0.03. */
+  rate: number;
+  /** True when only taker fills are charged. Live value: true. */
+  takerOnly: boolean;
+  /** Fraction of collected taker fees returned to makers. Live: 0.15, 0.20, 0.25. */
+  rebateRate: number;
 }
 
 /**
- * CLOB V2 quadratic taker fee rate per share: r_cat * p * (1 - p), capped at 10% (base_fee = 1000 bps).
- * Makers (`postOnly = true`) always pay 0%.
+ * Schedule for markets the exchange does NOT charge (`feesEnabled: false`,
+ * fee-exempt markets). Every function here returns 0 for it.
  */
-export function calcQuadraticTakerFeeRateV2(
-  category: PolymarketCategory,
-  probability: number,
-  postOnly = false,
-): number {
-  if (postOnly) return 0;
-  const p = Math.max(0, Math.min(1, probability));
-  const { rCat } = CLOB_V2_QUADRATIC_RATES[category];
-  if (rCat <= 0) return 0;
-  const rawRate = rCat * p * (1 - p);
-  // The 10% cap is a spec safety net, not the active binding: rCat maxes at 0.10
-  // and p(1-p) maxes at 0.25, so the shipped rates peak at 250 bps. Keep the clamp
-  // so a future higher rCat cannot silently price a share above the cap.
-  return Math.min(rawRate, CLOB_V2_MAX_BASE_FEE_BPS / 10_000);
-}
+export const EXEMPT_FEE_SCHEDULE: PolymarketFeeSchedule = Object.freeze({
+  exponent: 1,
+  rate: 0,
+  takerOnly: true,
+  rebateRate: 0,
+}) as PolymarketFeeSchedule;
 
-/** CLOB V2 quadratic taker fee in pUSD for `contracts` shares at `probability` price. */
-export function calcQuadraticTakerFeeV2(
-  category: PolymarketCategory,
-  probability: number,
-  contracts: number,
-  postOnly = false,
-): number {
-  if (postOnly || contracts <= 0) return 0;
-  return contracts * calcQuadraticTakerFeeRateV2(category, probability, false);
-}
-
-/** CLOB V2 maker rebate in pUSD when a passive order is filled by a taker. */
-export function calcMakerRebateV2(
-  category: PolymarketCategory,
-  probability: number,
-  contracts: number,
-): number {
-  const takerFee = calcQuadraticTakerFeeV2(category, probability, contracts, false);
-  return takerFee * CLOB_V2_QUADRATIC_RATES[category].makerRebatePct;
+/** Clamp a probability into the open interval the exchange prices on. */
+function clampPrice(price: number): number {
+  if (!Number.isFinite(price)) return 0;
+  if (price <= 0) return 0;
+  if (price >= 1) return 1;
+  return price;
 }
 
 /**
- * Net outcome shares and mergeable pair count after CLOB V2 Taker-BUY share deduction.
- * Buying `C` outcome shares as a taker deducts the fee directly in outcome tokens,
- * delivering `C * (1 - feeRate)` net shares and breaking 1:1 YES/NO merge parity
- * unless the order sizes are grossed up beforehand.
+ * Taker fee in USDC **per share** at `price`: `rate * (p * (1 - p)) ^ exponent`.
  */
-export interface TakerBuyParityBreakdown {
-  requestedPairs: number;
-  yesFeeRate: number;
-  noFeeRate: number;
-  yesNetShares: number;
-  noNetShares: number;
-  mergeablePairs: number;
-  grossUpYesShares: number;
-  grossUpNoShares: number;
-  canMergeFullRequestedPairs: boolean;
-}
-
-export function computeTakerBuyNetSharesAndMergeablePairs(
-  requestedPairs: number,
-  yesAsk: number,
-  noAsk: number,
-  category: PolymarketCategory,
-): TakerBuyParityBreakdown {
-  const safePairs = Math.max(0, requestedPairs);
-  const yesFeeRate = calcQuadraticTakerFeeRateV2(category, yesAsk, false);
-  const noFeeRate = calcQuadraticTakerFeeRateV2(category, noAsk, false);
-  const yesNetShares = safePairs * (1 - yesFeeRate);
-  const noNetShares = safePairs * (1 - noFeeRate);
-  const mergeablePairs = Math.min(yesNetShares, noNetShares);
-  const grossUpYesShares = yesFeeRate < 1 ? Math.ceil(safePairs / (1 - yesFeeRate)) : Infinity;
-  const grossUpNoShares = noFeeRate < 1 ? Math.ceil(safePairs / (1 - noFeeRate)) : Infinity;
-  const canMergeFullRequestedPairs = mergeablePairs >= safePairs - 1e-9;
-
-  return {
-    requestedPairs: safePairs,
-    yesFeeRate,
-    noFeeRate,
-    yesNetShares,
-    noNetShares,
-    mergeablePairs,
-    grossUpYesShares,
-    grossUpNoShares,
-    canMergeFullRequestedPairs,
-  };
-}
-
-export interface LiquidityRewardScoreInput {
-  maxIncentiveSpread: number;
-  bidDistanceFromMid: number;
-  askDistanceFromMid: number;
-  bidSizeShares: number;
-  askSizeShares: number;
-  midProbability: number;
-  inGameMultiplier?: number;
-  singleSidedPenaltyDivisor?: number;
+export function calcTakerFeePerShare(schedule: PolymarketFeeSchedule, price: number): number {
+  const p = clampPrice(price);
+  if (schedule.rate <= 0) return 0;
+  const curve = Math.pow(p * (1 - p), schedule.exponent);
+  if (!Number.isFinite(curve) || curve <= 0) return 0;
+  return schedule.rate * curve;
 }
 
 /**
- * CLOB V2 quadratic liquidity reward score S(v, s) = ((v - s) / v)^2 * b
- * with two-sided depth rule Q = max(min(Q_bid, Q_ask), max(Q_bid, Q_ask) / c) for p in [0.10, 0.90].
+ * Maker rebate in USDC **per share** at `price`: the taker fee at that price
+ * times the market's `rebateRate`.
  */
-export function calcLiquidityRewardScoreV2(input: LiquidityRewardScoreInput): {
-  bidScorePerShare: number;
-  askScorePerShare: number;
-  effectiveWeightedScore: number;
-} {
-  const v = input.maxIncentiveSpread;
-  const b = input.inGameMultiplier ?? 1.0;
-  const c = input.singleSidedPenaltyDivisor ?? 3.0;
-  if (v <= 0) return { bidScorePerShare: 0, askScorePerShare: 0, effectiveWeightedScore: 0 };
-
-  const scoreAt = (s: number): number => {
-    if (s < 0 || s >= v) return 0;
-    const ratio = (v - s) / v;
-    return ratio * ratio * b;
-  };
-
-  const bidScorePerShare = scoreAt(input.bidDistanceFromMid);
-  const askScorePerShare = scoreAt(input.askDistanceFromMid);
-  const qBid = Math.max(0, input.bidSizeShares) * bidScorePerShare;
-  const qAsk = Math.max(0, input.askSizeShares) * askScorePerShare;
-  const p = input.midProbability;
-
-  const effectiveWeightedScore =
-    p >= 0.10 && p <= 0.90
-      ? Math.max(Math.min(qBid, qAsk), Math.max(qBid, qAsk) / c)
-      : Math.min(qBid, qAsk);
-
-  return { bidScorePerShare, askScorePerShare, effectiveWeightedScore };
+export function calcMakerRebatePerShare(schedule: PolymarketFeeSchedule, price: number): number {
+  if (schedule.rebateRate <= 0) return 0;
+  return calcTakerFeePerShare(schedule, price) * schedule.rebateRate;
 }
 
-/** Calculate maker rebate from taker fees collected. */
-export function calcMakerRebate(category: PolymarketCategory, takerFeeCollected: number): number {
-  return takerFeeCollected * FEE_SCHEDULES[category].makerRebatePct;
+/**
+ * Effective maker fee rate as a fraction of notional (negative for a rebate).
+ */
+export function calcMakerFeeRate(schedule: PolymarketFeeSchedule, price: number): number {
+  const p = clampPrice(price);
+  if (p <= 0) return 0;
+  const rebate = calcMakerRebatePerShare(schedule, price);
+  if (!(rebate > 0)) return 0;
+  return -rebate / p;
 }
 
-/** Total cost for a taker order including dynamic fee. */
-export function netCostTaker(amount: number, category: PolymarketCategory, probability: number): number {
-  return amount * (1 + calcTakerFee(category, probability));
-}
-
-/** Estimated net profit for a maker order including rebate. */
-export function netProfitMaker(
-  amount: number,
-  category: PolymarketCategory,
-  estimatedTakerVolume: number,
-  probability = 0.5,
-): number {
-  const feeRate = calcTakerFee(category, probability);
-  return amount + estimatedTakerVolume * feeRate * FEE_SCHEDULES[category].makerRebatePct;
+/**
+ * Fee as a fraction of notional for one taker share at `price`.
+ */
+export function calcTakerFeeRate(schedule: PolymarketFeeSchedule, price: number): number {
+  const p = clampPrice(price);
+  if (p <= 0) return 0;
+  return calcTakerFeePerShare(schedule, price) / p;
 }

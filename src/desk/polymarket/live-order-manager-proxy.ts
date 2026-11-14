@@ -1,24 +1,14 @@
 /**
  * Live Order Manager Proxy
  *
- * Implements the legacy OrderManager interface but routes all orders through
- * the LiveTradingOrchestrator via StrategyLiveBridge. This allows existing
- * V2 strategies to use the live trading pipeline without code changes —
- * just swap the OrderManager dependency.
- *
- * Usage:
- *   const orch = new LiveTradingOrchestrator({ paperTrading: false, ... });
- *   const bridge = new StrategyLiveBridge(orch);
- *   const orderMgr = new LiveOrderManagerProxy(bridge, 'my-strategy');
- *   // Pass orderMgr as a StrategyDeps.orderManager to any V2 strategy
+ * Implements the legacy OrderManager interface and routes all orders through
+ * LiveTradingOrchestrator via StrategyLiveBridge.
  */
 
 import type { OrderManager, PlaceOrderResult } from '../polymarket/order-manager';
 import type { StrategyLiveBridge, TradeSignal } from './strategy-live-bridge';
 import { calcQuadraticTakerFeeRateV2, type PolymarketCategory } from './polymarket-fee-calculator';
 import { logger } from '../../shared/utils/logger';
-
-// ── Proxy ────────────────────────────────────────────────────────────────────────
 
 export class LiveOrderManagerProxy implements OrderManager {
   private bridge: StrategyLiveBridge;
@@ -31,19 +21,13 @@ export class LiveOrderManagerProxy implements OrderManager {
     this.strategyName = strategyName;
   }
 
-  // ── OrderManager interface ──────────────────────────────────────────────────
-
   async placeOrder(params: {
     tokenId: string;
     side: 'buy' | 'sell';
     price: string | number;
     size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
-    /**
-     * Market fee category used to price the fallback fee estimate. Callers that
-     * omit it keep the previous conservative behaviour of assuming the highest
-     * common non-exempt rate.
-     */
+    /** Optional CLOB V2 market category when response omits `feeUsdc`. */
     category?: PolymarketCategory;
   }): Promise<PlaceOrderResult> {
     this.orderCount++;
@@ -55,6 +39,7 @@ export class LiveOrderManagerProxy implements OrderManager {
       side: params.side === 'buy' ? 'BUY' : 'SELL',
       price: priceNum,
       size: sizeNum,
+      orderType: params.orderType,
       description: `${this.strategyName}:order#${this.orderCount}`,
       confidence: 0.7,
       timestamp: Date.now(),
@@ -87,8 +72,9 @@ export class LiveOrderManagerProxy implements OrderManager {
       const feeUsdc =
         typeof result.response.feeUsdc === 'number'
           ? result.response.feeUsdc
-          : calcQuadraticTakerFeeRateV2(params.category ?? 'politics', fillPriceNum)
-            * filledSizeNum * fillPriceNum;
+          : params.category
+            ? calcQuadraticTakerFeeRateV2(params.category, fillPriceNum) * filledSizeNum * fillPriceNum
+            : 0;
       return {
         id: orderId,
         filled: filledSizeNum > 0,
@@ -117,8 +103,12 @@ export class LiveOrderManagerProxy implements OrderManager {
       strategy: this.strategyName,
       orderId,
     });
-    // Delegate to orchestrator for live cancellation via adapter
-    await this.bridge['orchestrator'].cancelOrder(orderId);
+    if (typeof this.bridge.cancelOrder === 'function') {
+      await this.bridge.cancelOrder(orderId);
+      return;
+    }
+    const orch = (this.bridge as unknown as { orchestrator?: { cancelOrder?: (id: string) => Promise<void> } }).orchestrator;
+    await orch?.cancelOrder?.(orderId);
   }
 
   async cancelAllOrders(tokenId?: string): Promise<void> {
@@ -126,17 +116,23 @@ export class LiveOrderManagerProxy implements OrderManager {
       strategy: this.strategyName,
       tokenId: tokenId?.slice(0, 12),
     });
-    // Cancel all open orders for this strategy via orchestrator
+    if (typeof this.bridge.cancelAllOrders === 'function') {
+      this.cancelCount++;
+      await this.bridge.cancelAllOrders(tokenId);
+      return;
+    }
     if (tokenId) {
-      await this.bridge['orchestrator'].cancelOrder(tokenId);
+      const orch = (this.bridge as unknown as { orchestrator?: { cancelOrder?: (id: string) => Promise<void> } }).orchestrator;
+      await orch?.cancelOrder?.(tokenId);
     }
   }
 
-  async getOpenOrders(_tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
+  async getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
+    if (typeof this.bridge.getOpenOrders === 'function') {
+      return this.bridge.getOpenOrders(tokenId);
+    }
     return [];
   }
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
 
   getStats() {
     return {

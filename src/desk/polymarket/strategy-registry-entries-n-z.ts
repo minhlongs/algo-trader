@@ -1,7 +1,9 @@
 import type { StrategyEntry } from './strategy-registry-types';
 
+import { NegRiskBundleArbitrageStrategy, DEFAULT_CONFIG as NegRiskBundle } from '../strategies/polymarket/quant-alpha/negrisk-bundle-arbitrage';
 import { OrderArrivalRateStrategy, DEFAULT_CONFIG as OrderArrival } from '../strategies/polymarket/order-arrival-rate-v2';
 import { PriceAccelerationStrategy, DEFAULT_CONFIG as PriceAccel } from '../strategies/polymarket/price-acceleration-v2';
+import { PrimarySourceNewsLatencyStrategy, DEFAULT_CONFIG as PrimaryNewsLatency } from '../strategies/polymarket/quant-alpha/primary-source-news-latency';
 import { RecencyBiasExploiterStrategy, DEFAULT_CONFIG as RecencyBias } from '../strategies/polymarket/recency-bias-exploiter-v2';
 import { RegimeAdaptiveMomentumStrategy, DEFAULT_CONFIG as RegimeAdapt } from '../strategies/polymarket/regime-adaptive-momentum-v2';
 import { RelativeStrengthRotationStrategy, DEFAULT_CONFIG as RelStrength } from '../strategies/polymarket/relative-strength-rotation-v2';
@@ -9,12 +11,19 @@ import { ResolutionFrontrunnerStrategy, DEFAULT_CONFIG as ResFront } from '../st
 import { StaleQuoteSniperStrategy, DEFAULT_CONFIG as StaleQuote } from '../strategies/polymarket/stale-quote-sniper-v2';
 import { TailRiskHarvesterStrategy, DEFAULT_CONFIG as TailRisk } from '../strategies/polymarket/tail-risk-harvester-v2';
 import { TimeWeightedMeanReversionStrategy, DEFAULT_CONFIG as TimeWMR } from '../strategies/polymarket/time-weighted-mean-reversion-v2';
+import { ToxicityAwareMarketMakerStrategy, DEFAULT_CONFIG as ToxicityMM } from '../strategies/polymarket/quant-alpha/toxicity-aware-market-maker';
 import { VolCompressionBreakoutStrategy, DEFAULT_CONFIG as VolComBreak } from '../strategies/polymarket/vol-compression-breakout-v2';
 import { VolatilityTargetingStrategy, DEFAULT_CONFIG as VolTarget } from '../strategies/polymarket/volatility-targeting-v2';
 import { WeightedSentimentAggregatorStrategy, DEFAULT_CONFIG as WeightedSent } from '../strategies/polymarket/weighted-sentiment-aggregator-v2';
 import { WhaleTrackerStrategy, DEFAULT_CONFIG as WhaleTrack } from '../strategies/polymarket/whale-tracker-v2';
 
 export const REGISTRY_N_Z: Record<string, StrategyEntry> = {
+  'negrisk-bundle-arbitrage': {
+    name: 'negrisk-bundle-arbitrage',
+    description: 'Event-level NegRisk buy-N-of-N bundle arbitrage with Frank-Wolfe simplex projection and per-token fee resolution',
+    ctor: NegRiskBundleArbitrageStrategy,
+    defaultConfig: NegRiskBundle,
+  },
   'order-arrival-rate': {
     name: 'order-arrival-rate',
     description: 'Signals on abnormal order arrival rate — detects informed trading flow',
@@ -26,6 +35,12 @@ export const REGISTRY_N_Z: Record<string, StrategyEntry> = {
     description: 'Trades second-derivative price moves — acceleration, not just velocity',
     ctor: PriceAccelerationStrategy,
     defaultConfig: PriceAccel,
+  },
+  'primary-source-news-latency': {
+    name: 'primary-source-news-latency',
+    description: 'Primary-source news-to-probability latency ladder with dual-stream verification and shadow-mode gate',
+    ctor: PrimarySourceNewsLatencyStrategy,
+    defaultConfig: PrimaryNewsLatency,
   },
   'recency-bias-exploiter': {
     name: 'recency-bias-exploiter',
@@ -68,6 +83,12 @@ export const REGISTRY_N_Z: Record<string, StrategyEntry> = {
     description: 'Mean-reversion with time-of-day weighting — stronger signals during active hours',
     ctor: TimeWeightedMeanReversionStrategy,
     defaultConfig: TimeWMR,
+  },
+  'toxicity-aware-market-maker': {
+    name: 'toxicity-aware-market-maker',
+    description: 'Toxicity-aware adaptive maker-only pair market maker with cash-collateralised YES+NO quoting',
+    ctor: ToxicityAwareMarketMakerStrategy,
+    defaultConfig: ToxicityMM,
   },
   'vol-compression-breakout': {
     name: 'vol-compression-breakout',

@@ -49,6 +49,25 @@ import {
   NetProfitabilityCalculator,
 } from '../../../src/desk/arbitrage/net-profitability-calculator';
 import {
+  EXEMPT_FEE_SCHEDULE,
+  type PolymarketFeeSchedule,
+} from '../../../src/desk/polymarket/polymarket-fee-calculator';
+
+/** Live Gamma schedule for Crypto markets, surveyed 2026-11-12. */
+const CRYPTO_SCHEDULE: PolymarketFeeSchedule = {
+  exponent: 1,
+  rate: 0.07,
+  takerOnly: true,
+  rebateRate: 0.2,
+};
+/** Live Gamma schedule for Finance markets. */
+const FINANCE_SCHEDULE: PolymarketFeeSchedule = {
+  exponent: 1,
+  rate: 0.04,
+  takerOnly: true,
+  rebateRate: 0.25,
+};
+import {
   OpportunityIngestionPipeline,
   ArbitrageEngine,
 } from '../../../src/desk/arbitrage/opportunity-ingestion-pipeline';
@@ -982,28 +1001,55 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
       expect(analysis.totalCostUsd).toBeGreaterThanOrEqual(20.1);
     });
 
-    it('3.2: evaluates Polymarket dynamic taker fee curve at probability p = 0.50', () => {
+    it('3.2: charges 3.5% of notional at p = 0.50 for a 0.07 rate market', () => {
+      // 0.07 * (0.5 * 0.5) = 0.0175 USDC per share. At a price of 0.50 that is
+      // 3.5% of the $1000 notional => $35.00, i.e. 350 bps, not 35 bps.
+      const res = calculator.calculatePolymarketFee(CRYPTO_SCHEDULE, 0.5, 1000);
+      expect(res.rate).toBeCloseTo(0.035, 10);
+      expect(res.feeUsd).toBeCloseTo(35.0, 6);
+    });
+
+    it('3.3: drops to 35 bps of notional at the extreme probability p = 0.95', () => {
+      // 0.07 * (0.95 * 0.05) = 0.003325 USDC per share; / 0.95 = 0.0035.
+      const res = calculator.calculatePolymarketFee(CRYPTO_SCHEDULE, 0.95, 1000);
+      expect(res.rate).toBeCloseTo(0.0035, 10);
+      expect(res.feeUsd).toBeCloseTo(3.5, 6);
+    });
+
+    it('3.2b: evaluates CLOB V2 category dynamic taker fee curve at probability p = 0.50', () => {
       // CLOB V2 quadratic curve: crypto rCat = 0.07 => rate = 0.07 * 0.50 * 0.50 = 0.0175 (175 bps)
       const res = calculator.calculatePolymarketFee('crypto', 0.50, 1000);
       expect(res.rate).toBeCloseTo(0.0175, 4);
       expect(res.feeUsd).toBeCloseTo(17.50, 2);
     });
 
-    it('3.3: evaluates Polymarket dynamic taker fee curve at extreme probability p = 0.95', () => {
+    it('3.3b: evaluates CLOB V2 category dynamic taker fee curve at extreme probability p = 0.95', () => {
       // CLOB V2 quadratic curve: crypto rCat = 0.07 => rate = 0.07 * 0.95 * 0.05 = 0.003325 (33.25 bps)
       const res = calculator.calculatePolymarketFee('crypto', 0.95, 1000);
       expect(res.rate).toBeCloseTo(0.003325, 6);
       expect(res.feeUsd).toBeCloseTo(3.325, 3);
     });
 
-    it('3.4: returns 0 fee for exempt Polymarket categories (geopolitics, world_events)', () => {
-      const res1 = calculator.calculatePolymarketFee('geopolitics', 0.90, 1000);
+    it('3.4: returns 0 fee for a market the exchange publishes as exempt', () => {
+      const res1 = calculator.calculatePolymarketFee(EXEMPT_FEE_SCHEDULE, 0.9, 1000);
       expect(res1.rate).toBe(0);
       expect(res1.feeUsd).toBe(0);
 
-      const res2 = calculator.calculatePolymarketFee('world_events', 0.10, 1000);
+      const res2 = calculator.calculatePolymarketFee(EXEMPT_FEE_SCHEDULE, 0.1, 1000);
       expect(res2.rate).toBe(0);
       expect(res2.feeUsd).toBe(0);
+    });
+
+    it('3.4b: refuses to price a Polymarket leg that carries no schedule', () => {
+      const analysis = calculator.evaluate({
+        buyLeg: { venue: 'polymarket', symbol: 'tok-unknown', price: 0.5, side: 'buy' },
+        sellLeg: { venue: 'binance', symbol: 'BTC/USDT', price: 0.55, side: 'sell' },
+        tradeAmount: 2000,
+      });
+
+      expect(analysis.isProfitable).toBe(false);
+      expect(analysis.rejectionReason).toBe('FEE_SCHEDULE_UNAVAILABLE');
+      expect(analysis.totalCostUsd).toBe(0);
     });
 
     it('3.5: credits maker rebate when orderType is maker on Polymarket', () => {
@@ -1014,13 +1060,16 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
           price: 0.50,
           side: 'buy',
           orderType: 'maker',
-          polymarketCategory: 'finance',
+          polymarketFeeSchedule: FINANCE_SCHEDULE,
         },
         sellLeg: { venue: 'binance', symbol: 'BTC/USDT', price: 0.55, side: 'sell' },
         tradeAmount: 2000, // $1,000 notional
       });
 
-      // CLOB V2 finance maker rebate is 25% of the quadratic taker rate (0.0100 * 0.25 = -0.0025)
+      // Taker fee at 0.04 rate is 0.01/share; 25% of it is rebated => 0.0025/share,
+      // which is 0.0050 of notional => a $5.00 credit on $1,000.
+      expect(analysis.estimatedBuyFeeUsd).toBeCloseTo(-5.0, 6);
+
       expect(analysis.estimatedBuyFeeUsd).toBeLessThan(0);
     });
   });
@@ -1043,7 +1092,14 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
     it('4.1: returns exactly $0.00 gas for CEX and off-chain CLOB venues', () => {
       const analysis = calculator.evaluate({
         buyLeg: { venue: 'binance', symbol: 'BTC/USDT', price: 50000, side: 'buy' },
-        sellLeg: { venue: 'polymarket', symbol: 'tok-btc', price: 50500, side: 'sell', settlementType: 'off_chain_clob' },
+        sellLeg: {
+          venue: 'polymarket',
+          symbol: 'tok-btc',
+          price: 50500,
+          side: 'sell',
+          settlementType: 'off_chain_clob',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
+        },
         tradeAmount: 0.1,
       });
 
@@ -1058,6 +1114,7 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
           price: 0.50,
           side: 'buy',
           settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
         },
         sellLeg: { venue: 'binance', symbol: 'BTC/USDT', price: 0.55, side: 'sell' },
         tradeAmount: 2000,
@@ -1205,9 +1262,14 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
           price: 0.50,
           side: 'buy',
           settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
         },
         sellLeg: { venue: 'binance', symbol: 'BTC/USDT', price: 0.51, side: 'sell' }, // 2% gross
         tradeAmount: 1.0, // $0.50 micro-notional; spread is $0.01 USD, gas is ~$0.50 override
+        // Fees are priced out of the way so this test measures gas alone: at this
+        // notional the 3.5%-of-notional taker fee is already larger than the spread
+        // and would trip MASSIVE_FEE_SPIKE before gas is ever compared.
+        feeOverrides: { buyFeeRate: 0, sellFeeRate: 0 },
         gasOverrides: {
           polygonGasUsd: 0.50,
         },

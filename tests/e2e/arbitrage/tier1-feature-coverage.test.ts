@@ -8,6 +8,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OpportunityIngestionPipeline } from '../../../src/desk/arbitrage/opportunity-ingestion-pipeline';
 import { NetProfitabilityCalculator } from '../../../src/desk/arbitrage/net-profitability-calculator';
+import { type PolymarketFeeSchedule } from '../../../src/desk/polymarket/polymarket-fee-calculator';
+
+/** Live Crypto schedule surveyed from Gamma on 2026-11-12. */
+const CRYPTO_SCHEDULE: PolymarketFeeSchedule = {
+  exponent: 1,
+  rate: 0.07,
+  takerOnly: true,
+  rebateRate: 0.2,
+};
 import { CcxtExchangeConnector } from '../../../src/desk/markets/cex/ccxt-exchange-connector';
 import { PolymarketConnectorAdapter } from '../../../src/desk/execution/polymarket-connector-adapter';
 import { ArbitrageRiskGuard, ArbitrageRejectionReason } from '../../../src/desk/arbitrage/arbitrage-risk-guard';
@@ -276,7 +285,15 @@ describe('Tier 1: Feature Coverage (F1 to F13)', () => {
 
       const polyRes = calc.calculate({
         buyLeg: { venue: 'binance', symbol: 'ETH/USDT', side: 'buy', price: 3000, amount: 1 },
-        sellLeg: { venue: 'polymarket', symbol: 'ETH/USDT', side: 'sell', price: 3010, amount: 1, settlementType: 'on_chain_settle' },
+        sellLeg: {
+          venue: 'polymarket',
+          symbol: 'ETH/USDT',
+          side: 'sell',
+          price: 3010,
+          amount: 1,
+          settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
+        },
         tradeAmount: 1,
       });
 

@@ -19,9 +19,24 @@ import {
 import { AtomicMultiLegCoordinator } from '../../../src/desk/arbitrage/atomic-multileg-coordinator';
 import { CompensatoryUnwindHandler } from '../../../src/desk/arbitrage/compensatory-unwind-handler';
 import { ArbitrageMetrics } from '../../../src/desk/arbitrage/telemetry/arbitrage-metrics';
+import type { PolymarketFeeSchedule } from '../../../src/desk/polymarket/polymarket-fee-calculator';
 import { ArbitrageAuditLogger } from '../../../src/desk/arbitrage/telemetry/arbitrage-audit-logger';
 import type { IExchangeConnector } from '../../../src/desk/arbitrage/connectors/types';
 import type { ArbitrageOpportunity } from '../../../src/desk/arbitrage/types';
+
+/**
+ * Live Gamma fee schedule for Crypto markets, surveyed 2026-11-12.
+ *
+ * Every Polymarket leg in this suite is pinned to a schedule: a leg without one
+ * is rejected as `FEE_SCHEDULE_UNAVAILABLE` before gas is ever computed, which
+ * would make the gas and net-profit assertions vacuous.
+ */
+const CRYPTO_SCHEDULE: PolymarketFeeSchedule = {
+  exponent: 1,
+  rate: 0.07,
+  takerOnly: true,
+  rebateRate: 0.2,
+};
 
 vi.mock('../../../src/seed/security/audit-log', () => ({
   logAudit: vi.fn().mockResolvedValue(undefined),
@@ -108,6 +123,7 @@ describe('Tier 4: Real-World Production Scenarios', () => {
           price: 0.65,
           amount: 1000,
           settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
         },
         sellLeg: {
           venue: 'binance',

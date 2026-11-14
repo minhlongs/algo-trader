@@ -84,11 +84,13 @@ export async function fetchFromOhlcvStore(
     );
   }
 
-  const snapshots = candles.map((candle: OhlcvCandle) => ({
+  const snapshots: HistoricalSnapshot[] = candles.map((candle: OhlcvCandle) => ({
     timestamp: candle.timestamp.toISOString(),
+    source: 'ohlcv-store',
     markets: [{
       conditionId: market,
       question: market,
+      source: 'ohlcv-store',
       slug: market,
       outcomes: ['Yes', 'No'],
       outcomePrices: [candle.close.toString(), (1 - candle.close).toString()],

@@ -446,6 +446,7 @@ describe('LiveTradingOrchestrator & Setup & Persistence', () => {
       const liveOrch = new LiveTradingOrchestrator({
         capitalUsdc: 10000,
         paperTrading: false,
+        enforcePolyRiskGate: false,
       });
 
       await liveOrch.start();

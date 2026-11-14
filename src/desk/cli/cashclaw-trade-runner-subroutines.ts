@@ -19,9 +19,14 @@ export async function runSingleStrategy(opts: {
   const { getStrategy } = await import('../polymarket/strategy-registry');
   const entry = getStrategy(opts.strategyName)!;
   const { StrategyRunner: Runner } = await import('../polymarket/strategy-runner');
+  const { createGammaFeeScheduleResolver } = await import('../polymarket/fee-schedule-resolver');
   const runner = new Runner(entry.ctor, {
     strategyConfig: entry.defaultConfig,
-    tradingConfig: { paperTrading: !opts.isLive, capitalUsdc: opts.capitalUsdc },
+    tradingConfig: {
+      paperTrading: !opts.isLive,
+      capitalUsdc: opts.capitalUsdc,
+      feeScheduleResolver: createGammaFeeScheduleResolver(),
+    },
     tickIntervalMs: opts.tickIntervalMs,
     maxTicks: opts.maxTicks > 0 ? opts.maxTicks : 0,
     autoScan: false,
@@ -75,9 +80,14 @@ export async function runMultiStrategy(opts: {
   maxTicks: number;
 }): Promise<void> {
   const { MultiStrategyRunner } = await import('../polymarket/multi-strategy-runner');
+  const { createGammaFeeScheduleResolver } = await import('../polymarket/fee-schedule-resolver');
   const multi = new MultiStrategyRunner({
     strategies: opts.strategyNames,
-    tradingConfig: { paperTrading: !opts.isLive, capitalUsdc: opts.capitalUsdc },
+    tradingConfig: {
+      paperTrading: !opts.isLive,
+      capitalUsdc: opts.capitalUsdc,
+      feeScheduleResolver: createGammaFeeScheduleResolver(),
+    },
     tickIntervalMs: opts.tickIntervalMs,
     maxTicks: opts.maxTicks > 0 ? opts.maxTicks : 0,
   });

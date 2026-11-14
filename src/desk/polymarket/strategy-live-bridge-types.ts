@@ -10,6 +10,8 @@ export interface TradeSignal {
   side: 'BUY' | 'SELL';
   size: number;
   price: number;
+  /** Optional time-in-force forwarded to risk and order placement (`GTC` default). */
+  orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
   /** Market/question description for logging */
   description?: string;
   /** Signal confidence (0-1), used for position sizing */

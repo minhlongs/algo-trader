@@ -4,6 +4,10 @@
  */
 
 import { z } from 'zod';
+import {
+  CLOB_V2_QUADRATIC_RATES,
+  type PolymarketCategory,
+} from '../../polymarket/polymarket-fee-calculator';
 
 /** Numerical precision margin for hurdle comparison to prevent IEEE-754 floating-point subtraction noise. */
 export const HURDLE_EPSILON_BPS = 1e-6;
@@ -30,6 +34,17 @@ export type RawOrderBookDepth = {
   asks?: Array<OrderBookLevel | [number, number]>;
 };
 
+/**
+ * The schedule the exchange publishes for a market. Callers that hold a token id
+ * resolve it through `FeeScheduleResolver` at the boundary where the id is available.
+ */
+export const PolymarketFeeScheduleSchema = z.object({
+  exponent: z.number().nonnegative(),
+  rate: z.number().nonnegative(),
+  takerOnly: z.boolean().default(true),
+  rebateRate: z.number().min(0).max(1).default(0),
+});
+
 export const VenueTradeLegSchema = z.object({
   venue: z.string().min(1, 'Venue identifier required'),
   symbol: z.string().min(1, 'Trading symbol required'),
@@ -37,12 +52,16 @@ export const VenueTradeLegSchema = z.object({
   price: z.number(),
   amount: z.number().optional(),
   orderType: z.enum(['taker', 'maker']).default('taker'),
+  /**
+   * Fee schedule for this leg's market. When neither `polymarketFeeSchedule` nor
+   * an explicit CLOB V2 category/description is provided, a `polymarket` leg is
+   * rejected as `FEE_SCHEDULE_UNAVAILABLE`.
+   */
+  polymarketFeeSchedule: PolymarketFeeScheduleSchema.optional(),
   polymarketCategory: z
-    .enum([
-      'crypto', 'politics', 'finance', 'tech', 'culture',
-      'sports', 'science', 'pop_culture', 'nfl_college_football', 'table_tennis',
-      'geopolitics', 'world_events',
-    ])
+    .custom<PolymarketCategory>(
+      (v) => typeof v === 'string' && Object.prototype.hasOwnProperty.call(CLOB_V2_QUADRATIC_RATES, v),
+    )
     .optional(),
   marketDescription: z.string().optional(),
   settlementType: z.enum(['off_chain_clob', 'on_chain_settle']).default('off_chain_clob'),
@@ -103,7 +122,8 @@ export type RejectionReason =
   | 'EXCESSIVE_SLIPPAGE'
   | 'BELOW_HURDLE'
   | 'INVALID_INPUT'
-  | 'UNSUPPORTED_VENUE';
+  | 'UNSUPPORTED_VENUE'
+  | 'FEE_SCHEDULE_UNAVAILABLE';
 
 export interface VwapSlippageResult {
   vwap: number;
@@ -140,6 +160,7 @@ export interface NetProfitabilityAnalysis {
     insufficientLiquidity: boolean;
     availableDepthBuy?: number;
     availableDepthSell?: number;
+    feeScheduleUnavailable?: string;
   };
 }
 

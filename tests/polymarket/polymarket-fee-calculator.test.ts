@@ -1,131 +1,123 @@
 import { describe, it, expect } from 'vitest';
 import {
-  calcTakerFee,
-  calcMakerRebate,
-  netCostTaker,
-  netProfitMaker,
-  classifyMarketCategory,
-  FEE_SCHEDULES,
-  type PolymarketCategory,
+  calcTakerFeePerShare,
+  calcMakerRebatePerShare,
+  calcMakerFeeRate,
+  calcTakerFeeRate,
+  EXEMPT_FEE_SCHEDULE,
+  type PolymarketFeeSchedule,
 } from '../../src/desk/polymarket/polymarket-fee-calculator';
 
-describe('Polymarket Fee Calculator', () => {
-  describe('calcTakerFee', () => {
-    it('returns 0 for exempt categories', () => {
-      expect(calcTakerFee('geopolitics', 0.50)).toBe(0);
-      expect(calcTakerFee('geopolitics', 0.10)).toBe(0);
-      expect(calcTakerFee('world_events', 0.90)).toBe(0);
+/** Live Crypto schedule surveyed from Gamma on 2026-11-12. */
+const CRYPTO: PolymarketFeeSchedule = { exponent: 1, rate: 0.07, takerOnly: true, rebateRate: 0.2 };
+/** Live Politics/Finance/Tech schedule. */
+const POLITICS: PolymarketFeeSchedule = { exponent: 1, rate: 0.04, takerOnly: true, rebateRate: 0.25 };
+
+describe('Polymarket fee arithmetic', () => {
+  describe('calcTakerFeePerShare', () => {
+    it('charges rate * p * (1-p) per share, peaking at p = 0.50', () => {
+      expect(calcTakerFeePerShare(CRYPTO, 0.5)).toBeCloseTo(0.0175, 10);
+      expect(calcTakerFeePerShare(POLITICS, 0.5)).toBeCloseTo(0.01, 10);
     });
 
-    it('returns minTakerFee at probability 0.50', () => {
-      expect(calcTakerFee('crypto', 0.50)).toBeCloseTo(0.0035, 4);
-      expect(calcTakerFee('politics', 0.50)).toBeCloseTo(0.0020, 4);
-      expect(calcTakerFee('sports', 0.50)).toBeCloseTo(0.0015, 4);
+    it('is symmetric around 0.50', () => {
+      expect(calcTakerFeePerShare(CRYPTO, 0.1)).toBeCloseTo(calcTakerFeePerShare(CRYPTO, 0.9), 12);
+      expect(calcTakerFeePerShare(CRYPTO, 0.25)).toBeCloseTo(
+        calcTakerFeePerShare(CRYPTO, 0.75),
+        12,
+      );
     });
 
-    it('returns maxTakerFee at probability 0.0 and 1.0', () => {
-      expect(calcTakerFee('crypto', 0.0)).toBeCloseTo(0.018, 4);
-      expect(calcTakerFee('crypto', 1.0)).toBeCloseTo(0.018, 4);
-      expect(calcTakerFee('politics', 0.0)).toBeCloseTo(0.010, 4);
+    it('falls towards zero at the price extremes', () => {
+      expect(calcTakerFeePerShare(CRYPTO, 0.01)).toBeCloseTo(0.000693, 6);
+      expect(calcTakerFeePerShare(CRYPTO, 0.01)).toBeLessThan(
+        calcTakerFeePerShare(CRYPTO, 0.5),
+      );
     });
 
-    it('scales linearly between min and max', () => {
-      // At 0.25 (distance 0.25 from center, ratio 0.5)
-      const fee = calcTakerFee('crypto', 0.25);
-      const expected = 0.0035 + (0.018 - 0.0035) * 0.5;
-      expect(fee).toBeCloseTo(expected, 4);
-    });
-
-    it('crypto has highest peak fee at 1.80%', () => {
-      expect(calcTakerFee('crypto', 0.0)).toBeCloseTo(0.018, 4);
-    });
-
-    it('sports has lower peak fee at 0.75%', () => {
-      expect(calcTakerFee('sports', 0.0)).toBeCloseTo(0.0075, 4);
-    });
-  });
-
-  describe('calcMakerRebate', () => {
-    it('applies correct rebate percentage per category', () => {
-      expect(calcMakerRebate('finance', 100)).toBe(50);   // 50% rebate
-      expect(calcMakerRebate('politics', 100)).toBe(25);   // 25% rebate
-      expect(calcMakerRebate('crypto', 100)).toBe(20);     // 20% rebate
-    });
-
-    it('returns 0 for exempt categories', () => {
-      expect(calcMakerRebate('geopolitics', 100)).toBe(0);
-    });
-  });
-
-  describe('netCostTaker', () => {
-    it('adds fee to amount', () => {
-      const cost = netCostTaker(1000, 'crypto', 0.50);
-      expect(cost).toBeCloseTo(1000 * (1 + 0.0035), 2);
-    });
-
-    it('returns exact amount for exempt categories', () => {
-      expect(netCostTaker(1000, 'geopolitics', 0.50)).toBe(1000);
-    });
-  });
-
-  describe('netProfitMaker', () => {
-    it('adds rebate from estimated taker volume at given probability', () => {
-      // At p=0.5 (default), finance fee = minTakerFee = 0.002
-      // rebate = 10000 * 0.002 * 0.50 (rebatePct) = 10
-      const profit = netProfitMaker(100, 'finance', 10000);
-      expect(profit).toBe(110);
-    });
-
-    it('uses maxTakerFee at extreme probability', () => {
-      // At p=0.0, finance fee = maxTakerFee = 0.010
-      // rebate = 10000 * 0.010 * 0.50 = 50
-      const profit = netProfitMaker(100, 'finance', 10000, 0.0);
-      expect(profit).toBe(150);
-    });
-  });
-
-  describe('classifyMarketCategory', () => {
-    it('detects crypto markets', () => {
-      expect(classifyMarketCategory('Will Bitcoin reach $100k by June?')).toBe('crypto');
-      expect(classifyMarketCategory('ETH price above $5000')).toBe('crypto');
-    });
-
-    it('detects politics markets', () => {
-      expect(classifyMarketCategory('Will Trump win the 2026 election?')).toBe('politics');
-    });
-
-    it('detects sports markets', () => {
-      expect(classifyMarketCategory('NBA Finals champion 2026')).toBe('sports');
-    });
-
-    it('detects geopolitics (exempt) markets', () => {
-      expect(classifyMarketCategory('Ukraine ceasefire by July')).toBe('geopolitics');
-    });
-
-    it('defaults to politics for ambiguous markets', () => {
-      expect(classifyMarketCategory('Something completely random')).toBe('politics');
-    });
-
-    it('detects finance markets', () => {
-      expect(classifyMarketCategory('Fed interest rate cut in June')).toBe('finance');
-    });
-  });
-
-  describe('FEE_SCHEDULES', () => {
-    it('has all 10 categories', () => {
-      const categories: PolymarketCategory[] = [
-        'crypto', 'politics', 'finance', 'tech', 'culture',
-        'sports', 'science', 'pop_culture', 'geopolitics', 'world_events',
-      ];
-      for (const cat of categories) {
-        expect(FEE_SCHEDULES[cat]).toBeDefined();
+    it('returns 0 for an exempt schedule at every price', () => {
+      for (const price of [0, 0.01, 0.25, 0.5, 0.75, 0.99, 1]) {
+        expect(calcTakerFeePerShare(EXEMPT_FEE_SCHEDULE, price)).toBe(0);
       }
     });
 
-    it('exempt categories have zero fees', () => {
-      expect(FEE_SCHEDULES.geopolitics.exempt).toBe(true);
-      expect(FEE_SCHEDULES.geopolitics.minTakerFee).toBe(0);
-      expect(FEE_SCHEDULES.world_events.exempt).toBe(true);
+    it('returns 0 at and outside the price bounds instead of going negative', () => {
+      expect(calcTakerFeePerShare(CRYPTO, 0)).toBe(0);
+      expect(calcTakerFeePerShare(CRYPTO, 1)).toBe(0);
+      expect(calcTakerFeePerShare(CRYPTO, -0.5)).toBe(0);
+      expect(calcTakerFeePerShare(CRYPTO, 1.5)).toBe(0);
+      expect(calcTakerFeePerShare(CRYPTO, Number.NaN)).toBe(0);
+    });
+
+    it('honours an exponent other than 1', () => {
+      const quadratic: PolymarketFeeSchedule = { ...CRYPTO, exponent: 2 };
+      // (0.5 * 0.5)^2 = 0.0625 => 0.07 * 0.0625 = 0.004375 per share.
+      expect(calcTakerFeePerShare(quadratic, 0.5)).toBeCloseTo(0.07 * 0.0625, 12);
+      // (0.25 * 0.75)^2 = 0.03515625 => 0.07 * 0.03515625.
+      expect(calcTakerFeePerShare(quadratic, 0.25)).toBeCloseTo(0.07 * 0.1875 * 0.1875, 12);
+    });
+  });
+
+  describe('calcMakerRebatePerShare', () => {
+    it('returns rebateRate of the taker fee at the same price', () => {
+      expect(calcMakerRebatePerShare(CRYPTO, 0.5)).toBeCloseTo(0.0175 * 0.2, 10);
+      expect(calcMakerRebatePerShare(POLITICS, 0.5)).toBeCloseTo(0.01 * 0.25, 10);
+    });
+
+    it('returns 0 when the schedule pays no rebate', () => {
+      const takerOnly: PolymarketFeeSchedule = { ...CRYPTO, rebateRate: 0 };
+      expect(calcMakerRebatePerShare(takerOnly, 0.5)).toBe(0);
+    });
+
+    it('returns 0 for an exempt schedule', () => {
+      expect(calcMakerRebatePerShare(EXEMPT_FEE_SCHEDULE, 0.5)).toBe(0);
+    });
+  });
+
+  describe('calcTakerFeeRate', () => {
+    it('divides the per-share fee by the USDC paid per share', () => {
+      // 0.0175 USDC per share at a price of 0.50 => 3.5% of notional.
+      expect(calcTakerFeeRate(CRYPTO, 0.5)).toBeCloseTo(0.035, 10);
+      expect(calcTakerFeeRate(POLITICS, 0.5)).toBeCloseTo(0.02, 10);
+    });
+
+    it('equals rate * (1-p) for a linear curve', () => {
+      expect(calcTakerFeeRate(CRYPTO, 0.1)).toBeCloseTo(0.07 * 0.9, 12);
+      expect(calcTakerFeeRate(CRYPTO, 0.9)).toBeCloseTo(0.07 * 0.1, 12);
+    });
+
+    it('returns 0 when the price is not positive', () => {
+      expect(calcTakerFeeRate(CRYPTO, 0)).toBe(0);
+      expect(calcTakerFeeRate(EXEMPT_FEE_SCHEDULE, 0.5)).toBe(0);
+    });
+  });
+
+  describe('calcMakerFeeRate', () => {
+    it('is a negative rate, i.e. a credit to the maker', () => {
+      const rate = calcMakerFeeRate(CRYPTO, 0.5);
+      expect(rate).toBeLessThan(0);
+      expect(rate).toBeCloseTo(-(0.0175 * 0.2) / 0.5, 12);
+    });
+
+    it('returns 0 when the price is not positive rather than dividing by zero', () => {
+      expect(calcMakerFeeRate(CRYPTO, 0)).toBe(0);
+    });
+
+    it('returns 0 for an exempt schedule', () => {
+      expect(calcMakerFeeRate(EXEMPT_FEE_SCHEDULE, 0.5)).toBe(0);
+    });
+  });
+
+  describe('report reconciliation', () => {
+    it('reproduces the report fee table for 100 shares at p = 0.50', () => {
+      const notional = 100 * 0.5;
+      const fee = (schedule: PolymarketFeeSchedule) =>
+        notional * calcTakerFeeRate(schedule, 0.5);
+
+      expect(fee({ ...CRYPTO, rate: 0.07 })).toBeCloseTo(1.75, 10);
+      expect(fee({ ...CRYPTO, rate: 0.05 })).toBeCloseTo(1.25, 10);
+      expect(fee({ ...POLITICS, rate: 0.04 })).toBeCloseTo(1.0, 10);
+      expect(fee(EXEMPT_FEE_SCHEDULE)).toBe(0);
     });
   });
 });

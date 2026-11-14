@@ -56,4 +56,35 @@ describe('applyVenueCosts', () => {
     expect(costs.totalCostUsd).toBe(0.11);
     expect(costs.netPnl).toBe(0.89);
   });
+
+  it('prices entry and exit legs against a live parabolic PolymarketFeeSchedule', () => {
+    // Crypto schedule (rate 0.07, exponent 1) at p=0.50 -> 0.0175 USDC/share/leg.
+    // 100 shares round-trip: (0.0175 + 0.0175) * 100 = $3.50 fee + $0.10 gas = $3.60.
+    const cryptoSchedule = { exponent: 1, rate: 0.07, takerOnly: true, rebateRate: 0.2 };
+    const costs = applyVenueCosts({
+      price: 0.5,
+      entryPrice: 0.5,
+      size: 100,
+      grossPnl: 10,
+      schedule: cryptoSchedule,
+    });
+    expect(costs.feeUsd).toBe(3.5);
+    expect(costs.gasUsd).toBe(0.1);
+    expect(costs.totalCostUsd).toBe(3.6);
+    expect(costs.netPnl).toBe(6.4);
+  });
+
+  it('charges zero trading fee when the market is fee-exempt (schedule === null)', () => {
+    const costs = applyVenueCosts({
+      price: 0.5,
+      entryPrice: 0.4,
+      size: 100,
+      grossPnl: 10,
+      schedule: null,
+    });
+    expect(costs.feeUsd).toBe(0);
+    expect(costs.gasUsd).toBe(0.1);
+    expect(costs.totalCostUsd).toBe(0.1);
+    expect(costs.netPnl).toBe(9.9);
+  });
 });

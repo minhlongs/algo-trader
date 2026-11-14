@@ -31,4 +31,14 @@ export interface OrderManager {
   cancelOrder(orderId: string): Promise<void>;
   cancelAllOrders(tokenId?: string): Promise<void>;
   getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>>;
+  /**
+   * Optional paper/backtest hook that settles an exhaustive buy-N-of-N NegRisk
+   * bundle conversion into collateral without emitting fake CLOB `SELL` orders.
+   */
+  settleBundleConversion?(params: {
+    legs: ReadonlyArray<{ tokenId: string; aggressive: boolean }>;
+    quantity: number;
+    payoutPerBundlePusd: number;
+    timestamp?: string;
+  }): Promise<number>;
 }

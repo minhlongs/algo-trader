@@ -48,11 +48,13 @@ export function recordFillInFifoLedger(
   if (deltaSize <= 0) return;
 
   const fillPrice = event.fillPrice ?? order.limitPrice;
-  const feeUsdc = event.feeUsdc ?? 0;
+  const rawFeeUsdc = event.feeUsdc ?? 0;
+  const positiveFeeUsdc = rawFeeUsdc > 0 ? rawFeeUsdc : 0;
+  const implicitMakerRebateUsdc = rawFeeUsdc < 0 ? -rawFeeUsdc : 0;
   const sharesMicro = Math.round(deltaSize * MICRO_PER_PUSD);
   const priceMicro = Math.round(fillPrice * MICRO_PER_PUSD);
-  const feeMicro = Math.round(feeUsdc * MICRO_PER_PUSD);
-  const rebateMicro = Math.round((event.rebateUsdc ?? 0) * MICRO_PER_PUSD);
+  const feeMicro = Math.round(positiveFeeUsdc * MICRO_PER_PUSD);
+  const rebateMicro = Math.round(((event.rebateUsdc ?? 0) + implicitMakerRebateUsdc) * MICRO_PER_PUSD);
   const liquidityRewardMicro = Math.round((event.liquidityRewardUsdc ?? 0) * MICRO_PER_PUSD);
 
   if (order.side === 'BUY') {

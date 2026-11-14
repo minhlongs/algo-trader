@@ -2,21 +2,24 @@
  * Backtest Fee Application
  *
  * Single seam where venue trading costs enter the backtest ledger.
- *
- * Supports both default venue fee/gas profiles (`DEFAULT_FEE_GAS_PROFILES`) and
- * opt-in Polymarket CLOB V2 quadratic taker fees / maker rebates (`clobV2Category`,
- * `postOnly`).
+ * Supports default venue profiles, per-token parabolic `PolymarketFeeSchedule`
+ * (with maker/taker leg awareness), and opt-in CLOB V2 quadratic category rates.
  */
 
 import { DEFAULT_FEE_GAS_PROFILES } from '../sor/fee-gas-model';
 import {
+  calcMakerFeeRate,
   calcMakerRebateV2,
   calcQuadraticTakerFeeV2,
+  calcTakerFeePerShare,
   type PolymarketCategory,
+  type PolymarketFeeSchedule,
 } from '../polymarket/polymarket-fee-calculator';
 
 /** Venue the backtest ledger prices against. */
 export const BACKTEST_VENUE = 'polymarket_clob';
+
+export type BacktestLegOrderType = 'GTC' | 'GTD' | 'FOK' | 'IOC';
 
 export interface VenueCostInput {
   /** Closing fill price per share. */
@@ -25,20 +28,26 @@ export interface VenueCostInput {
   size: number;
   /** Gross PnL for this close, before any venue cost. */
   grossPnl: number;
-  /** Optional entry price per share for CLOB V2 entry-leg fee/rebate pricing. */
+  /** Entry leg price per share (defaults to `price`). */
   entryPrice?: number;
+  /** Order type of the entry leg; GTC/GTD settle at maker rate/rebate, IOC/FOK/omitted at taker. */
+  entryOrderType?: BacktestLegOrderType;
+  /** Order type of the closing leg; GTC/GTD settle at maker rate/rebate, IOC/FOK/omitted at taker. */
+  exitOrderType?: BacktestLegOrderType;
+  /** Live parabolic fee schedule resolved for this market/token (`null` = exempt). */
+  schedule?: PolymarketFeeSchedule | null;
   /** Opt-in Polymarket CLOB V2 market category for quadratic fee / maker rebate calculation. */
   clobV2Category?: PolymarketCategory;
-  /** When true under CLOB V2, treats both legs as passive `postOnly` maker orders (`0` taker fee + maker rebate). */
+  /** When true under CLOB V2, treats both legs as passive `postOnly` maker orders. */
   postOnly?: boolean;
 }
 
 export interface VenueCostBreakdown {
-  /** Trading fee charged on this close. */
+  /** Trading fee charged on this close (negative when maker schedule rebate exceeds taker cost). */
   feeUsd: number;
   /** Fixed gas charged on this close. */
   gasUsd: number;
-  /** Maker rebate earned on this close (0 unless `clobV2Category` + `postOnly` are enabled). */
+  /** Explicit CLOB V2 maker rebate earned on this close (`0` unless `clobV2Category` + `postOnly`). */
   rebateUsd: number;
   /** feeUsd + gasUsd. */
   totalCostUsd: number;
@@ -46,23 +55,54 @@ export interface VenueCostBreakdown {
   netPnl: number;
 }
 
+function isMakerOrderType(orderType?: BacktestLegOrderType): boolean {
+  return orderType === 'GTC' || orderType === 'GTD';
+}
+
+function calcLegFeePerShare(
+  legPrice: number,
+  orderType: BacktestLegOrderType | undefined,
+  schedule: PolymarketFeeSchedule | null | undefined,
+  makerFeeBps: number,
+  takerFeeBps: number,
+): number {
+  if (schedule === null) return 0;
+  if (isMakerOrderType(orderType)) {
+    if (schedule !== undefined) {
+      return schedule.takerOnly
+        ? calcMakerFeeRate(schedule, legPrice) * legPrice
+        : calcTakerFeePerShare(schedule, legPrice);
+    }
+    return legPrice * (makerFeeBps / 10000);
+  }
+  if (schedule !== undefined) {
+    return calcTakerFeePerShare(schedule, legPrice);
+  }
+  return legPrice * (takerFeeBps / 10000);
+}
+
 /**
- * Subtract taker fees and gas (and credit optional CLOB V2 maker rebates) from one closing fill.
- *
- * When `clobV2Category` is omitted, preserves the flat `takerFeeBps` model on
- * `DEFAULT_FEE_GAS_PROFILES[BACKTEST_VENUE]`. When `clobV2Category` is provided,
- * prices both the entry leg (`entryPrice ?? price`) and exit leg (`price`) with
- * `calcQuadraticTakerFeeV2` (or `calcMakerRebateV2` when `postOnly === true`).
+ * Subtract taker fees and gas (and credit maker rebates) from one closing fill.
  */
 export function applyVenueCosts(
-  { price, size, grossPnl, entryPrice, clobV2Category, postOnly }: VenueCostInput,
+  {
+    price,
+    size,
+    grossPnl,
+    entryPrice,
+    entryOrderType,
+    exitOrderType,
+    schedule,
+    clobV2Category,
+    postOnly,
+  }: VenueCostInput,
   gasFills = 2,
 ): VenueCostBreakdown {
   const profile = DEFAULT_FEE_GAS_PROFILES[BACKTEST_VENUE];
   let feeUsd: number;
   let rebateUsd = 0;
 
-  if (clobV2Category) {
+  if (schedule === undefined && clobV2Category) {
     const entryProb = entryPrice ?? price;
     const exitProb = price;
     if (postOnly) {
@@ -76,14 +116,26 @@ export function applyVenueCosts(
         calcQuadraticTakerFeeV2(clobV2Category, exitProb, size, false);
     }
   } else {
-    const notionalUsd = price * size;
-    const feePerLegUsd = notionalUsd * (profile.takerFeeBps / 10000);
-    feeUsd = feePerLegUsd * 2;
+    const resolvedEntryPrice =
+      schedule !== undefined || isMakerOrderType(entryOrderType) ? (entryPrice ?? price) : price;
+    const entryFeePerShare = calcLegFeePerShare(
+      resolvedEntryPrice,
+      entryOrderType,
+      schedule,
+      profile.makerFeeBps,
+      profile.takerFeeBps,
+    );
+    const exitFeePerShare = calcLegFeePerShare(
+      price,
+      exitOrderType,
+      schedule,
+      profile.makerFeeBps,
+      profile.takerFeeBps,
+    );
+    feeUsd = (entryFeePerShare + exitFeePerShare) * size;
   }
 
   const gasUsd = profile.gasCostUsd * gasFills;
-
-  // Round in dependency order so netPnl === grossPnl - (feeUsd + gasUsd) + rebateUsd to the cent.
   const feeUsdRounded = roundUsd(feeUsd);
   const gasUsdRounded = roundUsd(gasUsd);
   const rebateUsdRounded = roundUsd(rebateUsd);

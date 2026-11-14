@@ -5,8 +5,8 @@
  * synchronized mock services, and tick-by-tick replay with equity curve recording.
  */
 
-import type { StrategyName } from '../core/types';
 import type { BasePolymarketStrategy, StrategyDeps } from '../strategies/polymarket/base-polymarket-strategy';
+import type { FeeScheduleResolver } from '../polymarket/fee-schedule-resolver';
 import type { GammaHistoricalProvider } from './gamma-historical-provider';
 import { logger } from '../../shared/utils/logger';
 import type { BacktestRunnerOptions, HistoricalSnapshot } from './types';
@@ -69,16 +69,19 @@ export function instantiateBacktestStrategy(
   orderManager: BacktestOrderManager;
   tickState: TickState;
 } {
-  const orderManager = new BacktestOrderManager(config.capitalUsdc);
+  const orderManager = new BacktestOrderManager(config.capitalUsdc, {
+    feeResolver: config.feeResolver,
+  });
   const tickState = createTickState(snapshots);
   const gammaClient = createHistoricalGammaClient(tickState);
   const mockClob = createMockClob(tickState);
 
-  const deps: StrategyDeps = {
+  const deps: StrategyDeps & { feeResolver?: FeeScheduleResolver } = {
     clob: mockClob,
     orderManager,
     eventBus: { emit: () => {}, on: () => {}, off: () => {} },
     gamma: gammaClient,
+    ...(config.feeResolver ? { feeResolver: config.feeResolver } : {}),
   };
 
   const strategy = new (entry.ctor as unknown as StrategyConstructor)(

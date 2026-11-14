@@ -1,14 +1,11 @@
-/**
- * Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator
- *
- * Deterministic walk-forward protocol (70% in-sample, 30% out-of-sample + stressed regime)
- * incorporating executable ask spread, category-aware taker fees (`calcTakerFee`),
- * CLOB V2 maker rebate (`calcMakerRebateV2`), competitive liquidity reward dilution,
- * Log-Odds A-S quoting (`log_odds_maker_mm_v2`), top-of-book depth constraints,
- * Leg-2 rejection unwind slippage risk, and the `>= 1.5x` markout kill criterion.
- */
+/** Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator (70/30 split + markout kill gate). */
 
-import type { PolymarketCategory } from './polymarket-fee-calculator';
+import {
+  calcTakerFeeRate,
+  DEFAULT_CLOB_V2_CATEGORY,
+  type PolymarketCategory,
+  type PolymarketFeeSchedule,
+} from './polymarket-fee-calculator';
 import { simulateExecutableAskFeeArbEpisode, simulateNaiveArbEpisode } from './polymarket-oos-arb-episode-simulator';
 import { simulateMakerEpisode, type EpisodeOutcome } from './polymarket-oos-maker-episode-simulator';
 import { generateEpisode, type SyntheticMarketSnapshot } from './polymarket-oos-synthetic-market';
@@ -19,6 +16,8 @@ export interface WalkForwardConfig {
   inSampleFraction?: number;
   legSizeUsdc?: number;
   minNetSpread?: number;
+  /** Published per-market fee schedule; takes precedence for taker-arb candidates when supplied. */
+  schedule?: PolymarketFeeSchedule;
   category?: PolymarketCategory;
   competitiveDilutionFactor?: number;
 }
@@ -49,6 +48,7 @@ export interface WalkForwardEvaluationReport {
   episodes: number;
   inSampleCount: number;
   outOfSampleCount: number;
+  schedule?: PolymarketFeeSchedule;
   category: PolymarketCategory;
   candidates: Record<CandidateId, CandidateEvaluationMetrics>;
 }
@@ -57,23 +57,64 @@ const CANDIDATE_IDS: CandidateId[] = [
   'no_trade_baseline', 'naive_mid_arb', 'executable_ask_fee_arb', 'log_odds_maker_mm_v2',
 ];
 
+const NO_TRADE: EpisodeOutcome = { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
+
+function simulateScheduleArbEpisode(
+  snap: SyntheticMarketSnapshot,
+  candidateId: 'naive_mid_arb' | 'executable_ask_fee_arb',
+  shares: number,
+  minNetSpread: number,
+  schedule: PolymarketFeeSchedule,
+): EpisodeOutcome {
+  const feeRateYes = calcTakerFeeRate(schedule, snap.yesAsk);
+  const feeRateNo = calcTakerFeeRate(schedule, snap.noAsk);
+  if (candidateId === 'naive_mid_arb') {
+    const yesMid = (snap.yesBid + snap.yesAsk) / 2;
+    const noMid = (snap.noBid + snap.noAsk) / 2;
+    if (yesMid + noMid >= 0.985) return NO_TRADE;
+    const execYesAsk = snap.yesAskTokens >= shares ? snap.yesAsk : snap.yesAsk + 0.015;
+    const execNoAsk = snap.noAskTokens >= shares ? snap.noAsk : snap.noAsk + 0.015;
+    const feeYes = shares * execYesAsk * feeRateYes;
+    if (snap.leg2Reject) {
+      const unwindLoss = shares * (execYesAsk - snap.yesBid);
+      const fees = feeYes + shares * snap.yesBid * feeRateYes;
+      return { traded: true, grossPnl: 0, fees, unwindLoss, netPnl: -unwindLoss - fees };
+    }
+    const grossPnl = shares * (1 - (execYesAsk + execNoAsk));
+    const fees = feeYes + shares * execNoAsk * feeRateNo;
+    return { traded: true, grossPnl, fees, unwindLoss: 0, netPnl: grossPnl - fees };
+  }
+  if (snap.yesAskTokens < shares || snap.noAskTokens < shares) return NO_TRADE;
+  const combinedAsk = snap.yesAsk + snap.noAsk;
+  const estFeePerPair = snap.yesAsk * feeRateYes + snap.noAsk * feeRateNo;
+  if (1 - combinedAsk - estFeePerPair < minNetSpread) return NO_TRADE;
+  const feeYes = shares * snap.yesAsk * feeRateYes;
+  if (snap.leg2Reject) {
+    const unwindLoss = shares * (snap.yesAsk - snap.yesBid);
+    const fees = feeYes + shares * snap.yesBid * feeRateYes;
+    return { traded: true, grossPnl: 0, fees, unwindLoss, netPnl: -unwindLoss - fees };
+  }
+  const grossPnl = shares * (1 - combinedAsk);
+  const fees = feeYes + shares * snap.noAsk * feeRateNo;
+  return { traded: true, grossPnl, fees, unwindLoss: 0, netPnl: grossPnl - fees };
+}
+
 function simulateEpisode(
   snap: SyntheticMarketSnapshot,
   candidateId: CandidateId,
   pairCount: number,
   minNetSpread: number,
+  schedule: PolymarketFeeSchedule | undefined,
   category: PolymarketCategory,
   episodeRngState: number,
   competitiveDilutionFactor?: number,
 ): EpisodeOutcome {
-  if (candidateId === 'no_trade_baseline') {
-    return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-  }
-  if (candidateId === 'naive_mid_arb') {
-    return simulateNaiveArbEpisode(snap, pairCount, category);
-  }
-  if (candidateId === 'executable_ask_fee_arb') {
-    return simulateExecutableAskFeeArbEpisode(snap, pairCount, minNetSpread, category);
+  if (candidateId === 'no_trade_baseline') return NO_TRADE;
+  if (candidateId === 'naive_mid_arb' || candidateId === 'executable_ask_fee_arb') {
+    if (schedule) return simulateScheduleArbEpisode(snap, candidateId, pairCount, minNetSpread, schedule);
+    return candidateId === 'naive_mid_arb'
+      ? simulateNaiveArbEpisode(snap, pairCount, category)
+      : simulateExecutableAskFeeArbEpisode(snap, pairCount, minNetSpread, category);
   }
   return simulateMakerEpisode(
     snap,
@@ -90,7 +131,7 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
   const outOfSampleCount = cfg.episodes - inSampleCount;
   const legSizeUsdc = cfg.legSizeUsdc ?? 25;
   const minNetSpread = cfg.minNetSpread ?? 0.012;
-  const category = cfg.category ?? 'politics';
+  const category = cfg.category ?? DEFAULT_CLOB_V2_CATEGORY;
   const rngNormal = { s: cfg.seed >>> 0 };
   const rngStress = { s: (cfg.seed ^ 0x9e3779b9) >>> 0 };
   const normalSnaps = Array.from({ length: cfg.episodes }, () => generateEpisode(rngNormal, false));
@@ -103,7 +144,7 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
     let oosMakerRevenueUsdc = 0, oosMarkoutLoss60sUsdc = 0;
     for (let i = 0; i < cfg.episodes; i++) {
       const res = simulateEpisode(
-        normalSnaps[i]!, id, legSizeUsdc, minNetSpread, category,
+        normalSnaps[i]!, id, legSizeUsdc, minNetSpread, cfg.schedule, category,
         (cfg.seed ^ (i * 0x9e3779b9)) >>> 0, cfg.competitiveDilutionFactor,
       );
       if (i < inSampleCount) {
@@ -121,7 +162,7 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
         oosMakerRevenueUsdc += res.makerRevenueUsdc ?? 0;
         oosMarkoutLoss60sUsdc += res.markoutLoss60s ?? 0;
         stressedNetPnlUsdc += simulateEpisode(
-          stressedSnaps[i]!, id, legSizeUsdc, minNetSpread, category,
+          stressedSnaps[i]!, id, legSizeUsdc, minNetSpread, cfg.schedule, category,
           (cfg.seed ^ (i * 0x9e3779b9) ^ 0x85ebca6b) >>> 0, cfg.competitiveDilutionFactor,
         ).netPnl;
       }
@@ -144,5 +185,13 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
         : {}),
     };
   }
-  return { seed: cfg.seed, episodes: cfg.episodes, inSampleCount, outOfSampleCount, category, candidates };
+  return {
+    seed: cfg.seed,
+    episodes: cfg.episodes,
+    inSampleCount,
+    outOfSampleCount,
+    ...(cfg.schedule ? { schedule: cfg.schedule } : {}),
+    category,
+    candidates,
+  };
 }

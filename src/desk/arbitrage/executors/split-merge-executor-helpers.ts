@@ -12,6 +12,7 @@ import type { SplitMergeOpportunity } from '../split-merge-arb-executor';
 import {
   calcQuadraticTakerFeeV2,
   computeTakerBuyNetSharesAndMergeablePairs,
+  DEFAULT_CLOB_V2_CATEGORY,
   type PolymarketCategory,
 } from '../../polymarket/polymarket-fee-calculator';
 
@@ -140,7 +141,7 @@ export function computeSplitMergePayoutV2(
   yesAsk: number,
   noAsk: number,
   maxPositionSize: number,
-  category: PolymarketCategory = 'politics',
+  category: PolymarketCategory = DEFAULT_CLOB_V2_CATEGORY,
   yesOrderShares?: number,
   noOrderShares?: number,
 ): {

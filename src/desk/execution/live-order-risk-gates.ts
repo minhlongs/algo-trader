@@ -82,6 +82,7 @@ export async function runRiskGates(
     nonce: String(Date.now()),
     feeRateBps: resolvedFeeRateBps,
     signatureType: 0,
+    orderType: signal.orderType,
   };
 
   if (ctx.polymarketV2Gate) {

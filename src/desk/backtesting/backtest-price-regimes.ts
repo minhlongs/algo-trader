@@ -39,7 +39,6 @@ export function simulateMarketRegimeTick(
   const progress = tickIdx / Math.max(1, totalTicks - 1);
   const slot = marketIdx % 10;
   let price = 0.50;
-  let volumeMultiplier = 0.6 + 0.5 * progress;
 
   // Synchronized macro herd window (ticks 80..112): all markets co-move tightly
   // for 24 ticks (building EMA > 0.65), then decorrelate slightly so herd peak fires.
@@ -47,11 +46,9 @@ export function simulateMarketRegimeTick(
     const t = tickIdx - 80;
     if (t <= 24) {
       price = 0.42 + t * 0.008;
-      volumeMultiplier = 1.8;
     } else {
       const dir = marketIdx % 2 === 0 ? 1 : -1;
       price = 0.612 + dir * (t - 24) * 0.015;
-      volumeMultiplier = 1.5;
     }
   } else if (slot === 0 || slot === 1) {
     // Synchronized Lead-Lag / Cross-Event Drift Pair:
@@ -63,10 +60,8 @@ export function simulateMarketRegimeTick(
       price = 0.532;
     } else if (cycle === 14) {
       price = slot === 0 ? 0.595 : 0.532;
-      volumeMultiplier = 2.4;
     } else if (cycle <= 17) {
       price = 0.595;
-      volumeMultiplier = 2.2;
     } else {
       price = 0.46;
     }
@@ -77,16 +72,12 @@ export function simulateMarketRegimeTick(
     const sign = slot === 2 ? 1 : -1;
     if (cycle < 25) {
       price = 0.50 + (cycle % 2 === 0 ? 0.025 : -0.025);
-      volumeMultiplier = 1.1;
     } else if (cycle < 35) {
       price = 0.50 + (cycle % 2 === 0 ? 0.0005 : -0.0005);
-      volumeMultiplier = 0.35;
     } else if (cycle < 38) {
       price = 0.50 + sign * (0.045 + (cycle - 35) * 0.012);
-      volumeMultiplier = 2.8;
     } else {
       price = 0.50 - sign * 0.025;
-      volumeMultiplier = 1.4;
     }
   } else if (slot === 4 || slot === 5) {
     // Gap-Fill Reversion & Time-Weighted Z-Score Spike:
@@ -97,13 +88,10 @@ export function simulateMarketRegimeTick(
       price = 0.50 + (cycle % 2 === 0 ? 0.006 : -0.006);
     } else if (cycle === 24) {
       price = 0.50 + sign * 0.068;
-      volumeMultiplier = 2.5;
     } else if (cycle === 25) {
       price = 0.50 + sign * 0.070;
-      volumeMultiplier = 2.3;
     } else if (cycle === 26) {
       price = 0.50 + sign * 0.072;
-      volumeMultiplier = 2.1;
     } else {
       price = 0.50 - sign * 0.020;
     }
@@ -114,24 +102,22 @@ export function simulateMarketRegimeTick(
     else if (cycle === 2) price = 0.915;
     else if (cycle === 3) price = 0.945;
     else price = 0.855;
-    volumeMultiplier = cycle === 3 ? 2.1 : 1.0;
   } else {
     // Accelerating & Persistent Momentum Waves across slots 7, 8, 9.
     const cycle = tickIdx % 16;
     if (cycle < 8) {
       const step = cycle / 7;
       price = 0.36 + 0.28 * (step * step);
-      volumeMultiplier = 1.0 + step * 1.6;
     } else {
       const step = (cycle - 8) / 7;
       price = 0.64 - 0.28 * (step * step);
-      volumeMultiplier = 1.0 + step * 1.6;
     }
   }
 
   return {
     conditionId: market.conditionId,
     question: market.question,
+    source: 'synthetic-regime',
     yesTokenId: market.yesTokenId,
     noTokenId: market.noTokenId,
     yesPrice: round4(clamp(price, 0.02, 0.98)),

@@ -120,7 +120,7 @@ export function validateSignalWithPolymarketV2Gate(
   signal: TradeSignal,
   ctx: PolymarketV2RiskContext = {},
 ): PreTradeValidationResultV2 {
-  const isLimitOrder = signal.isLimitOrder ?? true;
+  const isLimitOrder = signal.isLimitOrder ?? (signal.orderType !== 'IOC' && signal.orderType !== 'FOK');
   const { rawFreeBalanceMicro, currentMarketExposureMicro } = resolveBalanceAndExposureMicro(
     ctx,
     signal.rawFreeBalanceMicro,
@@ -171,6 +171,7 @@ export function validateOrchestratorOrderV2(params: {
       side: params.order.side,
       price: params.order.price,
       size: params.order.size,
+      orderType: params.order.orderType,
       timestamp: Date.now(),
     },
     {

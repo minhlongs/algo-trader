@@ -141,6 +141,11 @@ export class GammaClientImpl implements GammaClient {
           ...(noTokenId ? [{ token_id: noTokenId, outcome: outcomes[1] ?? 'No', price: noPrice }] : []),
         ];
     const rawVol24h = m['volume24hr'] ?? m['volume24h'];
+    // Gamma publishes the neg-risk flag under two names depending on the endpoint.
+    // `resolved` is only mapped when the payload carries it — an absent field must
+    // stay absent so a strategy can tell "not resolved" from "we never checked".
+    const rawNegRisk = m['negRisk'] ?? m['enableNegRisk'];
+    const rawResolved = m['resolved'];
 
     return {
       id: m['id'] as string,
@@ -159,6 +164,8 @@ export class GammaClientImpl implements GammaClient {
       yesTokenId,
       noTokenId,
       yesPrice,
+      ...(rawNegRisk !== undefined ? { negRisk: Boolean(rawNegRisk) } : {}),
+      ...(rawResolved !== undefined ? { resolved: Boolean(rawResolved) } : {}),
     };
   }
 }

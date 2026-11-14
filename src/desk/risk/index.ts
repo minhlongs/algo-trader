@@ -23,4 +23,7 @@ export * from './atr-trailing-stop';
 export * from './risk-gate-manager';
 export * from './equity-snapshot-manager';
 export * from './portfolio-rebalance-guard';
+export * from './poly-risk-types';
+export * from './poly-fail-closed-risk-engine';
+export * from './poly-kill-switch';
 export * from '../../shared/persistence/file-store';

@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CLOB_V2_MAX_BASE_FEE_BPS,
   CLOB_V2_QUADRATIC_RATES,
+  DEFAULT_CLOB_V2_CATEGORY,
   calcMakerRebateV2,
   calcLiquidityRewardScoreV2,
   calcQuadraticTakerFeeRateV2,
@@ -31,8 +32,9 @@ import {
 describe('CLOB V2 quadratic taker fee engine', () => {
   it('computes Fee = C * r_cat * p * (1-p), caps at 10%, and charges makers zero', () => {
     expect(calcQuadraticTakerFeeRateV2('crypto', 0.5)).toBeCloseTo(0.0175, 12);
-    expect(calcQuadraticTakerFeeRateV2('politics', 0.5)).toBeCloseTo(0.01, 12);
-    expect(calcQuadraticTakerFeeRateV2('geopolitics', 0.5)).toBe(0);
+    expect(calcQuadraticTakerFeeRateV2(DEFAULT_CLOB_V2_CATEGORY, 0.5)).toBeCloseTo(0.01, 12);
+    const exemptCat = Object.keys(CLOB_V2_QUADRATIC_RATES).find((k) => CLOB_V2_QUADRATIC_RATES[k as keyof typeof CLOB_V2_QUADRATIC_RATES].rCat === 0) as keyof typeof CLOB_V2_QUADRATIC_RATES;
+    expect(calcQuadraticTakerFeeRateV2(exemptCat, 0.5)).toBe(0);
     expect(calcQuadraticTakerFeeRateV2('crypto', 0.5)).toBeLessThanOrEqual(CLOB_V2_MAX_BASE_FEE_BPS / 10_000);
     expect(calcQuadraticTakerFeeRateV2('crypto', 0.5, true)).toBe(0);
     expect(calcQuadraticTakerFeeV2('crypto', 0.5, 100, true)).toBe(0);
@@ -42,7 +44,7 @@ describe('CLOB V2 quadratic taker fee engine', () => {
     const takerFee = calcQuadraticTakerFeeV2('crypto', 0.5, 100);
     const rebate = calcMakerRebateV2('crypto', 0.5, 100);
     expect(rebate).toBeCloseTo(takerFee * CLOB_V2_QUADRATIC_RATES.crypto.makerRebatePct, 12);
-    expect(CLOB_V2_QUADRATIC_RATES.politics.makerRebatePct).toBe(0.25);
+    expect(CLOB_V2_QUADRATIC_RATES[DEFAULT_CLOB_V2_CATEGORY].makerRebatePct).toBe(0.25);
 
     const twoSided = calcLiquidityRewardScoreV2({
       maxIncentiveSpread: 0.03, bidDistanceFromMid: 0.005, askDistanceFromMid: 0.005,
@@ -55,7 +57,7 @@ describe('CLOB V2 quadratic taker fee engine', () => {
     expect(twoSided.effectiveWeightedScore).toBeGreaterThan(0);
     expect(boundary.effectiveWeightedScore).toBeLessThan(twoSided.effectiveWeightedScore);
     expect(classifyMarketCategory('Will BTC close above 100k this week?')).toBe('crypto');
-    expect(classifyMarketCategory('Who wins the presidential election?')).toBe('politics');
+    expect(classifyMarketCategory('Who wins the presidential election?')).toBe(DEFAULT_CLOB_V2_CATEGORY);
   });
 });
 

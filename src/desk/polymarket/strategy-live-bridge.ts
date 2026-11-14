@@ -49,6 +49,7 @@ export class StrategyLiveBridge {
         nonce: String(Date.now()),
         feeRateBps: signal.feeRateBps ?? 0,
         signatureType: 0,
+        orderType: signal.orderType,
       });
 
       logger.info('Signal executed', 'StrategyLiveBridge', {
@@ -63,9 +64,9 @@ export class StrategyLiveBridge {
     } catch (err) {
       const msg = String(err);
 
-      if (msg.includes('Guard rejected') || msg.includes('RISK_GATE_REJECTED')) {
+      if (msg.includes('Guard rejected') || msg.includes('PolyRisk blocked') || msg.includes('RISK_GATE_REJECTED')) {
         this.signalsRejected++;
-        logger.warn('Signal rejected by guard', 'StrategyLiveBridge', {
+        logger.warn('Signal rejected by risk gate', 'StrategyLiveBridge', {
           reason: msg,
           tokenId: signal.tokenId.slice(0, 12),
         });
@@ -108,6 +109,13 @@ export class StrategyLiveBridge {
             scanNumber: this.scanCount,
             totalMarkets: outcome.totalMarkets,
           });
+          if (typeof this.orchestrator.getMode === 'function' && this.orchestrator.getMode() === 'LIVE') {
+            for (const sig of outcome.signals) {
+              if (typeof this.orchestrator.getOrderBook === 'function') {
+                await this.orchestrator.getOrderBook(sig.tokenId).catch(() => undefined);
+              }
+            }
+          }
           await this.onSignals(outcome.signals);
         }
       } catch (err) {
@@ -146,6 +154,18 @@ export class StrategyLiveBridge {
       isScanning: this.isScanning,
       scannerActive: this.scanTimer !== null,
     };
+  }
+
+  cancelOrder(orderId: string): Promise<void> {
+    return this.orchestrator.cancelOrder(orderId);
+  }
+
+  cancelAllOrders(tokenId?: string): Promise<void> {
+    return this.orchestrator.cancelAllOrders(tokenId);
+  }
+
+  getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
+    return this.orchestrator.getOpenOrders(tokenId);
   }
 
   // ── Private ────────────────────────────────────────────────────────────────

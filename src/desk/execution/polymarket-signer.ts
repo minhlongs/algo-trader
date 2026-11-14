@@ -1,18 +1,11 @@
 /**
- * Polymarket ECDSA Order Signer
- * EIP-712 typed data signing for Polymarket CLOB orders on Polygon (chainId 137).
- * Docs: https://docs.polymarket.com/#signing-orders
+ * Polymarket ECDSA Order Signer — EIP-712 typed data signing on Polygon (chainId 137).
  *
- * Two protocol generations are supported:
- *  - V1 (`CTF_EXCHANGE_ADDRESS`, domain `Polymarket CTF Exchange`) — legacy default.
- *  - V2/V3 (`EXCHANGE_V3_ADDRESS`, domain `Polymarket CTF Exchange V3`, collateral
- *    `PUSD_COLLATERAL_ADDRESS`) — adds `positionId` for per-outcome Hedge escrow and
- *    signatureType `3` (polyProxy). V1 stays the default so existing callers and
- *    recorded order hashes never change silently.
+ * Supports V1 (`CTF_EXCHANGE_ADDRESS`, legacy default) and V2/V3 (`EXCHANGE_V3_ADDRESS`,
+ * `PUSD_COLLATERAL_ADDRESS`, `positionId` escrow, and `signatureType: 3` polyProxy).
  */
 
 import { ethers } from 'ethers';
-
 import { assertPositionIdUsable } from './polymarket-v3-position-id-guard';
 
 /** Polymarket CLOB order (unsigned) */
@@ -26,6 +19,8 @@ export interface PolymarketOrder {
   feeRateBps: number;
   /** 0 = EOA, 1 = POLY_PROXY, 2 = POLY_GNOSIS_SAFE, 3 = POLY_PROXY_WALLET (V2/V3 only) */
   signatureType: 0 | 1 | 2 | 3;
+  /** Optional time-in-force carried into pre-trade risk and execution gates. */
+  orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
   /** Order protocol generation: `1` = legacy CLOB domain, `3` = CLOB V2/V3 domain. */
   protocolVersion?: '1' | '3';
   /** V2/V3 only: ERC-1155 position id of the outcome token being traded. */
@@ -59,12 +54,7 @@ export interface OrderTypedData {
 }
 
 export const CTF_EXCHANGE_ADDRESS = '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
-/**
- * Neg-Risk CTF Exchange (`POLY-ALPHA-HUNTER-V4-SPEC-FULL` line 662): the multi-outcome
- * matching contract that settles against pUSD collateral. The spec never publishes a
- * distinct non-Neg-Risk `ExchangeV3` address, so routes that need it must be added when
- * the venue confirms it — do not guess one.
- */
+/** Neg-Risk CTF Exchange (`POLY-ALPHA-HUNTER-V4-SPEC-FULL` line 662). */
 export const EXCHANGE_V3_ADDRESS = '0xC5d563A36AE78145C45a50134d48A1215220f80a';
 /** pUSD ERC-20 collateral used as maker/taker asset on the V2/V3 exchange. */
 export const PUSD_COLLATERAL_ADDRESS = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
@@ -84,10 +74,7 @@ const ORDER_TYPES_V1: TypedDataField[] = [
 /** V2/V3 order fields: `positionId` is appended after `signatureType`. */
 const ORDER_TYPES_V3: TypedDataField[] = [...ORDER_TYPES_V1, { name: 'positionId', type: 'uint256' }];
 
-/**
- * Signs Polymarket CLOB orders using EIP-712 typed data via ethers.js.
- * Chain: Polygon mainnet (chainId 137).
- */
+/** Signs Polymarket CLOB orders using EIP-712 typed data via ethers.js. */
 export class PolymarketSigner {
   private readonly chainId: number;
   private readonly wallet: ethers.Wallet;
@@ -104,11 +91,12 @@ export class PolymarketSigner {
   constructor(privateKey: string, chainId: number = 137) {
     if (!privateKey) throw new Error('privateKey is required');
     if (PolymarketSigner.isPaperKey(privateKey)) {
-      throw new Error("Invalid private key: looks like a placeholder. " +
-        'Set POLY_PRIVATE_KEY to a valid 32-byte hex key or run in paper-trading mode.'
+      throw new Error(
+        'Invalid private key: looks like a placeholder. ' +
+          'Set POLY_PRIVATE_KEY to a valid 32-byte hex key or run in paper-trading mode.',
       );
     }
-    const key = privateKey.startsWith("0x") ? privateKey : "0x" + privateKey;
+    const key = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
     this.wallet = new ethers.Wallet(key);
     this.chainId = chainId;
   }
@@ -116,18 +104,12 @@ export class PolymarketSigner {
   /** Sign an order using EIP-712 typed data */
   async signOrder(order: PolymarketOrder): Promise<SignedOrder> {
     const typed = this.buildTypedData(order);
-
     const signature = await this.wallet.signTypedData(
       typed.domain,
       { Order: typed.types.Order },
-      typed.message
+      typed.message,
     );
-
-    return {
-      ...order,
-      signature,
-      maker: this.wallet.address,
-    };
+    return { ...order, signature, maker: this.wallet.address };
   }
 
   /** Build EIP-712 typed data for a CLOB order (V1 default, V2/V3 on request) */
@@ -147,7 +129,6 @@ export class PolymarketSigner {
       signatureType: order.signatureType,
     };
     if (isV3) {
-      // Guarded by assertPositionIdUsable above, so this is a strict hex→uint256 mapping.
       message.positionId = BigInt(order.positionId as string).toString();
     }
 
@@ -174,11 +155,7 @@ export class PolymarketSigner {
   /** Create a deterministic order hash via EIP-712 */
   createOrderHash(order: PolymarketOrder): string {
     const typed = this.buildTypedData(order);
-    return ethers.TypedDataEncoder.hash(
-      typed.domain,
-      { Order: typed.types.Order },
-      typed.message
-    );
+    return ethers.TypedDataEncoder.hash(typed.domain, { Order: typed.types.Order }, typed.message);
   }
 
   /** Generate a random nonce string */
