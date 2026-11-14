@@ -13,9 +13,16 @@
  */
 
 import { DEFAULT_FEE_GAS_PROFILES } from '../sor/fee-gas-model';
+import {
+  calcMakerFeeRate,
+  calcTakerFeePerShare,
+  type PolymarketFeeSchedule,
+} from '../polymarket/polymarket-fee-calculator';
 
 /** Venue the backtest ledger prices against. */
 export const BACKTEST_VENUE = 'polymarket_clob';
+
+export type BacktestLegOrderType = 'GTC' | 'GTD' | 'FOK' | 'IOC';
 
 export interface VenueCostInput {
   /** Fill price per share. */
@@ -24,6 +31,18 @@ export interface VenueCostInput {
   size: number;
   /** Gross PnL for this close, before any venue cost. */
   grossPnl: number;
+  /** Entry leg price per share when `schedule` is supplied (defaults to `price`). */
+  entryPrice?: number;
+  /** Order type of the entry leg; GTC/GTD settle at maker rate/rebate, IOC/FOK/omitted at taker. */
+  entryOrderType?: BacktestLegOrderType;
+  /** Order type of the closing leg; GTC/GTD settle at maker rate/rebate, IOC/FOK/omitted at taker. */
+  exitOrderType?: BacktestLegOrderType;
+  /**
+   * Live parabolic fee schedule resolved for this market/token (`null` = exempt).
+   * When supplied, entry + exit legs use maker/taker schedule rates per share
+   * instead of flat venue bps. Omit to keep the flat venue profile.
+   */
+  schedule?: PolymarketFeeSchedule | null;
 }
 
 export interface VenueCostBreakdown {
@@ -40,7 +59,8 @@ export interface VenueCostBreakdown {
 /**
  * Subtract taker fees and gas from one closing fill.
  *
- * Both legs carry a taker fee, charged on this close's notional. Gas is fixed
+ * Both legs carry a taker fee, charged on this close's notional (or the token's
+ * parabolic `PolymarketFeeSchedule` when supplied). Gas is fixed
  * per on-chain fill, and the entry fills are settled on the close that
  * finishes them, so the caller passes how many entry fills this close settles:
  * 1 for the exit fill itself plus one per entry fill when the position is fully
@@ -51,15 +71,55 @@ export interface VenueCostBreakdown {
  * never netted into a profit, and a fill whose gross PnL is exactly its cost is
  * reported as break-even at 0.
  */
+function isMakerOrderType(orderType?: BacktestLegOrderType): boolean {
+  return orderType === 'GTC' || orderType === 'GTD';
+}
+
+function calcLegFeePerShare(
+  legPrice: number,
+  orderType: BacktestLegOrderType | undefined,
+  schedule: PolymarketFeeSchedule | null | undefined,
+  makerFeeBps: number,
+  takerFeeBps: number,
+): number {
+  if (schedule === null) return 0;
+  if (isMakerOrderType(orderType)) {
+    if (schedule !== undefined) {
+      return schedule.takerOnly
+        ? calcMakerFeeRate(schedule, legPrice) * legPrice
+        : calcTakerFeePerShare(schedule, legPrice);
+    }
+    return legPrice * (makerFeeBps / 10000);
+  }
+  if (schedule !== undefined) {
+    return calcTakerFeePerShare(schedule, legPrice);
+  }
+  return legPrice * (takerFeeBps / 10000);
+}
+
 export function applyVenueCosts(
-  { price, size, grossPnl }: VenueCostInput,
+  { price, size, grossPnl, entryPrice, entryOrderType, exitOrderType, schedule }: VenueCostInput,
   gasFills = 2,
 ): VenueCostBreakdown {
   const profile = DEFAULT_FEE_GAS_PROFILES[BACKTEST_VENUE];
-  const notionalUsd = price * size;
-
-  const feePerLegUsd = notionalUsd * (profile.takerFeeBps / 10000);
-  const feeUsd = feePerLegUsd * 2;
+  const resolvedEntryPrice = schedule !== undefined || isMakerOrderType(entryOrderType)
+    ? (entryPrice ?? price)
+    : price;
+  const entryFeePerShare = calcLegFeePerShare(
+    resolvedEntryPrice,
+    entryOrderType,
+    schedule,
+    profile.makerFeeBps,
+    profile.takerFeeBps,
+  );
+  const exitFeePerShare = calcLegFeePerShare(
+    price,
+    exitOrderType,
+    schedule,
+    profile.makerFeeBps,
+    profile.takerFeeBps,
+  );
+  const feeUsd = (entryFeePerShare + exitFeePerShare) * size;
 
   const gasUsd = profile.gasCostUsd * gasFills;
 

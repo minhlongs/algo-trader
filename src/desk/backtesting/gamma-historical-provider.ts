@@ -1,21 +1,50 @@
 /**
  * Gamma Historical Data Provider
  *
- * Fetches market snapshots from Gamma API at intervals for backtesting.
- * Caches snapshots in memory for the duration of a backtest session.
+ * Fetches active Polymarket markets from Gamma API, then pulls each market's
+ * real retroactive CLOB `prices-history` series via `PolymarketDataApiClient`.
+ * Every emitted snapshot and market row carries `source: 'prices-history'`.
+ *
+ * Synthetic price paths (`simulateMarketRegimeTick`) are NOT called here.
  */
 
 import type { GammaMarket } from '../polymarket/gamma-client';
-import type { HistoricalSnapshot, HistoricalMarketData } from './types';
-import { parseJsonStringArray, simulateMarketRegimeTick } from './backtest-price-regimes';
+import {
+  createPolymarketDataApiClient,
+  type PolymarketDataApiClient,
+} from '../polymarket/polymarket-data-api-client';
+import type { PricesHistoryRow } from '../polymarket/l2/l2-source-labels';
+import type { HistoricalSnapshot } from './types';
+import { buildAlignedSnapshots, parseGammaMarketRow } from './gamma-historical-snapshot-aligner';
 import { logger } from '../../shared/utils/logger';
 
+const MAX_HISTORY_MARKETS = 20;
+const MAX_TICKS = 168;
+
+export interface GammaHistoricalProviderOptions {
+  baseUrl?: string;
+  fetchImpl?: typeof fetch;
+  dataApiClient?: PolymarketDataApiClient;
+  /** Maximum markets queried against `/prices-history` per run (default 20). */
+  maxMarkets?: number;
+}
+
 export class GammaHistoricalProvider {
-  private baseUrl = 'https://gamma-api.polymarket.com';
-  private cache: Map<string, HistoricalSnapshot[]> = new Map();
+  private readonly baseUrl: string;
+  private readonly fetchImpl?: typeof fetch;
+  private readonly injectedDataClient?: PolymarketDataApiClient;
+  private readonly maxMarkets: number;
+  private readonly cache: Map<string, HistoricalSnapshot[]> = new Map();
+
+  constructor(options: GammaHistoricalProviderOptions = {}) {
+    this.baseUrl = options.baseUrl ?? 'https://gamma-api.polymarket.com';
+    this.fetchImpl = options.fetchImpl;
+    this.injectedDataClient = options.dataApiClient;
+    this.maxMarkets = options.maxMarkets ?? MAX_HISTORY_MARKETS;
+  }
 
   /**
-   * Fetch a time-series of market snapshots for backtesting.
+   * Fetch a time-series of real retroactive market snapshots for backtesting.
    *
    * @param days Number of days of data
    * @param intervalMs Tick interval (default: 1 hour)
@@ -29,7 +58,7 @@ export class GammaHistoricalProvider {
     if (cached) return cached;
 
     const tickCount = Math.ceil((days * 24 * 60 * 60 * 1000) / intervalMs);
-    const maxTicks = Math.min(tickCount, 168);
+    const maxTicks = Math.min(Math.max(1, tickCount), MAX_TICKS);
 
     logger.info('Fetching historical market snapshots', 'GammaHistoricalProvider', {
       days,
@@ -42,86 +71,74 @@ export class GammaHistoricalProvider {
       throw new Error('GammaHistoricalProvider: failed to fetch any markets — backtest aborted');
     }
 
-    const snapshots: HistoricalSnapshot[] = [];
-    const now = Date.now();
-    const startTime = now - days * 24 * 60 * 60 * 1000;
+    const candidates = markets.slice(0, this.maxMarkets);
+    const interval = days <= 1 ? '1d' : days <= 7 ? '1w' : 'max';
+    const fidelity = Math.max(1, Math.round(intervalMs / 60_000));
+    const dataClient =
+      this.injectedDataClient ??
+      createPolymarketDataApiClient({ fetchImpl: this.resolveFetch() });
 
-    for (let i = 0; i < maxTicks; i++) {
-      const progress = i / (maxTicks - 1 || 1);
-      const timestamp = new Date(startTime + progress * (now - startTime)).toISOString();
-
-      snapshots.push({
-        timestamp,
-        markets: markets.map((m, j) => this.simulatePriceEvolution(m, i, maxTicks, j)),
-      });
+    const seriesByMarket = await Promise.all(
+      candidates.map(async (market) => ({
+        market,
+        rows: await this.fetchMarketHistory(dataClient, market, interval, fidelity),
+      })),
+    );
+    const observed = seriesByMarket.filter((entry) => entry.rows.length > 0);
+    if (observed.length === 0) {
+      throw new Error(
+        'GammaHistoricalProvider: failed to fetch real prices-history for any market — backtest aborted',
+      );
     }
 
+    const snapshots = buildAlignedSnapshots(observed, days, maxTicks);
     this.cache.set(cacheKey, snapshots);
     return snapshots;
   }
 
-  /** Clear cache between backtest runs */
+  /** Clear cache between backtest runs. */
   clearCache(): void {
     this.cache.clear();
   }
 
-  private async fetchCurrentMarkets(): Promise<GammaMarket[]> {
+  private resolveFetch(): typeof fetch {
+    return this.fetchImpl ?? globalThis.fetch;
+  }
+
+  private async fetchMarketHistory(
+    dataClient: PolymarketDataApiClient,
+    market: GammaMarket,
+    interval: string,
+    fidelity: number,
+  ): Promise<PricesHistoryRow[]> {
+    const tokenId = market.yesTokenId;
+    if (!tokenId) return [];
     try {
-      const resp = await fetch(
-        `${this.baseUrl}/markets?closed=false&limit=100`,
-        { signal: AbortSignal.timeout(15_000) },
-      );
-      if (!resp.ok) throw new Error(`Gamma API error ${resp.status}`);
-      const raw: Array<Record<string, unknown>> = await resp.json();
-
-      return raw.map((r) => {
-        const conditionId = String(r.conditionId ?? r.id ?? '');
-        const parsedPrices = parseJsonStringArray(r.outcomePrices);
-        const outcomePrices = parsedPrices.length >= 2 ? parsedPrices : ['0.5', '0.5'];
-        const parsedOutcomes = parseJsonStringArray(r.outcomes);
-        const outcomes = parsedOutcomes.length >= 2 ? parsedOutcomes : ['Yes', 'No'];
-        const clobTokenIds = parseJsonStringArray(r.clobTokenIds);
-        const yesPrice = parseFloat(outcomePrices[0] ?? '0.5') || 0.5;
-        const noPrice = parseFloat(outcomePrices[1] ?? String(1 - yesPrice)) || 1 - yesPrice;
-        const yesTokenId = clobTokenIds[0] ?? `${conditionId}-yes`;
-        const noTokenId = clobTokenIds[1] ?? `${conditionId}-no`;
-
-        return {
-          id: String(r.id ?? conditionId),
-          question: String(r.question ?? ''),
-          conditionId,
-          slug: String(r.slug ?? ''),
-          outcomes,
-          outcomePrices,
-          volume: Number(r.volumeNum ?? r.volume ?? 0),
-          liquidity: Number(r.liquidityNum ?? r.liquidity ?? 0),
-          endDate: String(r.end_date_iso ?? r.endDate ?? ''),
-          active: r.active !== false,
-          closed: r.closed === true,
-          resolved: r.resolved === true,
-          tokens: [
-            { token_id: yesTokenId, outcome: outcomes[0] ?? 'Yes', price: yesPrice },
-            { token_id: noTokenId, outcome: outcomes[1] ?? 'No', price: noPrice },
-          ],
-          yesTokenId,
-          noTokenId,
-          yesPrice,
-        };
-      });
+      return await dataClient.fetchPricesHistory({ tokenId, interval, fidelity });
     } catch (err) {
-      logger.error('Failed to fetch Gamma markets', 'GammaHistoricalProvider', {
+      logger.warn('Failed to fetch prices-history for market', 'GammaHistoricalProvider', {
+        conditionId: market.conditionId,
+        tokenId,
         err: String(err),
       });
       return [];
     }
   }
 
-  private simulatePriceEvolution(
-    market: GammaMarket,
-    tickIdx: number,
-    totalTicks: number,
-    marketIdx: number,
-  ): HistoricalMarketData {
-    return simulateMarketRegimeTick(market, tickIdx, totalTicks, marketIdx);
+  private async fetchCurrentMarkets(): Promise<GammaMarket[]> {
+    try {
+      const resp = await this.resolveFetch()(
+        `${this.baseUrl}/markets?closed=false&limit=100`,
+        { signal: AbortSignal.timeout(15_000) },
+      );
+      if (!resp.ok) throw new Error(`Gamma API error ${resp.status}`);
+      const raw: Array<Record<string, unknown>> = await resp.json();
+      return raw.map(parseGammaMarketRow);
+    } catch (err) {
+      logger.error('Failed to fetch Gamma markets', 'GammaHistoricalProvider', {
+        err: String(err),
+      });
+      return [];
+    }
   }
 }

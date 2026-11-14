@@ -10,11 +10,19 @@ import {
 } from '../net-profitability-calculator';
 import type { IngestionPipelineConfig, OpportunityEvaluationResult } from './ingestion-types';
 
-export function evaluateOpportunity(
+/**
+ * Async by contract: the ingestion worker already awaits this result, and the
+ * fee schedule recovery that will resolve a leg's market schedule at the
+ * boundary is asynchronous. `ArbitrageOpportunity` carries no token id, so the
+ * evaluator cannot resolve one itself — a Polymarket leg that reaches it
+ * without a schedule is rejected as `FEE_SCHEDULE_UNAVAILABLE` rather than
+ * priced from a guessed category.
+ */
+export async function evaluateOpportunity(
   opp: ArbitrageOpportunity,
   calculator: NetProfitabilityCalculator,
   config: IngestionPipelineConfig
-): OpportunityEvaluationResult {
+): Promise<OpportunityEvaluationResult> {
   const tradeAmount =
     opp.buyPrice > 0 ? config.baseNotionalUsd / opp.buyPrice : 1.0;
 

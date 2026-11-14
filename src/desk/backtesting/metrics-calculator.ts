@@ -4,10 +4,21 @@
  * Pure functions for computing backtesting metrics. No side effects, no I/O.
  * Delegates max drawdown computation to the shared BacktestRunner for consistency
  * across desk and platform backtesting modules.
+ *
+ * Point estimates alone are not falsifiable, so this module also exposes the
+ * robustness wiring: anchored walk-forward splits + 4 liquidity regimes →
+ * Stationary Block Bootstrap 95% CI → Deflated Sharpe. See
+ * `computeMetricsWithRobustness`; `computeMetrics` is unchanged.
  */
 
 import type { MetricsReport, BacktestTrade } from './types';
 import { BacktestRunner } from '../../shared/backtesting/backtest-runner';
+import {
+  computeRobustnessMetrics,
+  equityCurveToReturns,
+  type RobustnessMetrics,
+  type RobustnessMetricsOptions,
+} from './metrics-calculator-robustness';
 
 export function computeMetrics(
   trades: BacktestTrade[],
@@ -130,6 +141,46 @@ export function computeCalmarRatio(annualizedReturn: number, maxDrawdown: number
   if (absDd === 0) return annualizedReturn > 0 ? 50.0 : 0;
   return Math.min(annualizedReturn / absDd, 50.0);
 }
+
+/**
+ * Point-estimate report plus its robustness envelope.
+ */
+export interface MetricsWithRobustnessReport {
+  /** Unchanged point-estimate report (`computeMetrics` output). */
+  metrics: MetricsReport;
+  /** Simple per-observation returns derived from the equity curve. */
+  returns: number[];
+  /** Bootstrap 95% CI (overall + per liquidity regime) and Deflated Sharpe. */
+  robustness: RobustnessMetrics;
+}
+
+/**
+ * Compute the standard metrics report AND its robustness envelope.
+ *
+ * `options.liquidity` supplies one spread/depth observation per return so the
+ * bootstrap interval can be reported per liquidity regime as well as overall;
+ * `options.nTrials` supplies the number of hyperparameter combinations tried so
+ * the observed Sharpe can be deflated for multiple testing.
+ *
+ * Additive: `computeMetrics` and every existing export are untouched.
+ *
+ * @throws RangeError when the equity curve yields fewer than 2 returns, or when
+ *         `options.liquidity` does not match the return count.
+ */
+export function computeMetricsWithRobustness(
+  trades: BacktestTrade[],
+  equityCurve: Array<{ timestamp: string; equity: number }>,
+  options: RobustnessMetricsOptions = {},
+): MetricsWithRobustnessReport {
+  const returns = equityCurveToReturns(equityCurve);
+  return {
+    metrics: computeMetrics(trades, equityCurve),
+    returns,
+    robustness: computeRobustnessMetrics(returns, options),
+  };
+}
+
+export type { RobustnessMetrics, RobustnessMetricsOptions };
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;

@@ -4,7 +4,8 @@
  * Extracted from live-trading-orchestrator.ts for modularity.
  */
 
-import { z } from 'zod';
+import type { FeeScheduleResolver } from './fee-schedule-resolver';
+import type { PolyCancelAllTransport } from '../risk/poly-kill-switch';
 
 // ---------------------------------------------------------------------------
 // Env-var validation (Zod)
@@ -60,6 +61,12 @@ export interface LiveTradingConfig {
   chainId?: number;
   /** Custom API URL override. */
   apiUrl?: string;
+  /** Per-token Gamma fee schedule resolver for paper fills and fail-closed risk checks. */
+  feeScheduleResolver?: FeeScheduleResolver | null;
+  /** Enforce fail-closed `evaluatePolyRisk` gate (defaults to `!paperTrading`). */
+  enforcePolyRiskGate?: boolean;
+  /** Optional cancel-all transport override for `PolyKillSwitch`. */
+  killSwitchTransport?: PolyCancelAllTransport;
 }
 
 // ---------------------------------------------------------------------------

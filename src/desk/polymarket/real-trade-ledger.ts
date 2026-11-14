@@ -1,6 +1,9 @@
 /**
- * Real Trade Ledger — fetch actual Polymarket trades for any wallet
- * Public API, no auth needed. Shows REAL P&L, not simulated.
+ * Real Trade Ledger — actual Polymarket trades and positions for any wallet.
+ * Public data, no auth. Shows REAL P&L, not simulated.
+ *
+ * Uses Data API v2 (`/v2/trades`, `/v2/positions`). The v1 routes (`/trades`,
+ * `/positions`) were retired by Polymarket and now answer HTTP 410.
  *
  * Usage:
  *   const ledger = await fetchRealTrades('0xABC...');
@@ -8,8 +11,13 @@
  */
 
 import { logger } from '../../shared/utils/logger';
+import {
+  createPolymarketDataApiClient,
+  type RealPosition,
+  type PolymarketDataApiClient,
+} from './polymarket-data-api-client';
 
-const DATA_API = 'https://data-api.polymarket.com';
+export type { RealPosition };
 
 export interface RealTrade {
   side: 'BUY' | 'SELL';
@@ -23,16 +31,6 @@ export interface RealTrade {
   wallet: string;
 }
 
-export interface RealPosition {
-  conditionId: string;
-  title: string;
-  outcome: string;
-  size: number;
-  avgPrice: number;
-  currentPrice: number;
-  unrealizedPnl: number;
-}
-
 export interface RealLedger {
   wallet: string;
   trades: RealTrade[];
@@ -43,68 +41,81 @@ export interface RealLedger {
   fetchedAt: number;
 }
 
-/** Fetch real trades for a Polymarket wallet */
-export async function fetchRealTrades(wallet: string, limit = 100): Promise<RealLedger> {
-  const url = `${DATA_API}/trades?maker=${wallet}&limit=${limit}`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  if (!resp.ok) throw new Error(`Polymarket API ${resp.status}`);
+export interface RealLedgerOptions {
+  client?: PolymarketDataApiClient;
+  fetchImpl?: typeof fetch;
+}
 
-  const raw = (await resp.json()) as Array<Record<string, unknown>>;
+function resolveClient(options: RealLedgerOptions): PolymarketDataApiClient {
+  return options.client ?? createPolymarketDataApiClient({ fetchImpl: options.fetchImpl });
+}
 
-  const trades: RealTrade[] = raw.map(t => ({
-    side: String(t.side || 'BUY') as 'BUY' | 'SELL',
-    price: Number(t.price || 0),
-    size: Number(t.size || 0),
-    outcome: String(t.outcome || ''),
-    title: String(t.title || ''),
-    slug: String(t.slug || ''),
-    timestamp: Number(t.timestamp || 0),
-    transactionHash: String(t.transactionHash || ''),
+/** Fetch real trades for a Polymarket wallet. */
+export async function fetchRealTrades(
+  wallet: string,
+  limit = 100,
+  options: RealLedgerOptions = {},
+): Promise<RealLedger> {
+  const { trades: rows } = await resolveClient(options).fetchTrades({ wallet, limit });
+
+  const trades: RealTrade[] = rows.map((row) => ({
+    side: row.side,
+    price: row.price,
+    size: row.size,
+    outcome: row.outcome,
+    title: row.title,
+    slug: row.slug,
+    timestamp: Math.floor(row.t / 1000),
+    transactionHash: row.transactionHash,
     wallet,
   }));
 
-  let buys = 0, sells = 0, vol = 0;
-  for (const t of trades) {
-    if (t.side === 'BUY') buys++; else sells++;
-    vol += t.size * t.price;
+  let buys = 0;
+  let sells = 0;
+  let volume = 0;
+  for (const trade of trades) {
+    if (trade.side === 'BUY') buys += 1;
+    else sells += 1;
+    volume += trade.size * trade.price;
   }
 
-  return { wallet, trades, totalTrades: trades.length, totalBuys: buys, totalSells: sells, totalVolume: vol, fetchedAt: Date.now() };
+  return {
+    wallet,
+    trades,
+    totalTrades: trades.length,
+    totalBuys: buys,
+    totalSells: sells,
+    totalVolume: volume,
+    fetchedAt: Date.now(),
+  };
 }
 
-/** Fetch real positions for a wallet */
-export async function fetchRealPositions(wallet: string): Promise<RealPosition[]> {
+/** Fetch real open positions for a wallet. Transport failure yields `[]`. */
+export async function fetchRealPositions(wallet: string, options: RealLedgerOptions = {}): Promise<RealPosition[]> {
   try {
-    const url = `${DATA_API}/positions?user=${wallet}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!resp.ok) return [];
-    const raw = (await resp.json()) as Array<Record<string, unknown>>;
-    return raw.map(p => ({
-      conditionId: String(p.conditionId || ''),
-      title: String(p.title || ''),
-      outcome: String(p.outcome || ''),
-      size: Number(p.size || 0),
-      avgPrice: Number(p.avgPrice || 0),
-      currentPrice: Number(p.currentPrice || p.price || 0),
-      unrealizedPnl: Number(p.unrealizedPnl || 0),
-    }));
-  } catch { return []; }
+    return await resolveClient(options).fetchPositions(wallet);
+  } catch (err) {
+    logger.warn('[RealTradeLedger] Position fetch failed', { wallet, err: String(err) });
+    return [];
+  }
 }
 
-/** Print formatted ledger to logger */
+/** Print formatted ledger to logger. */
 export function printRealLedger(ledger: RealLedger): void {
   logger.info('═══ POLYMARKET REAL TRADE LEDGER ═══');
   logger.info(`Wallet: ${ledger.wallet}`);
   logger.info(`Total: ${ledger.totalTrades} trades | Buys: ${ledger.totalBuys} | Sells: ${ledger.totalSells}`);
   logger.info(`Volume: $${ledger.totalVolume.toFixed(2)}`);
   logger.info('─── Recent Trades ───');
-  for (const t of ledger.trades.slice(0, 20)) {
-    const date = new Date(t.timestamp * 1000).toISOString().substring(0, 16);
-    logger.info(`  ${date} ${t.side} ${t.outcome} @${t.price.toFixed(3)} size:${t.size.toFixed(2)} ${t.title.substring(0, 40)}`);
+  for (const trade of ledger.trades.slice(0, 20)) {
+    const date = new Date(trade.timestamp * 1000).toISOString().substring(0, 16);
+    logger.info(
+      `  ${date} ${trade.side} ${trade.outcome} @${trade.price.toFixed(3)} size:${trade.size.toFixed(2)} ${trade.title.substring(0, 40)}`,
+    );
   }
 }
 
-/** CLI-friendly: fetch + print for any wallet */
+/** CLI-friendly: fetch + print for any wallet. */
 export async function showRealLedger(wallet: string): Promise<void> {
   logger.info(`Fetching real trades for ${wallet}...`);
   const ledger = await fetchRealTrades(wallet);
@@ -112,8 +123,10 @@ export async function showRealLedger(wallet: string): Promise<void> {
   printRealLedger(ledger);
   if (positions.length > 0) {
     logger.info('─── Open Positions ───');
-    for (const p of positions) {
-      logger.info(`  ${p.outcome} size:${p.size} avg:${p.avgPrice.toFixed(3)} cur:${p.currentPrice.toFixed(3)} pnl:$${p.unrealizedPnl.toFixed(2)} ${p.title.substring(0, 40)}`);
+    for (const position of positions) {
+      logger.info(
+        `  ${position.outcome} size:${position.size} avg:${position.avgPrice.toFixed(3)} cur:${position.currentPrice.toFixed(3)} pnl:$${position.unrealizedPnl.toFixed(2)} ${position.title.substring(0, 40)}`,
+      );
     }
   }
 }

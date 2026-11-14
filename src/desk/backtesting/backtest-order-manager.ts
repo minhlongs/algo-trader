@@ -1,15 +1,18 @@
 /**
- * Backtest Order Manager
- *
- * Simulated OrderManager for backtesting: records trades, tracks positions,
- * and computes realized PnL per fill. No real orders are ever placed.
+ * Backtest Order Manager — simulated OrderManager for backtesting.
+ * Records trades, tracks positions, and computes net realized PnL. No live orders.
  */
 
 import type { OrderManager } from '../polymarket/order-manager';
+import type { FeeScheduleResolver } from '../polymarket/fee-schedule-resolver';
+import type { PolymarketFeeSchedule } from '../polymarket/polymarket-fee-calculator';
 import type { BacktestTrade } from './types';
-import { applyVenueCosts } from './backtest-fee-application';
+import { applyVenueCosts, type BacktestLegOrderType } from './backtest-fee-application';
+import {
+  settleBacktestBundleConversion,
+  type BundleConversionParams,
+} from './backtest-bundle-conversion';
 
-/** Fill cost detail per closed trade, retained so a run can be audited. */
 export interface FillCostDetail {
   grossPnlUsd: number;
   feeUsd: number;
@@ -17,19 +20,13 @@ export interface FillCostDetail {
   netPnlUsd: number;
 }
 
-/** One open position: positive size is long, negative size is short. */
 interface OpenPosition {
   size: number;
   avgPrice: number;
   entryFills: number;
+  entryOrderType?: BacktestLegOrderType;
 }
 
-/**
- * IEEE-754 residue tolerance when comparing position sizes. Scaling in or out
- * over fractional fills (`0.1 + 0.2`, `1.0 - 0.7`) leaves a ~1e-16 residue;
- * treating that as an open position both skips entry-gas settlement and leaves
- * dust that swallows the next opposing fill.
- */
 const POSITION_DUST_EPSILON = 1e-9;
 
 export class BacktestOrderManager implements OrderManager {
@@ -40,32 +37,41 @@ export class BacktestOrderManager implements OrderManager {
   private currentEquity: number;
   private positions = new Map<string, OpenPosition>();
   private fillCosts: FillCostDetail[] = [];
+  private readonly feeResolver?: FeeScheduleResolver;
+  private currentTimestampIso: string | null = null;
+  private markPrices = new Map<string, number>();
 
-  constructor(capital: number) {
+  constructor(capital: number, options?: { feeResolver?: FeeScheduleResolver }) {
     this.capital = capital;
     this.currentEquity = capital;
+    this.feeResolver = options?.feeResolver;
   }
+
+  setCurrentTimestamp(iso: string | null): void { this.currentTimestampIso = iso; }
+  updatePrices(prices: ReadonlyMap<string, number>): void { this.markPrices = new Map(prices); }
 
   async placeOrder(params: {
     tokenId: string;
     side: 'buy' | 'sell';
     price: string | number;
     size: string | number;
-    orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
+    orderType?: BacktestLegOrderType;
     timestamp?: string;
   }): Promise<{ id: string }> {
     const side = params.side === 'buy' ? 'BUY' : 'SELL';
     const price = parseFloat(String(params.price));
     const size = parseFloat(String(params.size));
-    const close = this.computeClose(params.tokenId, side, price, size);
+    const schedule = this.feeResolver ? await this.feeResolver.resolve(params.tokenId) : undefined;
+    const close = this.computeClose(params.tokenId, side, price, size, schedule, params.orderType);
 
     const trade: BacktestTrade = {
-      timestamp: params.timestamp ?? new Date().toISOString(),
+      timestamp: params.timestamp ?? this.currentTimestampIso ?? new Date().toISOString(),
       tokenId: params.tokenId,
       side,
       price,
       size: close?.closedSize ?? size,
       pnl: close?.pnl ?? null,
+      ...(close ? { venueCostUsd: roundUsd(Math.max(0, close.fillCost.feeUsd + close.fillCost.gasUsd)) } : {}),
     };
     this.trades.push(trade);
 
@@ -81,77 +87,81 @@ export class BacktestOrderManager implements OrderManager {
     return { id: `backtest-${this.trades.length}` };
   }
 
-  async cancelOrder(_orderId: string): Promise<void> {
-    // No-op in backtesting
-  }
-
-  async cancelAllOrders(_tokenId?: string): Promise<void> {
-    // No-op in backtesting
-  }
-
+  async cancelOrder(_orderId: string): Promise<void> {}
+  async cancelAllOrders(_tokenId?: string): Promise<void> {}
   async getOpenOrders(_tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
     return [];
   }
 
-  getTrades(): BacktestTrade[] {
-    return [...this.trades];
+  async settleBundleConversion(params: BundleConversionParams): Promise<number> {
+    return settleBacktestBundleConversion(
+      {
+        positions: this.positions,
+        trades: this.trades,
+        fillCosts: this.fillCosts,
+        fillEquityCurve: this.fillEquityCurve,
+        capital: this.capital,
+        getCurrentEquity: () => this.currentEquity,
+        setCurrentEquity: (next) => { this.currentEquity = next; },
+        currentTimestampIso: this.currentTimestampIso,
+        feeResolver: this.feeResolver,
+      },
+      params,
+    );
   }
 
-  /** Per-close cost audit trail, parallel to `trades` closed rows. */
-  getFillCosts(): FillCostDetail[] {
-    return [...this.fillCosts];
-  }
-
+  getTrades(): BacktestTrade[] { return [...this.trades]; }
+  getFillCosts(): FillCostDetail[] { return [...this.fillCosts]; }
   getEquityCurve(): Array<{ timestamp: string; equity: number }> {
     return this.equityCurve.length > 0 ? [...this.equityCurve] : [...this.fillEquityCurve];
   }
 
   getCurrentEquity(): number {
-    return this.currentEquity;
+    if (this.markPrices.size === 0) return this.currentEquity;
+    let unrealized = 0;
+    for (const [tokenId, pos] of this.positions) {
+      const mark = this.markPrices.get(tokenId);
+      if (mark === undefined || !(mark > 0)) continue;
+      const sign = pos.size > 0 ? 1 : -1;
+      unrealized += Math.abs(pos.size) * (mark - pos.avgPrice) * sign;
+    }
+    return roundUsd(this.currentEquity + unrealized);
   }
 
-  /**
-   * Apply one fill to the position ledger and, when it closes a position,
-   * return net-of-venue-costs PnL, closed size, and the cost breakdown.
-   */
   private computeClose(
     tokenId: string,
     side: 'BUY' | 'SELL',
     price: number,
     size: number,
+    schedule?: PolymarketFeeSchedule | null,
+    orderType?: BacktestLegOrderType,
   ): { pnl: number; closedSize: number; fillCost: FillCostDetail } | null {
     const existing = this.positions.get(tokenId);
     const direction = side === 'BUY' ? 1 : -1;
-    const closesPosition = existing !== undefined && existing.size * direction < 0;
-
-    if (existing && closesPosition) {
-      return this.settleClose(tokenId, existing, price, size);
+    if (existing !== undefined && existing.size * direction < 0) {
+      return this.settleClose(tokenId, existing, price, size, schedule, orderType);
     }
-
     if (existing) {
-      // Volume-weighted entry over absolute size; every entry fill pays gas on settlement.
       const openSize = Math.abs(existing.size) + size;
       this.positions.set(tokenId, {
         size: openSize * direction,
         avgPrice: (existing.avgPrice * Math.abs(existing.size) + price * size) / openSize,
         entryFills: existing.entryFills + 1,
+        entryOrderType: orderType ?? existing.entryOrderType,
       });
     } else {
-      this.positions.set(tokenId, { size: size * direction, avgPrice: price, entryFills: 1 });
+      this.positions.set(tokenId, { size: size * direction, avgPrice: price, entryFills: 1, entryOrderType: orderType });
     }
-    return null; // Unrealized until closed
+    return null;
   }
 
-  /**
-   * Reduce or close out an opposing position, settle venue costs on the closed
-   * portion, and return the net realized PnL and closed size. Entry-fill gas is
-   * settled once, on the fill that closes the position out.
-   */
   private settleClose(
     tokenId: string,
     existing: OpenPosition,
     price: number,
     size: number,
+    schedule?: PolymarketFeeSchedule | null,
+    exitOrderType?: BacktestLegOrderType,
   ): { pnl: number; closedSize: number; fillCost: FillCostDetail } {
     const positionSign = existing.size > 0 ? 1 : -1;
     const openSize = existing.size * positionSign;
@@ -159,34 +169,29 @@ export class BacktestOrderManager implements OrderManager {
     const grossPnlUsd = closeSize * (price - existing.avgPrice) * positionSign;
     const remaining = openSize - closeSize;
     const chargeEntryGas = remaining <= POSITION_DUST_EPSILON;
-    const entryFills = existing.entryFills;
-
     if (chargeEntryGas) {
       this.positions.delete(tokenId);
     } else {
-      this.positions.set(tokenId, { size: remaining * positionSign, avgPrice: existing.avgPrice, entryFills });
+      this.positions.set(tokenId, { ...existing, size: remaining * positionSign });
     }
-
-    // The ledger only credits realized PnL that survives venue costs.
-    const gasFills = 1 + (chargeEntryGas ? entryFills : 0);
-    const costs = applyVenueCosts({ price, size: closeSize, grossPnl: grossPnlUsd }, gasFills);
+    const gasFills = 1 + (chargeEntryGas ? existing.entryFills : 0);
+    const costs = applyVenueCosts(
+      {
+        price, entryPrice: existing.avgPrice, entryOrderType: existing.entryOrderType,
+        exitOrderType, size: closeSize, grossPnl: grossPnlUsd, schedule,
+      },
+      gasFills,
+    );
     return {
       pnl: costs.netPnl,
       closedSize: closeSize,
       fillCost: {
-        grossPnlUsd: roundUsd(grossPnlUsd),
-        feeUsd: costs.feeUsd,
-        gasUsd: costs.gasUsd,
-        netPnlUsd: costs.netPnl,
+        grossPnlUsd: roundUsd(grossPnlUsd), feeUsd: costs.feeUsd, gasUsd: costs.gasUsd, netPnlUsd: costs.netPnl,
       },
     };
   }
 }
 
-/**
- * Round to the cent so a retained gross figure cannot drift from the net figure
- * it was derived from.
- */
 function roundUsd(value: number): number {
   return Math.round(value * 100) / 100;
 }

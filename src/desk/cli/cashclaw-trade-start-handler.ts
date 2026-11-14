@@ -60,9 +60,11 @@ export async function handleTradeStart(opts: {
 
   const { LiveTradingOrchestrator } = await import('../polymarket/live-trading-orchestrator');
   const { StrategyLiveBridge } = await import('../polymarket/strategy-live-bridge');
+  const { createGammaFeeScheduleResolver } = await import('../polymarket/fee-schedule-resolver');
   const orch = new LiveTradingOrchestrator({
     paperTrading: !isLive,
     capitalUsdc,
+    feeScheduleResolver: createGammaFeeScheduleResolver(),
   });
   const bridge = new StrategyLiveBridge(orch);
 

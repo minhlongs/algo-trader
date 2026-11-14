@@ -1,120 +1,92 @@
-// Polymarket dynamic fee calculator — March 30, 2026 fee expansion
-// Taker fees vary by category + distance from 50%. Maker rebates per category.
-
-export type PolymarketCategory =
-  | 'crypto' | 'politics' | 'finance' | 'tech'
-  | 'culture' | 'sports' | 'science' | 'pop_culture'
-  | 'geopolitics' | 'world_events';
-
-export interface FeeSchedule {
-  /** Minimum taker fee (at probability near 50%), e.g. 0.0035 = 0.35% */
-  minTakerFee: number;
-  /** Maximum taker fee (at probability near 0% or 100%), e.g. 0.018 = 1.80% */
-  maxTakerFee: number;
-  /** Maker rebate as fraction of taker fees collected */
-  makerRebatePct: number;
-  /** True for exempt categories (no fees at all) */
-  exempt: boolean;
-}
-
-/** Fee schedules per Polymarket category — effective March 30, 2026 */
-export const FEE_SCHEDULES: Record<PolymarketCategory, FeeSchedule> = {
-  crypto:       { minTakerFee: 0.0035, maxTakerFee: 0.018,  makerRebatePct: 0.20, exempt: false },
-  politics:     { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.25, exempt: false },
-  finance:      { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.50, exempt: false },
-  tech:         { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.20, exempt: false },
-  culture:      { minTakerFee: 0.0020, maxTakerFee: 0.010,  makerRebatePct: 0.20, exempt: false },
-  sports:       { minTakerFee: 0.0015, maxTakerFee: 0.0075, makerRebatePct: 0.20, exempt: false },
-  science:      { minTakerFee: 0.0015, maxTakerFee: 0.0075, makerRebatePct: 0.20, exempt: false },
-  pop_culture:  { minTakerFee: 0.0015, maxTakerFee: 0.0075, makerRebatePct: 0.20, exempt: false },
-  geopolitics:  { minTakerFee: 0,      maxTakerFee: 0,      makerRebatePct: 0,    exempt: true  },
-  world_events: { minTakerFee: 0,      maxTakerFee: 0,      makerRebatePct: 0,    exempt: true  },
-};
-
 /**
- * Calculate dynamic taker fee based on category and probability.
- * Fee scales with distance from 50% — closer to 0%/100% = higher fee.
- * Returns fee as decimal (e.g., 0.018 for 1.8%).
+ * Polymarket fee arithmetic, driven by the schedule the exchange publishes.
+ *
+ * The CLOB publishes a per-market `feeSchedule` object on the Gamma API:
+ *
+ *     { "exponent": 1, "rate": 0.07, "takerOnly": true, "rebateRate": 0.20 }
+ *
+ * The taker fee for one share at price `p` is `rate * (p * (1 - p)) ^ exponent`,
+ * which peaks at p = 0.50 and falls to zero at both extremes. There is no
+ * category table and no probability interpolation: read the schedule from the
+ * market, then apply this arithmetic.
  */
-export function calcTakerFee(category: PolymarketCategory, probability: number): number {
-  const schedule = FEE_SCHEDULES[category];
-  if (schedule.exempt) return 0;
 
-  const distance = Math.abs(probability - 0.5); // 0.0 at center, 0.5 at extremes
-  const ratio = Math.min(distance / 0.5, 1.0);  // clamp to [0, 1]
-  return schedule.minTakerFee + (schedule.maxTakerFee - schedule.minTakerFee) * ratio;
+export interface PolymarketFeeSchedule {
+  /** Curve exponent the exchange applies. Live value: 1 (linear in p*(1-p)). */
+  exponent: number;
+  /** Base rate the exchange applies. Live values: 0.07, 0.05, 0.04, 0.03. */
+  rate: number;
+  /** True when only taker fills are charged. Live value: true. */
+  takerOnly: boolean;
+  /** Fraction of collected taker fees returned to makers. Live: 0.15, 0.20, 0.25. */
+  rebateRate: number;
 }
 
 /**
- * Calculate maker rebate from taker fees collected.
- * Returns rebate amount in same units as takerFeeCollected.
+ * Schedule for markets the exchange does NOT charge (`feesEnabled: false`,
+ * e.g. Geopolitics markets). Every function here returns 0 for it, so callers
+ * never need to branch on `null` once a market has been resolved.
  */
-export function calcMakerRebate(
-  category: PolymarketCategory,
-  takerFeeCollected: number,
-): number {
-  return takerFeeCollected * FEE_SCHEDULES[category].makerRebatePct;
+export const EXEMPT_FEE_SCHEDULE: PolymarketFeeSchedule = Object.freeze({
+  exponent: 1,
+  rate: 0,
+  takerOnly: true,
+  rebateRate: 0,
+}) as PolymarketFeeSchedule;
+
+/** Clamp a probability into the open interval the exchange prices on. */
+function clampPrice(price: number): number {
+  if (!Number.isFinite(price)) return 0;
+  if (price <= 0) return 0;
+  if (price >= 1) return 1;
+  return price;
 }
-
-/** Total cost for a taker order including dynamic fee. */
-export function netCostTaker(
-  amount: number,
-  category: PolymarketCategory,
-  probability: number,
-): number {
-  const feeRate = calcTakerFee(category, probability);
-  return amount * (1 + feeRate);
-}
-
-/** Estimated net profit for a maker order including rebate. */
-export function netProfitMaker(
-  amount: number,
-  category: PolymarketCategory,
-  estimatedTakerVolume: number,
-  probability = 0.5,
-): number {
-  const feeRate = calcTakerFee(category, probability);
-  const schedule = FEE_SCHEDULES[category];
-  const rebate = estimatedTakerVolume * feeRate * schedule.makerRebatePct;
-  return amount + rebate;
-}
-
-// ── Category classification from market description ────────────────────────
-
-const CATEGORY_KEYWORDS: Record<PolymarketCategory, string[]> = {
-  crypto:       ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'token', 'defi', 'blockchain', 'solana', 'sol'],
-  politics:     ['president', 'election', 'congress', 'senate', 'democrat', 'republican', 'vote', 'governor', 'trump', 'biden'],
-  finance:      ['fed', 'interest rate', 'gdp', 'inflation', 'stock', 'sp500', 's&p', 'nasdaq', 'treasury', 'fomc'],
-  tech:         ['ai', 'openai', 'apple', 'google', 'microsoft', 'nvidia', 'spacex', 'launch', 'chip'],
-  culture:      ['oscar', 'grammy', 'album', 'movie', 'netflix', 'show', 'concert', 'festival'],
-  sports:       ['nba', 'nfl', 'mlb', 'champion', 'playoff', 'world cup', 'super bowl', 'finals', 'match'],
-  science:      ['climate', 'nasa', 'mars', 'vaccine', 'cdc', 'pandemic', 'research', 'study'],
-  pop_culture:  ['celebrity', 'kardashian', 'tiktok', 'instagram', 'viral', 'meme', 'influencer'],
-  geopolitics:  ['war', 'nato', 'sanctions', 'ukraine', 'china', 'taiwan', 'ceasefire', 'un security'],
-  world_events: ['earthquake', 'hurricane', 'tsunami', 'wildfire', 'disaster', 'famine'],
-};
 
 /**
- * Classify a market description into a Polymarket fee category.
- * Falls back to 'politics' (most common Polymarket category) if no match.
+ * Taker fee in USDC **per share** at `price`.
+ *
+ * `rate * (p * (1 - p)) ^ exponent`. At the live crypto rate of 0.07 and
+ * p = 0.50 this is 0.0175 USDC/share (1.75 cents), not a fraction of notional.
  */
-export function classifyMarketCategory(description: string): PolymarketCategory {
-  const lower = ` ${description.toLowerCase()} `; // pad for word boundary matching
-  let bestCategory: PolymarketCategory = 'politics';
-  let bestScore = 0;
+export function calcTakerFeePerShare(schedule: PolymarketFeeSchedule, price: number): number {
+  const p = clampPrice(price);
+  if (schedule.rate <= 0) return 0;
+  const curve = Math.pow(p * (1 - p), schedule.exponent);
+  if (!Number.isFinite(curve) || curve <= 0) return 0;
+  return schedule.rate * curve;
+}
 
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS) as [PolymarketCategory, string[]][]) {
-    const score = keywords.filter(kw => {
-      // Use word boundary regex for short keywords (<=4 chars) to avoid false positives
-      if (kw.length <= 4) {
-        return new RegExp(`\\b${kw}\\b`).test(lower);
-      }
-      return lower.includes(kw);
-    }).length;
-    if (score > bestScore) {
-      bestScore = score;
-      bestCategory = cat;
-    }
-  }
-  return bestCategory;
+/**
+ * Maker rebate in USDC **per share** at `price`: the taker fee at that price
+ * times the market's `rebateRate`. Returns 0 for taker-only schedules with no
+ * rebate and for exempt markets.
+ */
+export function calcMakerRebatePerShare(schedule: PolymarketFeeSchedule, price: number): number {
+  if (schedule.rebateRate <= 0) return 0;
+  return calcTakerFeePerShare(schedule, price) * schedule.rebateRate;
+}
+
+/**
+ * Effective maker fee rate as a fraction of notional. Negative — a rebate — and
+ * the sign convention the arbitrage profitability chain already uses.
+ */
+export function calcMakerFeeRate(schedule: PolymarketFeeSchedule, price: number): number {
+  const p = clampPrice(price);
+  if (p <= 0) return 0;
+  const rebate = calcMakerRebatePerShare(schedule, price);
+  // Normalise the no-rebate case: `-0` would compare unequal to `0` and read as
+  // a credit of zero rather than no credit at all.
+  if (!(rebate > 0)) return 0;
+  return -rebate / p;
+}
+
+/**
+ * Fee as a fraction of notional for one taker share at `price`, i.e. the fee
+ * divided by the USDC paid per share. This is the rate the arbitrage chain
+ * reports in `breakdown.buyFeeRate`.
+ */
+export function calcTakerFeeRate(schedule: PolymarketFeeSchedule, price: number): number {
+  const p = clampPrice(price);
+  if (p <= 0) return 0;
+  return calcTakerFeePerShare(schedule, price) / p;
 }

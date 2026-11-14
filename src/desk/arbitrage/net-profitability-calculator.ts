@@ -18,7 +18,7 @@ import {
 import { calculatePolymarketFee } from './profitability/fee-calculator';
 import { calculateVwapSlippage } from './profitability/slippage-calculator';
 import { evaluateNetProfitabilityCore } from './profitability/profitability-evaluator';
-import type { PolymarketCategory } from '../polymarket/polymarket-fee-calculator';
+import type { PolymarketFeeSchedule } from '../polymarket/polymarket-fee-calculator';
 
 export * from './profitability/profitability-types';
 export * from './profitability/fee-calculator';
@@ -83,11 +83,11 @@ export class NetProfitabilityCalculator {
    * Helper: Calculate Polymarket dynamic fee rate and dollar amount.
    */
   calculatePolymarketFee(
-    category: PolymarketCategory,
+    schedule: PolymarketFeeSchedule,
     probability: number,
     notionalUsd: number
   ): { rate: number; feeUsd: number; rebateUsd: number } {
-    return calculatePolymarketFee(category, probability, notionalUsd);
+    return calculatePolymarketFee(schedule, probability, notionalUsd);
   }
 
   /**
@@ -106,7 +106,8 @@ export class NetProfitabilityCalculator {
     options?: {
       minHurdleBps?: number;
       settlementType?: 'off_chain_clob' | 'on_chain_settle';
-      polymarketCategory?: PolymarketCategory;
+      /** Schedule for whichever leg is Polymarket. Absent => the leg is unpriced. */
+      polymarketFeeSchedule?: PolymarketFeeSchedule;
     }
   ): NetProfitabilityAnalysis {
     const amount = opp.amount ?? 1.0;
@@ -118,7 +119,7 @@ export class NetProfitabilityCalculator {
         price: opp.buyPrice,
         amount,
         settlementType: options?.settlementType ?? 'off_chain_clob',
-        polymarketCategory: options?.polymarketCategory,
+        polymarketFeeSchedule: options?.polymarketFeeSchedule,
       },
       sellLeg: {
         venue: opp.sellExchange,
@@ -127,7 +128,7 @@ export class NetProfitabilityCalculator {
         price: opp.sellPrice,
         amount,
         settlementType: options?.settlementType ?? 'off_chain_clob',
-        polymarketCategory: options?.polymarketCategory,
+        polymarketFeeSchedule: options?.polymarketFeeSchedule,
       },
       tradeAmount: amount,
       minHurdleBps: options?.minHurdleBps ?? this.defaultHurdleBps,

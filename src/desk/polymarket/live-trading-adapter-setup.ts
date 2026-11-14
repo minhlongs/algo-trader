@@ -16,12 +16,15 @@ import { RiskGateManager } from '../risk/risk-gate-manager';
 import { LiveOrderManager } from '../execution/live-order-manager';
 import { PolymarketOrderReconciler } from '../execution/polymarket-order-reconciler';
 import {
+  DEFAULT_PAPER_FEE_SCHEDULE,
   extractPaperOrderParams,
   sweepOrderBookLevels,
   applyPaperOrderOutcome,
   PaperLegDecayTracker,
   type PaperOrderBookProvider,
 } from './paper-orderbook-simulator';
+import { EXEMPT_FEE_SCHEDULE, type PolymarketFeeSchedule } from './polymarket-fee-calculator';
+import type { FeeScheduleResolver } from './fee-schedule-resolver';
 import { saveReconcilerState, appendG2ShadowTelemetry } from './g2-shadow-telemetry';
 import { logger } from '../../shared/utils/logger';
 import type { LiveTradingConfig } from './live-trading-types';
@@ -51,6 +54,11 @@ export function normalizeConfig(raw: LiveTradingConfig): LiveTradingConfig {
     maxDailyDrawdown: raw.maxDailyDrawdown ?? 0.05,
     maxConcurrentPositions: raw.maxConcurrentPositions ?? 10,
     maxConsecutiveLosses: raw.maxConsecutiveLosses ?? 3,
+    chainId: raw.chainId,
+    apiUrl: raw.apiUrl,
+    feeScheduleResolver: raw.feeScheduleResolver,
+    enforcePolyRiskGate: raw.enforcePolyRiskGate ?? !paperTrading,
+    killSwitchTransport: raw.killSwitchTransport,
   };
 }
 
@@ -88,12 +96,32 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
   };
 }
 
+/**
+ * A paper fill must price its fee from the market's own schedule. Three states:
+ *
+ *   - no resolver configured  -> the paper default, so an unwired harness still
+ *                                books a non-zero cost instead of a free trade
+ *   - resolver returns null   -> the exchange does not charge this market
+ *   - resolver throws         -> the cost is unknown, so the order is refused
+ *                                rather than assumed free
+ */
+async function resolvePaperFeeSchedule(
+  resolver: FeeScheduleResolver | null | undefined,
+  tokenId: string,
+): Promise<PolymarketFeeSchedule> {
+  if (!resolver) return DEFAULT_PAPER_FEE_SCHEDULE;
+  const resolved = await resolver.resolve(tokenId);
+  return resolved ?? EXEMPT_FEE_SCHEDULE;
+}
+
 export async function executePaperOrderPlacement(params: {
   reconciler: PolymarketOrderReconciler;
   positionTracker: LivePositionTracker;
   journal: LiveTradingJournal;
   legDecayTracker: PaperLegDecayTracker;
   orderBookProvider: PaperOrderBookProvider | null;
+  /** Resolves the market's own schedule by token id. Absent => the paper default. */
+  feeScheduleResolver?: FeeScheduleResolver | null;
   startedAtMs: number;
   order: PolymarketOrder;
   orderId: string;
@@ -107,7 +135,8 @@ export async function executePaperOrderPlacement(params: {
       book = { bids: [], asks: [] };
     }
   }
-  const outcome = sweepOrderBookLevels(book, side, requestedSize, limitPrice);
+  const schedule = await resolvePaperFeeSchedule(params.feeScheduleResolver, params.order.tokenId);
+  const outcome = sweepOrderBookLevels({ book, side, requestedSize, limitPrice, schedule });
   params.legDecayTracker.recordOrderOutcome(params.order.tokenId, side, outcome);
   applyPaperOrderOutcome({
     reconciler: params.reconciler,

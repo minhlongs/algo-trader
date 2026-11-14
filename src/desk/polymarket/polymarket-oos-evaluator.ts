@@ -2,11 +2,16 @@
  * Polymarket Walk-Forward Out-of-Sample (OOS) & Stress Evaluator (Stage S5)
  *
  * Deterministic walk-forward protocol (70% in-sample, 30% out-of-sample + stressed regime)
- * incorporating executable ask spread, category-aware taker fees (`calcTakerFee`),
- * top-of-book ask depth constraints, and Leg-2 rejection unwind slippage risk.
+ * incorporating executable ask spread, taker fees taken from the market's published
+ * fee schedule, top-of-book ask depth constraints, and Leg-2 rejection unwind
+ * slippage risk.
+ *
+ * The schedule is a required input: this module must never price a fill from a
+ * category keyword. Callers holding a token id resolve the real schedule through
+ * `FeeScheduleResolver` and pass the result in.
  */
 
-import { calcTakerFee, type PolymarketCategory } from './polymarket-fee-calculator';
+import { calcTakerFeeRate, type PolymarketFeeSchedule } from './polymarket-fee-calculator';
 
 export interface WalkForwardConfig {
   seed: number;
@@ -14,7 +19,8 @@ export interface WalkForwardConfig {
   inSampleFraction?: number;
   legSizeUsdc?: number;
   minNetSpread?: number;
-  category?: PolymarketCategory;
+  /** The market's published schedule. Required — there is no default category. */
+  schedule: PolymarketFeeSchedule;
 }
 
 export type CandidateId = 'no_trade_baseline' | 'naive_mid_arb' | 'executable_ask_fee_arb';
@@ -37,7 +43,7 @@ export interface WalkForwardEvaluationReport {
   episodes: number;
   inSampleCount: number;
   outOfSampleCount: number;
-  category: PolymarketCategory;
+  schedule: PolymarketFeeSchedule;
   candidates: Record<CandidateId, CandidateEvaluationMetrics>;
 }
 
@@ -76,61 +82,68 @@ function generateEpisode(rng: { s: number }, stressed: boolean): SyntheticMarket
   };
 }
 
+interface EpisodeResult {
+  traded: boolean;
+  grossPnl: number;
+  fees: number;
+  unwindLoss: number;
+  netPnl: number;
+}
+
+const NO_TRADE: EpisodeResult = { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
+
 function simulateEpisode(
   snap: SyntheticMarketSnapshot,
   candidateId: CandidateId,
-  pairCount: number,
+  shares: number,
   minNetSpread: number,
-  category: PolymarketCategory,
-): { traded: boolean; grossPnl: number; fees: number; unwindLoss: number; netPnl: number } {
-  if (candidateId === 'no_trade_baseline') {
-    return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-  }
-  const feeRateYes = calcTakerFee(category, snap.yesAsk);
-  const feeRateNo = calcTakerFee(category, snap.noAsk);
+  schedule: PolymarketFeeSchedule,
+): EpisodeResult {
+  if (candidateId === 'no_trade_baseline') return NO_TRADE;
+
+  // Fee as a fraction of the USDC paid per share at that price, which is the
+  // unit the per-leg notional below is expressed in.
+  const feeRateYes = calcTakerFeeRate(schedule, snap.yesAsk);
+  const feeRateNo = calcTakerFeeRate(schedule, snap.noAsk);
 
   if (candidateId === 'naive_mid_arb') {
     const yesMid = (snap.yesBid + snap.yesAsk) / 2;
     const noMid = (snap.noBid + snap.noAsk) / 2;
-    if (yesMid + noMid >= 0.985) return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-    const execYesAsk = snap.yesAskTokens >= pairCount ? snap.yesAsk : snap.yesAsk + 0.015;
-    const execNoAsk = snap.noAskTokens >= pairCount ? snap.noAsk : snap.noAsk + 0.015;
-    const feeYes = pairCount * execYesAsk * feeRateYes;
+    if (yesMid + noMid >= 0.985) return NO_TRADE;
+    const execYesAsk = snap.yesAskTokens >= shares ? snap.yesAsk : snap.yesAsk + 0.015;
+    const execNoAsk = snap.noAskTokens >= shares ? snap.noAsk : snap.noAsk + 0.015;
+    const feeYes = shares * execYesAsk * feeRateYes;
     if (snap.leg2Reject) {
-      const unwindLoss = pairCount * (execYesAsk - snap.yesBid);
-      const fees = feeYes + pairCount * snap.yesBid * feeRateYes;
+      const unwindLoss = shares * (execYesAsk - snap.yesBid);
+      const fees = feeYes + shares * snap.yesBid * feeRateYes;
       return { traded: true, grossPnl: 0, fees, unwindLoss, netPnl: -unwindLoss - fees };
     }
-    const grossPnl = pairCount * (1 - (execYesAsk + execNoAsk));
-    const fees = feeYes + pairCount * execNoAsk * feeRateNo;
+    const grossPnl = shares * (1 - (execYesAsk + execNoAsk));
+    const fees = feeYes + shares * execNoAsk * feeRateNo;
     return { traded: true, grossPnl, fees, unwindLoss: 0, netPnl: grossPnl - fees };
   }
 
-  if (snap.yesAskTokens < pairCount || snap.noAskTokens < pairCount) {
-    return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-  }
+  if (snap.yesAskTokens < shares || snap.noAskTokens < shares) return NO_TRADE;
   const combinedAsk = snap.yesAsk + snap.noAsk;
   const estFeePerPair = snap.yesAsk * feeRateYes + snap.noAsk * feeRateNo;
-  if (1 - combinedAsk - estFeePerPair < minNetSpread) {
-    return { traded: false, grossPnl: 0, fees: 0, unwindLoss: 0, netPnl: 0 };
-  }
-  const feeYes = pairCount * snap.yesAsk * feeRateYes;
+  if (1 - combinedAsk - estFeePerPair < minNetSpread) return NO_TRADE;
+  const feeYes = shares * snap.yesAsk * feeRateYes;
   if (snap.leg2Reject) {
-    const unwindLoss = pairCount * (snap.yesAsk - snap.yesBid);
-    const fees = feeYes + pairCount * snap.yesBid * feeRateYes;
+    const unwindLoss = shares * (snap.yesAsk - snap.yesBid);
+    const fees = feeYes + shares * snap.yesBid * feeRateYes;
     return { traded: true, grossPnl: 0, fees, unwindLoss, netPnl: -unwindLoss - fees };
   }
-  const grossPnl = pairCount * (1 - combinedAsk);
-  const fees = feeYes + pairCount * snap.noAsk * feeRateNo;
+  const grossPnl = shares * (1 - combinedAsk);
+  const fees = feeYes + shares * snap.noAsk * feeRateNo;
   return { traded: true, grossPnl, fees, unwindLoss: 0, netPnl: grossPnl - fees };
 }
 
 export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): WalkForwardEvaluationReport {
   const inSampleCount = Math.floor(cfg.episodes * (cfg.inSampleFraction ?? 0.7));
   const outOfSampleCount = cfg.episodes - inSampleCount;
-  const legSizeUsdc = cfg.legSizeUsdc ?? 25;
+  const shares = cfg.legSizeUsdc ?? 25;
   const minNetSpread = cfg.minNetSpread ?? 0.012;
-  const category = cfg.category ?? 'politics';
+  const { schedule } = cfg;
   const rngNormal = { s: cfg.seed >>> 0 };
   const rngStress = { s: (cfg.seed ^ 0x9e3779b9) >>> 0 };
 
@@ -144,7 +157,7 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
     let oosGrossPnlUsdc = 0, oosFeesUsdc = 0, oosLegUnwindLossUsdc = 0, oosNetPnlUsdc = 0, stressedNetPnlUsdc = 0;
 
     for (let i = 0; i < cfg.episodes; i++) {
-      const res = simulateEpisode(normalSnaps[i]!, id, legSizeUsdc, minNetSpread, category);
+      const res = simulateEpisode(normalSnaps[i]!, id, shares, minNetSpread, schedule);
       if (i < inSampleCount) {
         if (res.traded) inSampleTrades++;
         inSampleNetPnlUsdc += res.netPnl;
@@ -157,7 +170,7 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
         oosFeesUsdc += res.fees;
         oosLegUnwindLossUsdc += res.unwindLoss;
         oosNetPnlUsdc += res.netPnl;
-        stressedNetPnlUsdc += simulateEpisode(stressedSnaps[i]!, id, legSizeUsdc, minNetSpread, category).netPnl;
+        stressedNetPnlUsdc += simulateEpisode(stressedSnaps[i]!, id, shares, minNetSpread, schedule).netPnl;
       }
     }
 
@@ -175,5 +188,12 @@ export function runPolymarketWalkForwardEvaluation(cfg: WalkForwardConfig): Walk
     };
   }
 
-  return { seed: cfg.seed, episodes: cfg.episodes, inSampleCount, outOfSampleCount, category, candidates };
+  return {
+    seed: cfg.seed,
+    episodes: cfg.episodes,
+    inSampleCount,
+    outOfSampleCount,
+    schedule,
+    candidates,
+  };
 }

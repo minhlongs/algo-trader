@@ -14,6 +14,7 @@ import { calculateLegFee } from './fee-calculator';
 import { calculateLegGas } from './gas-calculator';
 import { buildInvalidResponse, classifyRejection } from './profitability-decision-engine';
 import {
+  buildFeeScheduleUnavailableResponse,
   buildNegativeSpreadResponse,
   evaluateDualLegSlippage,
 } from './profitability-evaluator-helpers';
@@ -66,6 +67,14 @@ export function evaluateNetProfitabilityCore(
 
   const buyFeeCalc = calculateLegFee(input.buyLeg, buyNotionalUsd, input.feeOverrides?.buyFeeRate);
   const sellFeeCalc = calculateLegFee(input.sellLeg, sellNotionalUsd, input.feeOverrides?.sellFeeRate);
+  if (!buyFeeCalc.available || !sellFeeCalc.available) {
+    return buildFeeScheduleUnavailableResponse(
+      buyFeeCalc,
+      sellFeeCalc,
+      { grossSpreadUsd, grossSpreadBps, effectiveTradeAmount, buyNotionalUsd, sellNotionalUsd },
+      'the leg carries no market fee schedule',
+    );
+  }
   const estimatedBuyFeeUsd = buyFeeCalc.feeUsd;
   const estimatedSellFeeUsd = sellFeeCalc.feeUsd;
   const totalFeesUsd = estimatedBuyFeeUsd + estimatedSellFeeUsd;

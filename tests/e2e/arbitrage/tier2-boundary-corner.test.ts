@@ -9,6 +9,20 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { NetProfitabilityCalculator } from '../../../src/desk/arbitrage/net-profitability-calculator';
+import { type PolymarketFeeSchedule } from '../../../src/desk/polymarket/polymarket-fee-calculator';
+
+/**
+ * Live Crypto schedule surveyed from Gamma on 2026-11-12. Every Polymarket leg
+ * below is priced from an explicit schedule: a leg without one is rejected as
+ * `FEE_SCHEDULE_UNAVAILABLE` before gas is ever computed, which would make these
+ * gas assertions pass or fail for the wrong reason.
+ */
+const CRYPTO_SCHEDULE: PolymarketFeeSchedule = {
+  exponent: 1,
+  rate: 0.07,
+  takerOnly: true,
+  rebateRate: 0.2,
+};
 import { OpportunityIngestionPipeline } from '../../../src/desk/arbitrage/opportunity-ingestion-pipeline';
 import type { ArbitrageOpportunity } from '../../../src/desk/arbitrage/spread-detector-types';
 import {
@@ -228,7 +242,15 @@ describe('Tier 2: Boundary & Corner Conditions', () => {
     it('B1.11: Polygon on-chain gas calculation with extreme 10,000 gwei gas spike', () => {
       const calc = new NetProfitabilityCalculator();
       const res = calc.calculate({
-        buyLeg: { venue: 'polymarket', symbol: 'BTC-USDC', side: 'buy', price: 0.5, amount: 100, settlementType: 'on_chain_settle' },
+        buyLeg: {
+          venue: 'polymarket',
+          symbol: 'BTC-USDC',
+          side: 'buy',
+          price: 0.5,
+          amount: 100,
+          settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
+        },
         sellLeg: { venue: 'binance', symbol: 'BTC/USDT', side: 'sell', price: 0.52, amount: 100 },
         tradeAmount: 100,
         gasConfig: { polygonGasPriceGwei: 10000, maticPriceUsd: 1.0 },
@@ -240,7 +262,15 @@ describe('Tier 2: Boundary & Corner Conditions', () => {
     it('B1.12: Polygon on-chain gas with zero gas price results in 0 gas cost', () => {
       const calc = new NetProfitabilityCalculator();
       const res = calc.calculate({
-        buyLeg: { venue: 'polymarket', symbol: 'BTC-USDC', side: 'buy', price: 0.5, amount: 100, settlementType: 'on_chain_settle' },
+        buyLeg: {
+          venue: 'polymarket',
+          symbol: 'BTC-USDC',
+          side: 'buy',
+          price: 0.5,
+          amount: 100,
+          settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
+        },
         sellLeg: { venue: 'binance', symbol: 'BTC/USDT', side: 'sell', price: 0.52, amount: 100 },
         tradeAmount: 100,
         gasOverrides: { polygonGasUsd: 0 },
@@ -262,7 +292,15 @@ describe('Tier 2: Boundary & Corner Conditions', () => {
     it('B1.14: zero native token (MATIC) price produces 0 gas cost in USD', () => {
       const calc = new NetProfitabilityCalculator();
       const res = calc.calculate({
-        buyLeg: { venue: 'polymarket', symbol: 'BTC-USDC', side: 'buy', price: 0.5, amount: 100, settlementType: 'on_chain_settle' },
+        buyLeg: {
+          venue: 'polymarket',
+          symbol: 'BTC-USDC',
+          side: 'buy',
+          price: 0.5,
+          amount: 100,
+          settlementType: 'on_chain_settle',
+          polymarketFeeSchedule: CRYPTO_SCHEDULE,
+        },
         sellLeg: { venue: 'binance', symbol: 'BTC/USDT', side: 'sell', price: 0.52, amount: 100 },
         tradeAmount: 100,
         gasOverrides: { polygonGasUsd: 0 },

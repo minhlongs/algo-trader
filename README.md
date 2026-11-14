@@ -132,6 +132,9 @@ npm run lint
 
 # Build for production
 npm run build
+
+# Run Polymarket Quant Alpha 11-KPI governance check (paper / read-only)
+npm run kpi:poly
 ```
 
 ### Key Conventions

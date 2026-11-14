@@ -15,7 +15,6 @@
 
 import type { OrderManager, PlaceOrderResult } from '../polymarket/order-manager';
 import type { StrategyLiveBridge, TradeSignal } from './strategy-live-bridge';
-import { calcTakerFee } from './polymarket-fee-calculator';
 import { logger } from '../../shared/utils/logger';
 
 // ── Proxy ────────────────────────────────────────────────────────────────────────
@@ -49,6 +48,7 @@ export class LiveOrderManagerProxy implements OrderManager {
       side: params.side === 'buy' ? 'BUY' : 'SELL',
       price: priceNum,
       size: sizeNum,
+      orderType: params.orderType,
       description: `${this.strategyName}:order#${this.orderCount}`,
       confidence: 0.7,
       timestamp: Date.now(),
@@ -78,10 +78,9 @@ export class LiveOrderManagerProxy implements OrderManager {
         typeof result.response.filledSize === 'number' ? result.response.filledSize : sizeNum;
       const fillPriceNum =
         typeof result.response.fillPrice === 'number' ? result.response.fillPrice : priceNum;
-      const feeUsdc =
-        typeof result.response.feeUsdc === 'number'
-          ? result.response.feeUsdc
-          : calcTakerFee('politics', fillPriceNum) * filledSizeNum * fillPriceNum;
+      // The proxy holds no token-resolved fee schedule, so a response that omits
+      // its fee is booked at no fee rather than priced from a category guess.
+      const feeUsdc = typeof result.response.feeUsdc === 'number' ? result.response.feeUsdc : 0;
       return {
         id: orderId,
         filled: filledSizeNum > 0,
@@ -110,23 +109,20 @@ export class LiveOrderManagerProxy implements OrderManager {
       strategy: this.strategyName,
       orderId,
     });
-    // Delegate to orchestrator for live cancellation via adapter
-    await this.bridge['orchestrator'].cancelOrder(orderId);
+    await this.bridge.cancelOrder(orderId);
   }
 
   async cancelAllOrders(tokenId?: string): Promise<void> {
+    this.cancelCount++;
     logger.debug('Cancel all orders', 'LiveOrderManagerProxy', {
       strategy: this.strategyName,
       tokenId: tokenId?.slice(0, 12),
     });
-    // Cancel all open orders for this strategy via orchestrator
-    if (tokenId) {
-      await this.bridge['orchestrator'].cancelOrder(tokenId);
-    }
+    await this.bridge.cancelAllOrders(tokenId);
   }
 
-  async getOpenOrders(_tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
-    return [];
+  async getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
+    return this.bridge.getOpenOrders(tokenId);
   }
 
   // ── Stats ──────────────────────────────────────────────────────────────────

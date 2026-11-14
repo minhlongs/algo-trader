@@ -7,6 +7,16 @@
 import type { StrategyName } from '../core/types';
 import type { BaseStrategyConfig } from '../strategies/polymarket/base-polymarket-strategy';
 import type { ResultClassName } from '../../alpha-lab/provenance/run-card';
+import type { L2SourceLabel } from '../polymarket/l2/l2-source-labels';
+import type { FeeScheduleResolver } from '../polymarket/fee-schedule-resolver';
+
+/**
+ * Provenance tag carried on every backtest snapshot and market row.
+ * Only `L2SourceLabel` values (`recorded-l2` | `data-api-v2` | `prices-history`)
+ * are accepted by the Polymarket governance KPI layer; `'ohlcv-store'` and
+ * `'synthetic-regime'` are rejected there by `assertL2SourceLabel`.
+ */
+export type SnapshotDataSource = L2SourceLabel | 'ohlcv-store' | 'synthetic-regime';
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -58,17 +68,26 @@ export interface BacktestRunnerOptions extends BacktestConfig {
    * mis-cited as paper evidence.
    */
   resultClass?: ResultClassName;
+  /**
+   * Optional live/cached Gamma `FeeScheduleResolver` so closing fills in
+   * `BacktestOrderManager` settle against the token's parabolic fee schedule.
+   */
+  feeResolver?: FeeScheduleResolver;
 }
 
 // ── Results ────────────────────────────────────────────────────────────────────
 
 export interface BacktestTrade {
   timestamp: string;
+  /** Market/event the row belongs to, so capital lockup can be grouped by cluster. */
+  marketId?: string;
   tokenId: string;
   side: 'BUY' | 'SELL';
   price: number;
   size: number;
   pnl: number | null;
+  /** Venue fee + gas actually charged on this close (USD). Omitted on open entries. */
+  venueCostUsd?: number;
 }
 
 export interface MetricsReport {
@@ -134,12 +153,14 @@ export interface BacktestResult {
 
 export interface HistoricalSnapshot {
   timestamp: string;
+  source?: SnapshotDataSource;
   markets: HistoricalMarketData[];
 }
 
 export interface HistoricalMarketData {
   conditionId: string;
   question: string;
+  source?: SnapshotDataSource;
   yesTokenId?: string;
   noTokenId?: string;
   yesPrice: number;

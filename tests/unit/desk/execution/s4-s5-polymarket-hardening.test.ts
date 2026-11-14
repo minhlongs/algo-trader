@@ -16,6 +16,21 @@ import type { LiveOrderManagerCtx } from '../../../../src/desk/execution/live-or
 import type { PolymarketOrder } from '../../../../src/desk/execution/polymarket-signer';
 import { PolymarketOrderReconciler } from '../../../../src/desk/execution/polymarket-order-reconciler';
 import { runPolymarketWalkForwardEvaluation } from '../../../../src/desk/polymarket/polymarket-oos-evaluator';
+import type { PolymarketFeeSchedule } from '../../../../src/desk/polymarket/polymarket-fee-calculator';
+
+/**
+ * Live Gamma schedule for a fee-charging market, surveyed 2026-11-12.
+ *
+ * The evaluator prices both legs off the market's published schedule; it no
+ * longer accepts a category keyword, so every walk-forward run needs one.
+ * Values match the Politics/Finance/Tech tier that most S5 markets fall in.
+ */
+const S5_SCHEDULE: PolymarketFeeSchedule = {
+  exponent: 1,
+  rate: 0.04,
+  takerOnly: true,
+  rebateRate: 0.25,
+};
 
 describe('Stage S4 — Unified Execution Mode Gate (submitOnlyOrder & buildPolymarketAdapter)', () => {
   const origLive = process.env.LIVE_TRADING_ENABLED;
@@ -332,8 +347,8 @@ describe('Stage S4 — Deterministic Order Lifecycle Reconciler & Fault Injectio
 
 describe('Stage S5 — Polymarket Walk-Forward OOS & Stress Evaluation', () => {
   it('produces deterministic walk-forward OOS metrics comparing no-trade, naive-mid, and executable-ask-fee-aware strategies', () => {
-    const run1 = runPolymarketWalkForwardEvaluation({ seed: 42, episodes: 120 });
-    const run2 = runPolymarketWalkForwardEvaluation({ seed: 42, episodes: 120 });
+    const run1 = runPolymarketWalkForwardEvaluation({ seed: 42, episodes: 120, schedule: S5_SCHEDULE });
+    const run2 = runPolymarketWalkForwardEvaluation({ seed: 42, episodes: 120, schedule: S5_SCHEDULE });
 
     // Deterministic reproducibility
     expect(run1).toEqual(run2);

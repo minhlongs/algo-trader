@@ -67,6 +67,7 @@ export async function runRiskGates(
     nonce: String(Date.now()),
     feeRateBps: 0,
     signatureType: 0,
+    orderType: signal.orderType,
   };
 
   if (ctx.riskGateManager) {

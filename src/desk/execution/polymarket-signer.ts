@@ -16,6 +16,8 @@ export interface PolymarketOrder {
   nonce: string;
   feeRateBps: number;
   signatureType: 0 | 1 | 2;
+  /** Optional time-in-force carried into pre-trade risk and execution gates. */
+  orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
 }
 
 /** Signed order ready for submission to CLOB API */

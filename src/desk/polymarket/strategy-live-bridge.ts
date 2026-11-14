@@ -49,6 +49,7 @@ export class StrategyLiveBridge {
         nonce: String(Date.now()),
         feeRateBps: 0,
         signatureType: 0,
+        orderType: signal.orderType,
       });
 
       logger.info('Signal executed', 'StrategyLiveBridge', {
@@ -63,9 +64,9 @@ export class StrategyLiveBridge {
     } catch (err) {
       const msg = String(err);
 
-      if (msg.includes('Guard rejected')) {
+      if (msg.includes('Guard rejected') || msg.includes('PolyRisk blocked')) {
         this.signalsRejected++;
-        logger.warn('Signal rejected by guard', 'StrategyLiveBridge', {
+        logger.warn('Signal rejected by risk gate', 'StrategyLiveBridge', {
           reason: msg,
           tokenId: signal.tokenId.slice(0, 12),
         });
@@ -146,6 +147,18 @@ export class StrategyLiveBridge {
       isScanning: this.isScanning,
       scannerActive: this.scanTimer !== null,
     };
+  }
+
+  cancelOrder(orderId: string): Promise<void> {
+    return this.orchestrator.cancelOrder(orderId);
+  }
+
+  cancelAllOrders(tokenId?: string): Promise<void> {
+    return this.orchestrator.cancelAllOrders(tokenId);
+  }
+
+  getOpenOrders(tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
+    return this.orchestrator.getOpenOrders(tokenId);
   }
 
   // ── Private ────────────────────────────────────────────────────────────────

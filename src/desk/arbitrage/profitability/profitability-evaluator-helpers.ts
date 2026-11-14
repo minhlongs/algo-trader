@@ -10,6 +10,7 @@ import type {
   VwapSlippageResult,
 } from './profitability-types';
 import { calculateParametricSlippage, calculateVwapSlippage } from './slippage-calculator';
+import type { LegFee } from './fee-calculator';
 
 export function buildNegativeSpreadResponse(
   grossSpreadUsd: number,
@@ -97,4 +98,54 @@ export function evaluateDualLegSlippage(
   }
 
   return { buySlippageResult, sellSlippageResult, hasZeroDepth };
+}
+
+/**
+ * Response for a leg whose market the venue would not price. Fees, gas and
+ * slippage are reported as 0 because none were computed — the trade is not
+ * "free", it is unpriced, and the rejection reason says so.
+ */
+export function buildFeeScheduleUnavailableResponse(
+  buyFee: LegFee,
+  sellFee: LegFee,
+  amounts: {
+    grossSpreadUsd: number;
+    grossSpreadBps: number;
+    effectiveTradeAmount: number;
+    buyNotionalUsd: number;
+    sellNotionalUsd: number;
+  },
+  detail: string,
+): NetProfitabilityAnalysis {
+  const unpriced = [buyFee, sellFee]
+    .filter((fee): fee is Extract<LegFee, { available: false }> => !fee.available)
+    .map((fee) => `${fee.venue}:${fee.symbol}`)
+    .join(', ');
+
+  return {
+    isProfitable: false,
+    grossSpreadUsd: amounts.grossSpreadUsd,
+    grossSpreadBps: amounts.grossSpreadBps,
+    estimatedBuyFeeUsd: 0,
+    estimatedSellFeeUsd: 0,
+    estimatedGasUsd: 0,
+    estimatedBuySlippageUsd: 0,
+    estimatedSellSlippageUsd: 0,
+    totalCostUsd: 0,
+    netProfitUsd: 0,
+    netProfitBps: 0,
+    rejectionReason: 'FEE_SCHEDULE_UNAVAILABLE',
+    breakdown: {
+      effectiveTradeAmount: amounts.effectiveTradeAmount,
+      buyNotionalUsd: amounts.buyNotionalUsd,
+      sellNotionalUsd: amounts.sellNotionalUsd,
+      buyFeeRate: 0,
+      sellFeeRate: 0,
+      buySlippageBps: 0,
+      sellSlippageBps: 0,
+      hasZeroDepth: false,
+      insufficientLiquidity: false,
+      feeScheduleUnavailable: `${unpriced} (${detail})`,
+    },
+  };
 }

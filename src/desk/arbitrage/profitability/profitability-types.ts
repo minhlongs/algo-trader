@@ -30,6 +30,19 @@ export type RawOrderBookDepth = {
   asks?: Array<OrderBookLevel | [number, number]>;
 };
 
+/**
+ * The schedule the exchange publishes for a market. A leg carries it explicitly
+ * because the fee is a property of the market, never of a keyword guessed from
+ * a description. Callers that hold a token id resolve it through
+ * `FeeScheduleResolver` at the boundary where the id is available.
+ */
+export const PolymarketFeeScheduleSchema = z.object({
+  exponent: z.number().nonnegative(),
+  rate: z.number().nonnegative(),
+  takerOnly: z.boolean().default(true),
+  rebateRate: z.number().min(0).max(1).default(0),
+});
+
 export const VenueTradeLegSchema = z.object({
   venue: z.string().min(1, 'Venue identifier required'),
   symbol: z.string().min(1, 'Trading symbol required'),
@@ -37,13 +50,12 @@ export const VenueTradeLegSchema = z.object({
   price: z.number(),
   amount: z.number().optional(),
   orderType: z.enum(['taker', 'maker']).default('taker'),
-  polymarketCategory: z
-    .enum([
-      'crypto', 'politics', 'finance', 'tech', 'culture',
-      'sports', 'science', 'pop_culture', 'geopolitics', 'world_events',
-    ])
-    .optional(),
-  marketDescription: z.string().optional(),
+  /**
+   * Fee schedule for this leg's market. Required for any `polymarket` leg that
+   * must be priced: without it the leg is rejected as
+   * `FEE_SCHEDULE_UNAVAILABLE` rather than priced from a fallback category.
+   */
+  polymarketFeeSchedule: PolymarketFeeScheduleSchema.optional(),
   settlementType: z.enum(['off_chain_clob', 'on_chain_settle']).default('off_chain_clob'),
   orderBook: OrderBookDepthSchema.optional(),
   volume24hUsd: z.number().nonnegative().optional(),
@@ -102,7 +114,8 @@ export type RejectionReason =
   | 'EXCESSIVE_SLIPPAGE'
   | 'BELOW_HURDLE'
   | 'INVALID_INPUT'
-  | 'UNSUPPORTED_VENUE';
+  | 'UNSUPPORTED_VENUE'
+  | 'FEE_SCHEDULE_UNAVAILABLE';
 
 export interface VwapSlippageResult {
   vwap: number;
@@ -139,6 +152,12 @@ export interface NetProfitabilityAnalysis {
     insufficientLiquidity: boolean;
     availableDepthBuy?: number;
     availableDepthSell?: number;
+    /**
+     * Set only when a leg's market fee schedule could not be established. The
+     * trade is unpriced — not free — so every cost field above is 0 and
+     * `rejectionReason` is `FEE_SCHEDULE_UNAVAILABLE`.
+     */
+    feeScheduleUnavailable?: string;
   };
 }
 

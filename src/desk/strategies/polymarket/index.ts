@@ -104,3 +104,12 @@ export type {
   NegativeRiskScannerConfig,
   NegativeRiskScannerDeps,
 } from '@desk/strategies/polymarket/negative-risk-scanner';
+
+export { createToxicityAwareMarketMakerTick, ToxicityAwareMarketMakerStrategy } from '@desk/strategies/polymarket/quant-alpha/toxicity-aware-market-maker';
+export type { ToxicityAwareConfig, ToxicityAwareMarketMakerDeps } from '@desk/strategies/polymarket/quant-alpha/toxicity-aware-market-maker';
+
+export { createNegRiskBundleArbitrageTick, NegRiskBundleArbitrageStrategy } from '@desk/strategies/polymarket/quant-alpha/negrisk-bundle-arbitrage';
+export type { NegRiskBundleConfig, NegRiskBundleArbitrageDeps } from '@desk/strategies/polymarket/quant-alpha/negrisk-bundle-arbitrage';
+
+export { createPrimarySourceNewsLatencyTick, PrimarySourceNewsLatencyStrategy } from '@desk/strategies/polymarket/quant-alpha/primary-source-news-latency';
+export type { PrimarySourceNewsLatencyConfig, PrimarySourceNewsLatencyDeps } from '@desk/strategies/polymarket/quant-alpha/primary-source-news-latency';

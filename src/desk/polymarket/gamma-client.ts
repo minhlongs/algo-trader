@@ -25,6 +25,12 @@ export interface GammaMarket {
   noTokenId?: string;
   /** Current mid-price of the YES outcome (0–1) */
   yesPrice: number;
+  /**
+   * True when this market belongs to a neg-risk event: exactly one of the
+   * event's outcomes resolves YES, so the NO tokens are convertible back into
+   * collateral and the YES probabilities must sum to 1.
+   */
+  negRisk?: boolean;
 }
 
 export interface GammaMarketGroup {
