@@ -38,4 +38,4 @@ created: 2026-11-15
 - [x] Wave 2 Execution: P3 (5-State Regime + Pilot-Ready Surface wired into Strategy 3 & Strategy 2)
 - [x] Wave 3 Execution: P6 (Governance Tooling + `kpi:poly --stress` + full wiring)
 - [x] Live Verification Drills: `cargo build --release` both sidecars, live Polymarket WS -> `poly-book` WAL/Parquet -> `algo-trader` replay, live `GhostGuard` `status=0` (`test_known_ghost_fill`) -> `PolyKillSwitch` latch `<1s`, `npm run kpi:poly -- --stress`
-- [ ] Isolated `code-reviewer` (`>= 9.0/10`), remediate any findings, open & squash-merge PR, transition Issue #269 `in review` -> `done` -> `shipped`, close `#268`, verify zero orphan processes/worktrees
+- [x] Isolated `code-reviewer` (`>= 9.0/10`, achieved `9.6/10` in r2), remediate any findings, open & squash-merge PR, transition Issue #269 `in review` -> `done` -> `shipped`, close `#268`, verify zero orphan processes/worktrees
