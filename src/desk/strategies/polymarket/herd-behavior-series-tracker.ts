@@ -3,6 +3,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import type { BaseStrategyConfig } from './base-polymarket-strategy';
 import {
@@ -113,7 +114,8 @@ export function resolveHerdFadeEntryParams(
 ): { tokenId: string; entryPrice: number } | null {
   if (!market.yesTokenId || prices.length === 0) return null;
   const currentMid = prices[prices.length - 1];
-  const tokenId = fadeSide === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+  const tokenId = resolveOutcomeTokenId(market, fadeSide);
+  if (!tokenId) return null;
   const entryPrice = fadeSide === 'yes' ? currentMid : 1 - currentMid;
   if (entryPrice <= 0 || entryPrice >= 1) return null;
   return { tokenId, entryPrice };

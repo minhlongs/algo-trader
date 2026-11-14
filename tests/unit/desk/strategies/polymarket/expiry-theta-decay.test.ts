@@ -349,8 +349,7 @@ describe('ExpiryThetaDecayStrategy', () => {
     );
   });
 
-  it('uses fallback noTokenId when not provided', async () => {
-    // Market without noTokenId - should use fallback (conditionId-no)
+  it('skips NO entry when noTokenId is not provided', async () => {
     const strat = new ExpiryThetaDecayStrategy(
       makeDeps(() => makeBook(0.3)),
       { minEdge: 0.01, minHoursToExpiry: 1, maxHoursToExpiry: 48 }
@@ -358,11 +357,7 @@ describe('ExpiryThetaDecayStrategy', () => {
     const m = makeMarket({ noTokenId: undefined, yesPrice: 0.3 });
     // @ts-expect-error - call protected method for test
     await strat.scanEntries([m]);
-    expect(strat.deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
-    // @ts-expect-error - reach into private field
-    const call = (strat.deps.orderManager.placeOrder as any).mock.calls[0][0];
-    // noTokenId undefined -> fallback to yesTokenId ('cond_001-yes')
-    expect(call.tokenId).toBe('cond_001-yes');
+    expect(strat.deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('skips when entryPrice <= 0 or >= 1 (invalid)', async () => {

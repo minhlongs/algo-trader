@@ -5,6 +5,7 @@
  * Body moved VERBATIM from scanEntries; closure-state references rewritten as `ctx.`.
  */
 import type { GammaMarketGroup } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { calcQuadraticTakerFeeV2, classifyMarketCategory } from '../../polymarket/polymarket-fee-calculator';
 import { logger } from '../../core/logger';
 import {
@@ -57,9 +58,8 @@ export async function scanEntriesFor(
       const size = calcHedgeSize(baseSize, deviation, ctx.cfg.deviationThreshold);
 
       const primarySide: 'yes' | 'no' = signal === 'overpriced' ? 'no' : 'yes';
-      const primaryTokenId = primarySide === 'yes'
-        ? primaryMarket.yesTokenId
-        : (primaryMarket.noTokenId ?? primaryMarket.yesTokenId);
+      const primaryTokenId = resolveOutcomeTokenId(primaryMarket, primarySide);
+      if (!primaryTokenId) continue;
 
       const primaryBook = await ctx.clob.getOrderBook(primaryMarket.yesTokenId);
       const primaryMid = bestMid(primaryBook);
@@ -82,31 +82,30 @@ export async function scanEntriesFor(
       if (ctx.cfg.enableHedge && hedgeMarket) {
         try {
           const hedgeSide: 'yes' | 'no' = signal === 'overpriced' ? 'yes' : 'no';
-          const hedgeTokenId = hedgeSide === 'yes'
-            ? hedgeMarket.yesTokenId
-            : (hedgeMarket.noTokenId ?? hedgeMarket.yesTokenId);
+          const hedgeTokenId = resolveOutcomeTokenId(hedgeMarket, hedgeSide);
+          if (hedgeTokenId) {
+            const hedgeBook = await ctx.clob.getOrderBook(hedgeMarket.yesTokenId);
+            const hedgeMid = bestMid(hedgeBook);
+            const hedgeEntryPrice = hedgeSide === 'yes'
+              ? (hedgeBook.asks.length > 0 ? parseFloat(hedgeBook.asks[0].price) : hedgeMid)
+              : (1 - (hedgeBook.bids.length > 0 ? parseFloat(hedgeBook.bids[0].price) : hedgeMid));
 
-          const hedgeBook = await ctx.clob.getOrderBook(hedgeMarket.yesTokenId);
-          const hedgeMid = bestMid(hedgeBook);
-          const hedgeEntryPrice = hedgeSide === 'yes'
-            ? (hedgeBook.asks.length > 0 ? parseFloat(hedgeBook.asks[0].price) : hedgeMid)
-            : (1 - (hedgeBook.bids.length > 0 ? parseFloat(hedgeBook.bids[0].price) : hedgeMid));
+            const hedgeOrder = await ctx.orderManager.placeOrder({
+              tokenId: hedgeTokenId,
+              side: 'buy',
+              price: hedgeEntryPrice.toFixed(4),
+              size: String(Math.round(size / hedgeEntryPrice)),
+              orderType: 'GTC',
+            });
 
-          const hedgeOrder = await ctx.orderManager.placeOrder({
-            tokenId: hedgeTokenId,
-            side: 'buy',
-            price: hedgeEntryPrice.toFixed(4),
-            size: String(Math.round(size / hedgeEntryPrice)),
-            orderType: 'GTC',
-          });
-
-          hedgeLeg = {
-            tokenId: hedgeTokenId,
-            conditionId: hedgeMarket.conditionId,
-            side: hedgeSide,
-            entryPrice: hedgeEntryPrice,
-            orderId: hedgeOrder.id,
-          };
+            hedgeLeg = {
+              tokenId: hedgeTokenId,
+              conditionId: hedgeMarket.conditionId,
+              side: hedgeSide,
+              entryPrice: hedgeEntryPrice,
+              orderId: hedgeOrder.id,
+            };
+          }
         } catch {
           // Hedge leg is optional — proceed without it
         }

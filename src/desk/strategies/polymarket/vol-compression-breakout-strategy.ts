@@ -4,6 +4,7 @@
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { KellyPositionSizer } from '../../polymarket/kelly-position-sizer';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
@@ -94,7 +95,8 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
           if (!breakoutDir || !hasVolumeConfirmation(market.volume24h, market.volume)) continue;
 
           const side: 'yes' | 'no' = breakoutDir === 'up' ? 'yes' : 'no';
-          const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+          const tokenId = resolveOutcomeTokenId(market, side);
+          if (!tokenId) continue;
           const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
           await this.enterPosition(tokenId, market.conditionId, side, entryPrice, this.getSize());

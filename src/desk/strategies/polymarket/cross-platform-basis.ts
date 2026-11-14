@@ -11,6 +11,7 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import type { StrategyName } from '../../core/types';
 import type { OpenPosition } from './base-polymarket-strategy';
 import { logger } from '../../core/logger';
@@ -117,7 +118,8 @@ export class CrossPlatformBasisStrategy extends BasePolymarketStrategy {
         if (basis < this.cfg.minBasis) continue;
 
         const side = getBasisDirection(polymarketPrice, externalPrice);
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 

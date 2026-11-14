@@ -292,7 +292,7 @@ describe('SmartMoneyDivergenceStrategy', () => {
     expect(strat.positions[0]!.tokenId).toBe('no-1');
   });
 
-  it('falls back to yesTokenId on the no-side when market has no noTokenId', async () => {
+  it('skips NO entry when market has no noTokenId', async () => {
     const mids = [0.45, 0.46, 0.47, 0.48, 0.49, 0.50, 0.51, 0.52];
     const strat = new SmartMoneyDivergenceStrategy(
       makeDeps((_t, i) => makeBook(20, 100, mids[i % mids.length])),
@@ -304,11 +304,8 @@ describe('SmartMoneyDivergenceStrategy', () => {
       await strat.scanEntries([m]);
     }
     // @ts-expect-error - reach into private field
-    expect(strat.positions.length).toBe(1);
-    // @ts-expect-error - reach into private field
-    expect(strat.positions[0]!.side).toBe('no');
-    // @ts-expect-error - reach into private field
-    expect(strat.positions[0]!.tokenId).toBe('yes-1');
+    expect(strat.positions.length).toBe(0);
+    expect(strat.deps.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('skips entry when no divergence is detected', async () => {

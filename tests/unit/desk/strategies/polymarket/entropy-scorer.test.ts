@@ -418,7 +418,7 @@ describe('EntropyScorerStrategy', () => {
       expect(strat.positions[0]!.tokenId).toBe('no-1');
     });
 
-    it('falls back to yesTokenId when noTokenId is missing for "no" side', async () => {
+    it('skips NO entry when noTokenId is missing', async () => {
       const strat = new EntropyScorerStrategy(makeDeps(), { entropyThreshold: 0.7, minBias: 0.15 });
       const m = makeMarket({ volume: 2000, noTokenId: undefined });
       const lowConsensusPrice = 0.15;
@@ -429,7 +429,7 @@ describe('EntropyScorerStrategy', () => {
         await strat.scanEntries([m]);
       }
       // @ts-expect-error - reach into private field
-      expect(strat.positions[0]!.tokenId).toBe('yes-1');
+      expect(strat.positions).toHaveLength(0);
     });
 
     it('skips entry when calculated entryPrice is invalid (<= 0 or >= 1)', async () => {

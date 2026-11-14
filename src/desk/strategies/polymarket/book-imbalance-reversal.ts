@@ -7,6 +7,7 @@
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { RawOrderBook } from '../../polymarket/clob-client';
+import { resolveOutcomeTokenId } from '../../polymarket/outcome-token-resolver';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
@@ -99,9 +100,8 @@ export class BookImbalanceReversalStrategy extends BasePolymarketStrategy {
         if (Math.abs(zScore) < this.cfg.zScoreThreshold) continue;
 
         const side: 'yes' | 'no' = zScore < 0 ? 'yes' : 'no';
-        const tokenId = side === 'yes'
-          ? market.yesTokenId
-          : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = resolveOutcomeTokenId(market, side);
+        if (!tokenId) continue;
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
         if (entryPrice <= 0 || entryPrice >= 1) continue;
 
