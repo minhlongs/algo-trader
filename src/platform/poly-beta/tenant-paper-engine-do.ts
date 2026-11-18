@@ -1,55 +1,58 @@
-/**
- * POLY-G5 Public Beta — `TenantPaperEngine` Durable Object.
- *
- * 1 instance per `tenant_id` (`idFromName(tenantId)`):
- * - Serializes all strategy lifecycle transitions (`START`, `PAUSE`, `STOP`, `STEP`),
- *   paper orders, cancellations, and binary market settlements.
- * - Uses `state.storage.setAlarm(Date.now() + 10_000)` ONLY while `RUNNING`
- *   (bounded to 180 ticks max per start), cancelling `deleteAlarm()` immediately on
- *   `PAUSE`, `STOP`, `HALTED`, or account purge.
- */
+/** POLY-G5 `TenantPaperEngine` Durable Object — per-tenant serialized paper engine & rate limiter. */
 
-import {
-  ACTIVE_ENGINE_ALARM_MS,
-  MAX_CUMULATIVE_DRAWDOWN_BPS,
-  type ApprovedPaperStrategyId,
-  type EngineLifecycleState,
-  type PolyBetaEnv,
-} from './poly-beta-types';
+import { ACTIVE_ENGINE_ALARM_MS, MAX_CUMULATIVE_DRAWDOWN_BPS, type ApprovedPaperStrategyId, type EngineLifecycleState, type PolyBetaEnv } from './poly-beta-types';
 import { fetchSupportedBetaMarkets } from './poly-beta-markets';
 import { appendExecutionLog, refreshMarksAndDrawdown } from './poly-beta-ledger';
 import { executeSerializedPaperOrder, settleSerializedPaperMarket } from './poly-beta-execution';
-import {
-  applyEngineStopOrPause,
-  cancelTenantPaperOrder,
-  runEngineStrategyStep,
-  type DoStateLike,
-} from './tenant-paper-engine-actions';
+import { applyEngineStopOrPause, cancelTenantPaperOrder, runEngineStrategyStep, type DoStateLike } from './tenant-paper-engine-actions';
+import { consumeDoRateLimitSlot } from './poly-beta-rate-limiter';
 
 export type { DoStateLike, DoStorageLike } from './tenant-paper-engine-actions';
 
 const MAX_BOUNDED_SESSION_TICKS = 180;
 
 export class TenantPaperEngine {
+  private queue: Promise<unknown> = Promise.resolve();
+
   constructor(
     private readonly state: DoStateLike,
     private readonly env: PolyBetaEnv,
   ) {}
 
-  async fetch(request: Request): Promise<Response> {
+  private async runSerialized<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = this.queue;
+    let release!: () => void;
+    this.queue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await prev;
     try {
-      return await this.routeDoRequest(request);
-    } catch {
-      return new Response(
-        JSON.stringify({ ok: false, error: 'Engine internal error', code: 'DO_INTERNAL_ERROR' }),
-        { status: 500 },
-      );
+      return await fn();
+    } finally {
+      release();
     }
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    return this.runSerialized(async () => {
+      try {
+        return await this.routeDoRequest(request);
+      } catch {
+        return new Response(
+          JSON.stringify({ ok: false, error: 'Engine internal error', code: 'DO_INTERNAL_ERROR' }),
+          { status: 500 },
+        );
+      }
+    });
   }
 
   private async routeDoRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    if (url.pathname === '/rate-limit' && request.method === 'POST') {
+      return consumeDoRateLimitSlot(this.state.storage, this.env, body);
+    }
+
     const tenantId = String(body.tenantId ?? '');
     if (!tenantId) {
       return new Response(JSON.stringify({ ok: false, error: 'Missing tenantId' }), { status: 400 });
@@ -83,35 +86,32 @@ export class TenantPaperEngine {
   }
 
   async alarm(): Promise<void> {
-    let tenantId: string | undefined;
-    try {
-      tenantId = await this.state.storage.get<string>('tenantId');
-      if (!tenantId) return;
-      const ticksRemaining = (await this.state.storage.get<number>('ticksRemaining')) ?? 0;
-      if (ticksRemaining <= 0) {
-        await this.env.POLY_BETA_DB.prepare(
-          `UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`,
-        )
-          .bind(Date.now(), tenantId)
-          .run();
-        await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'INFO',
-          'BOUNDED_SESSION_COMPLETE', 'Paper engine paused after its bounded session.', Date.now());
-        await this.state.storage.deleteAlarm();
-        return;
+    return this.runSerialized(async () => {
+      let tenantId: string | undefined;
+      try {
+        tenantId = await this.state.storage.get<string>('tenantId');
+        if (!tenantId) {
+          if ((await this.state.storage.get<number>('rlActiveSlot')) !== undefined) await this.state.storage.deleteAll();
+          return;
+        }
+        const ticksRemaining = (await this.state.storage.get<number>('ticksRemaining')) ?? 0;
+        if (ticksRemaining <= 0) {
+          await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();
+          await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'INFO', 'BOUNDED_SESSION_COMPLETE', 'Paper engine paused after its bounded session.', Date.now());
+          await this.state.storage.deleteAlarm();
+          return;
+        }
+        const cont = await runEngineStrategyStep(this.state.storage, this.env, tenantId, Date.now());
+        if (cont) {
+          await this.state.storage.put('ticksRemaining', ticksRemaining - 1);
+          await this.state.storage.setAlarm(Date.now() + ACTIVE_ENGINE_ALARM_MS);
+        } else {
+          await this.state.storage.deleteAlarm();
+        }
+      } catch {
+        if (tenantId) await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', 'ALARM_ERROR', 'Strategy alarm tick failed', Date.now()).catch(() => {});
       }
-
-      const cont = await runEngineStrategyStep(this.state.storage, this.env, tenantId, Date.now());
-      if (cont) {
-        await this.state.storage.put('ticksRemaining', ticksRemaining - 1);
-        await this.state.storage.setAlarm(Date.now() + ACTIVE_ENGINE_ALARM_MS);
-      } else {
-        await this.state.storage.deleteAlarm();
-      }
-    } catch {
-      if (tenantId) {
-        await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', 'ALARM_ERROR', 'Strategy alarm tick failed', Date.now()).catch(() => {});
-      }
-    }
+    });
   }
 
   private async handleControl(tenantId: string, body: Record<string, unknown>): Promise<Response> {
@@ -119,28 +119,12 @@ export class TenantPaperEngine {
     const action = String(body.action ?? '');
     const strategyId = body.strategyId as ApprovedPaperStrategyId | undefined;
     const marketId = typeof body.marketId === 'string' ? body.marketId : undefined;
-
     await this.state.storage.put('tenantId', tenantId);
-    if (strategyId) {
-      await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET selected_strategy_id = ?, updated_at_ms = ? WHERE tenant_id = ?`)
-        .bind(strategyId, nowMs, tenantId)
-        .run();
-    }
-    if (marketId) {
-      await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET selected_market_id = ?, updated_at_ms = ? WHERE tenant_id = ?`)
-        .bind(marketId, nowMs, tenantId)
-        .run();
-    }
-
+    if (strategyId) await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET selected_strategy_id = ?, updated_at_ms = ? WHERE tenant_id = ?`).bind(strategyId, nowMs, tenantId).run();
+    if (marketId) await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET selected_market_id = ?, updated_at_ms = ? WHERE tenant_id = ?`).bind(marketId, nowMs, tenantId).run();
     const feed = await fetchSupportedBetaMarkets(this.env, { nowMs });
     if (feed.feedHealthy && feed.markets.length > 0) {
-      await refreshMarksAndDrawdown(
-        this.env.POLY_BETA_DB,
-        tenantId,
-        new Map(feed.markets.map((m) => [m.marketId, m])),
-        nowMs,
-        true,
-      );
+      await refreshMarksAndDrawdown(this.env.POLY_BETA_DB, tenantId, new Map(feed.markets.map((m) => [m.marketId, m])), nowMs, true);
     }
 
     if (action === 'START') {

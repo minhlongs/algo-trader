@@ -9,7 +9,6 @@ import {
 } from './poly-beta-types';
 import { fetchSupportedBetaMarkets } from './poly-beta-markets';
 import {
-  appendExecutionLog,
   buildExecutionLogStatement,
   runAtomicBatch,
   type PortfolioRow,

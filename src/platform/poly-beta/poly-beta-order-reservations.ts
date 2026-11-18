@@ -24,11 +24,11 @@ export async function loadPendingOrderReservations(
 ): Promise<PendingReservations> {
   const res = await db
     .prepare(
-      `SELECT token_id, side, price_micro, size_shares_micro
+      `SELECT token_id, side, price_micro, size_shares_micro, fee_micro
        FROM beta_orders WHERE tenant_id = ? AND status = 'PENDING'`,
     )
     .bind(tenantId)
-    .all<{ token_id: string; side: 'BUY' | 'SELL'; price_micro: number; size_shares_micro: number }>();
+    .all<{ token_id: string; side: 'BUY' | 'SELL'; price_micro: number; size_shares_micro: number; fee_micro: number }>();
   let buyNotionalMicro = 0;
   let buyFeeMicro = 0;
   let sellSharesMicro = 0;
@@ -36,7 +36,7 @@ export async function loadPendingOrderReservations(
     if (row.side === 'BUY') {
       const notional = Math.round((row.size_shares_micro / MICRO_PER_USD) * row.price_micro);
       buyNotionalMicro += notional;
-      buyFeeMicro += computePaperFeeMicro(notional, row.price_micro / MICRO_PER_USD);
+      buyFeeMicro += Math.max(0, row.fee_micro || 0);
     } else if (row.token_id === tokenId) {
       sellSharesMicro += row.size_shares_micro;
     }

@@ -51,16 +51,8 @@ export async function handleBetaDeleteAccount(
   env: PolyBetaEnv,
   ctx: AuthenticatedTenantContext,
 ): Promise<Response> {
-  // 1. Wipe Durable Object state & cancel any active alarm first
-  const doId = env.TENANT_PAPER_ENGINE.idFromName(ctx.tenantId);
-  const stub = env.TENANT_PAPER_ENGINE.get(doId);
-  await stub.fetch('https://poly-beta.internal/purge', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tenantId: ctx.tenantId }),
-  });
-
-  // 2. Delete every tenant-scoped record strictly bound to `ctx.tenantId`
+  // 1. Atomically purge all D1 tenant rows (including `beta_sessions` & `beta_portfolios`)
+  // first so any concurrent request cannot re-authenticate or resurrect DO state.
   const tables = [
     'beta_sessions',
     'beta_execution_logs',
@@ -78,6 +70,15 @@ export async function handleBetaDeleteAccount(
       env.POLY_BETA_DB.prepare(`DELETE FROM ${table} WHERE tenant_id = ?`).bind(ctx.tenantId),
     ),
   );
+
+  // 2. Wipe Durable Object state & cancel any active alarm
+  const doId = env.TENANT_PAPER_ENGINE.idFromName(ctx.tenantId);
+  const stub = env.TENANT_PAPER_ENGINE.get(doId);
+  await stub.fetch('https://poly-beta.internal/purge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenantId: ctx.tenantId }),
+  });
 
   const isHttps = new URL(request.url).protocol === 'https:';
   return betaJsonResponse(

@@ -137,6 +137,7 @@ export interface PolyBetaEnv {
   G2_POLY_SHADOW_LOCK?: string;
   ALLOWED_ORIGINS?: string;
   POLY_BETA_SESSION_SECRET?: string;
+  POLY_BETA_PROXY_SECRET?: string;
   POLYMARKET_PUBLIC_GAMMA_URL?: string;
   POLYMARKET_PUBLIC_CLOB_URL?: string;
   COMMIT_SHA?: string;

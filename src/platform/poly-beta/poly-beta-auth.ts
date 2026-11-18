@@ -12,15 +12,23 @@ import {
   sha256Hex,
   verifyUserPassword,
 } from './poly-beta-security';
-import { isMutationSourcePermitted, parseBoundedJsonBody, resolveClientIpKey } from './poly-beta-request-guards';
+import {
+  isMutationSourcePermitted,
+  parseBoundedJsonBody,
+  resolveVerifiedClientIpKey,
+} from './poly-beta-request-guards';
 import {
   betaLoginSchema,
   betaSignupSchema,
   detectForbiddenCallerAuthorityOverride,
 } from './poly-beta-schemas';
 import { provisionTenantGenesisLedger } from './poly-beta-genesis';
+import { runAtomicBatch } from './poly-beta-ledger';
 
 export { authenticateBetaRequest } from './poly-beta-session-guard';
+
+const DUMMY_PASSWORD_SALT_HEX = 'a5'.repeat(16);
+const DUMMY_PASSWORD_HASH_HEX = '5a'.repeat(32);
 
 interface DbUserRow {
   id: string;
@@ -38,7 +46,8 @@ export async function handleBetaSignup(
   if (!isMutationSourcePermitted(request, env)) {
     return betaJsonResponse(request, env, { error: 'Forbidden origin', code: 'ORIGIN_DENIED' }, 403);
   }
-  const rl = await checkRateLimit(env, `signup:${resolveClientIpKey(request, env)}`, 10, 60, nowMs);
+  const clientIp = await resolveVerifiedClientIpKey(request, env, nowMs);
+  const rl = await checkRateLimit(env, `signup:${clientIp}`, 10, 60, nowMs);
   if (!rl.allowed) {
     return betaJsonResponse(request, env, { error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
   }
@@ -114,7 +123,8 @@ export async function handleBetaLogin(
   if (!isMutationSourcePermitted(request, env)) {
     return betaJsonResponse(request, env, { error: 'Forbidden origin', code: 'ORIGIN_DENIED' }, 403);
   }
-  const rl = await checkRateLimit(env, `login:${resolveClientIpKey(request, env)}`, 12, 60, nowMs);
+  const clientIp = await resolveVerifiedClientIpKey(request, env, nowMs);
+  const rl = await checkRateLimit(env, `login:${clientIp}`, 12, 60, nowMs);
   if (!rl.allowed) {
     return betaJsonResponse(request, env, { error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
   }
@@ -134,24 +144,33 @@ export async function handleBetaLogin(
     .bind(parsed.data.email)
     .first<DbUserRow>();
 
-  if (!user || !(await verifyUserPassword(parsed.data.password, user.password_hash, user.password_salt))) {
+  if (!user) {
+    await verifyUserPassword(parsed.data.password, DUMMY_PASSWORD_HASH_HEX, DUMMY_PASSWORD_SALT_HEX);
+    return betaJsonResponse(request, env, { error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' }, 401);
+  }
+  if (!(await verifyUserPassword(parsed.data.password, user.password_hash, user.password_salt))) {
     return betaJsonResponse(request, env, { error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' }, 401);
   }
 
   const rawSession = randomHexToken(32);
   const sessionHash = await sha256Hex(rawSession);
   const csrfToken = randomHexToken(24);
-  await env.POLY_BETA_DB.prepare(
-    `DELETE FROM beta_sessions WHERE tenant_id = ? AND expires_at_ms <= ?`,
-  )
-    .bind(user.tenant_id, nowMs)
-    .run();
-  await env.POLY_BETA_DB.prepare(
-    `INSERT INTO beta_sessions (session_hash, user_id, tenant_id, csrf_token, expires_at_ms, created_at_ms)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(sessionHash, user.id, user.tenant_id, csrfToken, nowMs + SESSION_TTL_MS, nowMs)
-    .run();
+  await runAtomicBatch(env.POLY_BETA_DB, [
+    env.POLY_BETA_DB.prepare(
+      `DELETE FROM beta_sessions WHERE tenant_id = ? AND expires_at_ms <= ?`,
+    ).bind(user.tenant_id, nowMs),
+    env.POLY_BETA_DB.prepare(
+      `DELETE FROM beta_sessions
+       WHERE tenant_id = ?
+         AND session_hash NOT IN (
+           SELECT session_hash FROM beta_sessions WHERE tenant_id = ? ORDER BY created_at_ms DESC LIMIT 9
+         )`,
+    ).bind(user.tenant_id, user.tenant_id),
+    env.POLY_BETA_DB.prepare(
+      `INSERT INTO beta_sessions (session_hash, user_id, tenant_id, csrf_token, expires_at_ms, created_at_ms)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).bind(sessionHash, user.id, user.tenant_id, csrfToken, nowMs + SESSION_TTL_MS, nowMs),
+  ]);
 
   const isHttps = new URL(request.url).protocol === 'https:';
   return betaJsonResponse(

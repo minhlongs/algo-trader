@@ -97,24 +97,25 @@ describe('POLY-G5 M4 — Per-File >=95% Stmt/Line/Func & >=85% Branch Coverage',
     const resOther = await loadPendingOrderReservations(env.POLY_BETA_DB, body.user.tenantId, 'tok_other');
     expect(resOther.sellSharesMicro).toBe(0);
 
-    // Rate limit 429 on markets, portfolio read, mutations, and account delete
+    // Rate limit 429 on markets, portfolio read, mutations, and account delete (KV fallback path)
+    const kvFallbackEnv = { ...env, TENANT_PAPER_ENGINE: undefined as unknown as typeof env.TENANT_PAPER_ENGINE };
     const nowBucket = Math.floor(Date.now() / 60_000);
     await kv.put(`rl:markets:anon:${nowBucket}`, '60');
-    expect((await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/markets'), env)).status).toBe(429);
+    expect((await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/markets'), kvFallbackEnv)).status).toBe(429);
 
     await kv.put(`rl:pf:${body.user.tenantId}:${nowBucket}`, '90');
     expect(
-      (await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/portfolio', { headers: { Cookie: cookie } }), env)).status,
+      (await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/portfolio', { headers: { Cookie: cookie } }), kvFallbackEnv)).status,
     ).toBe(429);
 
     await kv.put(`rl:mut:${body.user.tenantId}:${nowBucket}`, '30');
     expect(
-      (await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/strategy/control', { method: 'POST', headers: hdrs, body: '{"action":"PAUSE"}' }), env)).status,
+      (await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/strategy/control', { method: 'POST', headers: hdrs, body: '{"action":"PAUSE"}' }), kvFallbackEnv)).status,
     ).toBe(429);
 
     await kv.put(`rl:acct:${body.user.tenantId}:${nowBucket}`, '5');
     expect(
-      (await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/account', { method: 'DELETE', headers: hdrs }), env)).status,
+      (await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/account', { method: 'DELETE', headers: hdrs }), kvFallbackEnv)).status,
     ).toBe(429);
   });
 

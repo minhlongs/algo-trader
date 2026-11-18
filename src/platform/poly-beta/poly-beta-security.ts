@@ -54,6 +54,18 @@ export async function sha256Hex(input: string): Promise<string> {
   return toHex(digest);
 }
 
+export async function hmacSha256Hex(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+  return toHex(sig);
+}
+
 export async function hashUserPassword(password: string): Promise<{ hash: string; salt: string }> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const key = await crypto.subtle.importKey(
@@ -176,20 +188,4 @@ export function extractSessionTokenFromCookie(
   return null;
 }
 
-export async function checkRateLimit(
-  env: PolyBetaEnv,
-  bucketKey: string,
-  limit: number,
-  windowSec: number,
-  nowMs = Date.now(),
-): Promise<{ allowed: boolean; remaining: number }> {
-  const slot = Math.floor(nowMs / (windowSec * 1_000));
-  const key = `rl:${bucketKey}:${slot}`;
-  const raw = await env.POLY_BETA_KV.get(key);
-  const current = raw ? Number.parseInt(raw, 10) || 0 : 0;
-  if (current >= limit) {
-    return { allowed: false, remaining: 0 };
-  }
-  await env.POLY_BETA_KV.put(key, String(current + 1), { expirationTtl: Math.max(60, windowSec + 10) });
-  return { allowed: true, remaining: Math.max(0, limit - (current + 1)) };
-}
+export { checkRateLimit } from './poly-beta-rate-limiter';

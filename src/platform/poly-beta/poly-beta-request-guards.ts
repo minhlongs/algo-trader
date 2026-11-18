@@ -4,10 +4,16 @@
  */
 
 import type { PolyBetaEnv } from './poly-beta-types';
-import { betaJsonResponse, isOriginPermitted } from './poly-beta-security';
+import {
+  betaJsonResponse,
+  hmacSha256Hex,
+  isOriginPermitted,
+  timingSafeHexEqual,
+} from './poly-beta-security';
 
 const NEGATIVE_MARKET_CACHE_KEY = 'markets:neg:v1';
 const NEGATIVE_BACKOFF_MS = 10_000;
+const PROXY_SIG_MAX_SKEW_MS = 60_000;
 
 export function resolveClientIpKey(request: Request, env: PolyBetaEnv): string {
   const cfIp = request.headers.get('CF-Connecting-IP')?.trim();
@@ -19,6 +25,33 @@ export function resolveClientIpKey(request: Request, env: PolyBetaEnv): string {
   return forwarded || 'anon';
 }
 
+export async function resolveVerifiedClientIpKey(
+  request: Request,
+  env: PolyBetaEnv,
+  nowMs = Date.now(),
+): Promise<string> {
+  const secret = env.POLY_BETA_PROXY_SECRET?.trim();
+  if (secret) {
+    const forwardedIp = request.headers.get('X-Poly-Beta-Client-IP')?.trim();
+    const tsRaw = request.headers.get('X-Poly-Beta-Proxy-Ts')?.trim();
+    const sig = request.headers.get('X-Poly-Beta-Proxy-Sig')?.trim();
+    const ts = tsRaw ? Number.parseInt(tsRaw, 10) : Number.NaN;
+    if (
+      forwardedIp &&
+      tsRaw &&
+      sig &&
+      Number.isFinite(ts) &&
+      Math.abs(nowMs - ts) <= PROXY_SIG_MAX_SKEW_MS
+    ) {
+      const expected = await hmacSha256Hex(secret, `${forwardedIp}:${tsRaw}`);
+      if (timingSafeHexEqual(sig, expected)) {
+        return forwardedIp;
+      }
+    }
+  }
+  return resolveClientIpKey(request, env);
+}
+
 export function isMutationSourcePermitted(request: Request, env: PolyBetaEnv): boolean {
   const secFetchSite = request.headers.get('Sec-Fetch-Site')?.trim().toLowerCase();
   if (secFetchSite === 'cross-site') {
@@ -26,6 +59,9 @@ export function isMutationSourcePermitted(request: Request, env: PolyBetaEnv): b
   }
   const origin = request.headers.get('Origin');
   if (!origin) {
+    if (secFetchSite === 'same-site' || secFetchSite === 'none') {
+      return false;
+    }
     return env.ENVIRONMENT !== 'public-beta';
   }
   return isOriginPermitted(origin, env);

@@ -54,14 +54,14 @@ Measured directly via `npm run kpi:poly -- --days 30 --record-ms 0 --json`, `npm
 | **G0** | Repo & deployment baseline verified | Commit `b778f53a`, PR `#270`, `#271`, `#272`, CF inventory in `docs/poly-g5-forensics-and-boundary-matrix.md` | **PASS** |
 | **G1** | Cloudflare architecture & route isolation verified | `wrangler.poly-beta.toml` (`name = "poly-beta-api"`, `routes = []`), isolated `poly-beta-dashboard`, `poly-beta-db`, `POLY_BETA_KV`, `TenantPaperEngine` | **PASS** |
 | **G2** | Build, typecheck & CI gates clean | `tsc --noEmit`, `build:worker`, `disk:check`, `dashboard` build, `vitest`, `ci-gate-secret-scan`, `ci-gate-paper-gate-lock`, `check-quality-baseline` | **PASS** |
-| **G3** | Auth & multi-tenant security PASS | `HttpOnly; Secure; SameSite=None` cookie, SHA-256 session hash, CSRF + Origin allowlist, rate limit, User A vs User B adversarial tests (`tests/poly-beta/`) | **PASS** |
+| **G3** | Auth & multi-tenant security PASS | `__Host-poly_beta_sid; HttpOnly; Secure; SameSite=Lax; Path=/`, SHA-256 session hash, CSRF + same-origin `Origin`/`Sec-Fetch-Site` guard, DO atomic rate limit + HMAC proxy IP verification, User A vs User B adversarial tests (`tests/poly-beta/`) | **PASS** |
 | **G4** | Paper trading order & portfolio accounting PASS | Integer micro-USD ledger (`GENESIS_GRANT`, `ORDER_FILL`, `SETTLEMENT_PAYOUT`), separated Realized / Unrealized / Settled PnL, idempotency | **PASS** |
 | **G5** | Kill switch & GhostGuard drills PASS | `cmdDrillGhost` with compiled Rust `ghostguard` binary (`74.35ms < 100ms`, `0` orphan PIDs) + heartbeat deadman drill | **PASS** |
 | **G6** | EIP-712 offline compatibility PASS | Byte-for-byte parity with `@polymarket/clob-client-v2` `OrderBuilder` + `orderToJsonV2`, golden vectors, bad sig/signer/chain/nonce/expiry tests (`#272`) | **PASS** |
 | **G7** | Data ingestion & recovery tests PASS | `poly-book` WAL v3 CRC32C codec + stale/500/unreachable feed fail-closed `HALTED` tests | **PASS** |
-| **G8** | Browser E2E & mobile UX PASS | Playwright Desktop Chromium + Mobile Pixel 5 E2E suite & screenshots (`tests/e2e/poly-beta-first-user.spec.ts`) | **Verified in Phase 8** |
-| **G9** | Zero production route, DB or key changes | Pre/post verification of `cashclaw.cc`, `quant.cashclaw.cc`, `api.cashclaw.cc`, `wrangler.toml`, and prod D1 | **Verified in Phase 8** |
-| **G10** | Public beta deployment smoke tests PASS | Live smoke against deployed `poly-beta-api` + `poly-beta-dashboard` | **Verified in Phase 8** |
+| **G8** | Browser E2E & mobile UX PASS | Playwright Desktop Chromium + Mobile Pixel 5 E2E suite & fresh screenshots (`2 passed`, `tests/e2e/poly-beta-first-user.spec.ts`) | **PASS** |
+| **G9** | Zero production route, DB or key changes | Pre/post verification of `cashclaw.cc`, `quant.cashclaw.cc`, `api.cashclaw.cc`, `wrangler.toml`, and prod D1 (`0` diff, HTTP `200`) | **PASS** |
+| **G10** | Public beta deployment smoke tests PASS | Live smoke against deployed `poly-beta-api` (`9e73110c-4a8f-4587-869c-59085ee7ec55`) + `poly-beta-dashboard` (`b65ede0e`) | **PASS** |
 | **G11** | Economic validation with actual sample sizes | `0/30` days L2 WAL, `0/500` maker fills, `0/150` OOS forecasts reported honestly as `UNKNOWN` | **HOLD** |
 | **G12** | Independent legal readiness review | Vietnam operator/user context lacks external legal opinion & venue eligibility sign-off | **HOLD** |
 | **G13** | Founder authorization for real capital | Exclusive founder approval not granted (and blocked behind G11 + G12) | **HOLD** |

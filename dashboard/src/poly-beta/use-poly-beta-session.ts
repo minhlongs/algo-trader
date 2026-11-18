@@ -124,8 +124,6 @@ export function usePolyBetaSession(lang: BetaLang) {
   const checkSession = useCallback(async () => {
     const seq = ++checkSeqRef.current;
     const me = await betaRequest<MeResponse>('/api/beta/auth/me');
-    // A sign-in or logout performed while this check was in flight owns the
-    // session now; its stale answer must not undo that transition.
     if (seq !== checkSeqRef.current || !mountedRef.current) return;
     if (me.status === 200 && me.data.user && me.data.csrfToken) {
       sessionEpochRef.current += 1;
@@ -137,17 +135,13 @@ export function usePolyBetaSession(lang: BetaLang) {
       await loadPortfolio(true);
       return;
     }
-    // An anonymous visitor's expected 401 must never read as an expired session;
-    // a transport failure is a real, retryable error.
     sessionEpochRef.current += 1;
     setCsrfToken('');
     setSessionExpired(false);
     setUserEmail('');
     setView(null);
     setAuthCheckError(
-      me.status === 401
-        ? null
-        : localizeBetaError(me, langRef.current, POLY_BETA_COPY[langRef.current].authCheckFailed),
+      me.status === 401 ? null : localizeBetaError(me, langRef.current, POLY_BETA_COPY[langRef.current].authCheckFailed),
     );
     setAuthState('anon');
   }, [loadPortfolio]);

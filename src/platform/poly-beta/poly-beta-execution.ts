@@ -92,7 +92,7 @@ export async function executeSerializedPaperOrder(
   const priceMicro = Math.round(effectivePrice * MICRO_PER_USD);
   const sharesMicro = Math.round(req.sizeShares * MICRO_PER_USD);
   const notionalMicro = Math.round(req.sizeShares * priceMicro);
-  const feeMicro = computePaperFeeMicro(notionalMicro, effectivePrice);
+  const feeMicro = isResting ? 0 : computePaperFeeMicro(notionalMicro, effectivePrice);
 
   if (notionalMicro > MAX_SINGLE_ORDER_MICRO) {
     await appendExecutionLog(db, req.tenantId, 'RISK_BLOCK', 'SINGLE_ORDER_CAP', `Notional $${(notionalMicro / MICRO_PER_USD).toFixed(2)} > $5.00`, req.nowMs);

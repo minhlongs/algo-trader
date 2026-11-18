@@ -10,7 +10,7 @@ import {
   checkRateLimit,
   isOriginPermitted,
 } from './poly-beta-security';
-import { resolveClientIpKey } from './poly-beta-request-guards';
+import { resolveVerifiedClientIpKey } from './poly-beta-request-guards';
 import { detectForbiddenCallerAuthorityOverride } from './poly-beta-schemas';
 import {
   authenticateBetaRequest,
@@ -90,7 +90,8 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
     }
 
     if (path === '/api/beta/markets' && request.method === 'GET') {
-      const rl = await checkRateLimit(env, `markets:${resolveClientIpKey(request, env)}`, 60, 60);
+      const clientIp = await resolveVerifiedClientIpKey(request, env);
+      const rl = await checkRateLimit(env, `markets:${clientIp}`, 60, 60);
       if (!rl.allowed) {
         return betaJsonResponse(request, env, { error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
       }
@@ -119,8 +120,16 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
         return betaJsonResponse(request, env, { error: queryOverride, code: 'CALLER_SCOPE_FORBIDDEN' }, 403);
       }
 
-      if (path === '/api/beta/auth/me' && request.method === 'GET') return handleBetaSessionInfo(request, env, ctx);
-      if (path === '/api/beta/auth/logout' && request.method === 'POST') return handleBetaLogout(request, env, ctx);
+      if (path === '/api/beta/auth/me' && request.method === 'GET') {
+        const rl = await checkRateLimit(env, `me:${ctx.tenantId}`, 120, 60);
+        if (!rl.allowed) return betaJsonResponse(request, env, { error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
+        return handleBetaSessionInfo(request, env, ctx);
+      }
+      if (path === '/api/beta/auth/logout' && request.method === 'POST') {
+        const rl = await checkRateLimit(env, `logout:${ctx.tenantId}`, 20, 60);
+        if (!rl.allowed) return betaJsonResponse(request, env, { error: 'Rate limit exceeded', code: 'RATE_LIMITED' }, 429);
+        return handleBetaLogout(request, env, ctx);
+      }
       if (path === '/api/beta/account' && request.method === 'DELETE') {
         const rl = await checkRateLimit(env, `acct:${ctx.tenantId}`, 5, 60);
         if (!rl.allowed) {

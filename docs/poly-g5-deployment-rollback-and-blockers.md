@@ -1,7 +1,7 @@
 # POLY-G5 Release A Deployment Evidence, Rollback Runbook & Outstanding Blockers
 
-- **Timestamp:** `2026-11-15T06:14:19Z` (`2026-11-15T13:14:19+07:00`)
-- **Base Commit:** `b778f53a03bd933fbb0a9eefaee82acd461374fc`
+- **Timestamp:** `2026-11-18T05:18:30Z` (`2026-11-18T12:18:30+07:00`)
+- **Base Commit:** `0782b781` (`feat/poly-g5-public-beta` + Round-3 security/UX remediation)
 
 ---
 
@@ -9,15 +9,15 @@
 
 | Component | Resource Name / ID | Live URL / Binding | Status |
 |---|---|---|---|
-| **Pages Frontend** | `poly-beta-dashboard` | `https://poly-beta-dashboard.pages.dev` (`https://c3b2d396.poly-beta-dashboard.pages.dev`) | **HTTP/2 200 (LIVE)** |
-| **Worker API** | `poly-beta-api` (Version `051c4720-85a8-42dc-b6f9-b1521e4b529c`) | `https://poly-beta-api.agencyos-openclaw.workers.dev` (`routes = []`) | **HTTP 200 (`PAPER_ONLY`)** |
-| **D1 Authoritative Ledger** | `poly-beta-db` (`9abb7e79-aeae-452e-a626-d913bc2a8a51`) | `env.POLY_BETA_DB` (8 tables, `tenant_id` partitioned) | **Migrated & Verified** |
+| **Pages Frontend + Same-Origin Proxy** | `poly-beta-dashboard` (`VITE_APP_MODE=poly-beta`, `functions/api/beta/[[path]].ts`) | `https://poly-beta-dashboard.pages.dev` (`https://b65ede0e.poly-beta-dashboard.pages.dev`) | **HTTP/2 200 (LIVE, `POLY_BETA_API` Service Binding)** |
+| **Worker API** | `poly-beta-api` (Version `9e73110c-4a8f-4587-869c-59085ee7ec55`) | `https://poly-beta-api.agencyos-openclaw.workers.dev` (`routes = []`, `POLY_BETA_PROXY_SECRET` HMAC verified) | **LIVE (`PAPER_ONLY`, `__Host-poly_beta_sid`)** |
+| **D1 Authoritative Ledger** | `poly-beta-db` (`9abb7e79-aeae-452e-a626-d913bc2a8a51`) | `env.POLY_BETA_DB` (8 tables, `tenant_id` partitioned) | **Migrated & Verified (`0` orphan rows post-E2E)** |
 | **KV Rate-Limit & Cache** | `POLY_BETA_KV` (`d6bbbfe9aab64ea88a15ec3d51714430`) | `env.POLY_BETA_KV` | **Bound & Verified** |
-| **Serialized Engine DO** | `TenantPaperEngine` (`v1-poly-beta-engine` SQLite DO) | `env.TENANT_PAPER_ENGINE` | **Active-Only Alarm Verified** |
+| **Serialized Engine DO** | `TenantPaperEngine` (`v1-poly-beta-engine` SQLite DO) | `env.TENANT_PAPER_ENGINE` | **Active-Only Alarm & Auto-Pause Sync Verified** |
 
 ### Live First-User & Playwright E2E Verification (`G8`, `G10`)
 - **Command:** `npx playwright test --config=playwright.poly-beta.config.ts`
-- **Result:** `2 passed (22.1s)` across **Desktop Chromium** and **Mobile Pixel 5** against live `https://poly-beta-dashboard.pages.dev` + `https://poly-beta-api.agencyos-openclaw.workers.dev`:
+- **Result:** `2 passed (23.4s)` across **Desktop Chromium** and **Mobile Pixel 5** against live `https://poly-beta-dashboard.pages.dev` (same-origin `/api/beta/*` Pages Function -> `poly-beta-api` Service Binding):
   1. Landing page & simulation/loss risk banner verified (`LIVE_TRADING_ENABLED=false`).
   2. First-user signup with mandatory disclosure checkbox provisioned `$100.00` genesis ledger (`#1 GENESIS_GRANT`).
   3. Strategy `START` (`RUNNING` → active position opened on live Polymarket quote) → `PAUSE` (`PAUSED`) → `STOP` (`STOPPED`) verified.
