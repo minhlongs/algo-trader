@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "outDir": "dist/poly-beta-worker",
+    "noEmit": true,
+    "incremental": false,
+    "skipLibCheck": true,
+    "types": ["@cloudflare/workers-types", "node"],
+    "strict": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "src/platform/poly-beta/**/*.ts"
+  ],
+  "exclude": ["**/*.test.ts", "**/__tests__/**", "**/*.spec.ts", "**/*.d.ts"]
+}

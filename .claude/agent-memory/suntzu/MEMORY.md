@@ -28,3 +28,4 @@
 - [PR #128 Unified Risk & SOR Engine Shipped](project_pr128_unified_risk_sor_shipped.md) — PR #128 merged 14b15fa1, 15,619 tests (100%), coverage 95/93/86/94, CF deployed HTTP 200
 - [S20 GTM Email Validation & Security Verdict](project_s20_gtm_email_campaign_verdict.md) — S20 result PASS: 16/16 email checks, 37/37 notification tests, 0 critical audit, 41/41 hash-chain, 3.1.89
 - [v3.1.94 UI/UX & CLI Usability Verdict](project_v3194_ui_ux_cli_usability_verdict.md) — Result gate PASS r1: WCAG AA contrast, focus-visible rings, wrapCliAction, 15,698 tests, ratchet clean
+- [POLY-G5 public beta gate](project_poly_g5_public_beta_gate.md) — CONDITIONAL PASS r2: 14/14 R1 findings closed, isolated CF stack, 2 per-file coverage escrows, redeploy owed.

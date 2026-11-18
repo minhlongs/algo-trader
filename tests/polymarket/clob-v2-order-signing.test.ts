@@ -111,8 +111,9 @@ describe('signClobV2Order', () => {
   const wallet = new ethers.Wallet(FAKE_KEY);
 
   it('produces a recoverable signature over the ExchangeV3 digest', async () => {
-    const signed = await signClobV2Order(wallet, BASE_ORDER, { verifyingContract: EXCHANGE_V3 });
-    const typed = buildClobV2TypedData(BASE_ORDER, { verifyingContract: EXCHANGE_V3 });
+    const cfg = { verifyingContract: EXCHANGE_V3, maker: wallet.address, signer: wallet.address };
+    const signed = await signClobV2Order(wallet, BASE_ORDER, cfg);
+    const typed = buildClobV2TypedData(BASE_ORDER, cfg);
     const recovered = ethers.verifyTypedData(
       typed.domain,
       { Order: typed.types.Order },
@@ -121,15 +122,15 @@ describe('signClobV2Order', () => {
     );
     expect(recovered).toBe(wallet.address);
     expect(signed.maker).toBe(wallet.address);
+    expect(signed.signer).toBe(wallet.address);
   });
 
   it('hashes deterministically so a restart can re-derive the idempotency key', async () => {
-    const first = await signClobV2Order(wallet, BASE_ORDER, { verifyingContract: EXCHANGE_V3 });
-    const second = await signClobV2Order(wallet, BASE_ORDER, { verifyingContract: EXCHANGE_V3 });
+    const cfg = { verifyingContract: EXCHANGE_V3, maker: wallet.address, signer: wallet.address };
+    const first = await signClobV2Order(wallet, BASE_ORDER, cfg);
+    const second = await signClobV2Order(wallet, BASE_ORDER, cfg);
     expect(first.orderHash).toBe(second.orderHash);
-    expect(first.orderHash).toBe(
-      computeClobV2OrderHash(BASE_ORDER, { verifyingContract: EXCHANGE_V3 }),
-    );
+    expect(first.orderHash).toBe(computeClobV2OrderHash(BASE_ORDER, cfg));
   });
 
   it('changes the hash when the price changes', () => {

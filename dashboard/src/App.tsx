@@ -33,6 +33,9 @@ import { TrialStatusPage } from './pages/trial-status-page';
 import { SubscriberOverviewPage } from './pages/subscriber-overview';
 import { SubscriberEquityPage } from './pages/subscriber-equity';
 import { SubscriberTradeHistoryPage } from './pages/subscriber-trade-history';
+import { PolyBetaShell } from './poly-beta/poly-beta-shell';
+
+const IS_POLY_BETA_MODE = import.meta.env.VITE_APP_MODE === 'poly-beta';
 
 /**
  * Handle uncaught errors in the app.
@@ -44,6 +47,14 @@ function handleGlobalError(error: Error): void {
 }
 
 export function App() {
+  if (IS_POLY_BETA_MODE) {
+    return (
+      <ErrorBoundary onError={handleGlobalError}>
+        <PolyBetaShell />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary onError={handleGlobalError}>
       <>

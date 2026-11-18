@@ -1,27 +1,13 @@
 /**
- * Polymarket CLOB V2 order surface — ExchangeV3 / pUSD / Poly1271.
- *
- * The mandatory V2 cutover (2026-04-28 11:00 UTC) deleted every open V1 order
- * with no compatibility window, moved the EIP-712 domain to ExchangeV3
- * (`version: "3"`), replaced USDC.e with pUSD, and moved `POST /order` onto an
- * asynchronous execution pipeline. The V1 SDKs are frozen, so this surface is
- * built here instead of by mutating the V1 signer at `../execution/polymarket-signer`:
- *
- *   - the venue facts (addresses, limits, the 425 window) → clob-v2-venue-constants
- *   - ExchangeV3 EIP-712 signing and order hashing       → clob-v2-order-signing
- *   - the pre-signing gate                               → clob-v2-order-validation
- *   - async submit outcomes and the restart cooldown     → clob-v2-submit-classifier
- *
- * NOT VERIFIED AGAINST THE LIVE ENDPOINT: no CLOB credentials are present, so the
- * signing path is pinned by unit tests against a fake key only. The report also
- * does not publish the ExchangeV3 verifying-contract address, which is why it is
- * an injected config rather than a constant — a guessed address yields signatures
- * the exchange silently rejects.
+ * Polymarket CLOB V2 order surface — ExchangeV2/V3 / pUSD / Poly1271 (#272).
  */
 
 export {
+  CLOB_V2_EXCHANGE_POLYGON_ADDRESS,
+  CLOB_V2_NEG_RISK_EXCHANGE_POLYGON_ADDRESS,
   ENGINE_RESTARTING_HTTP_STATUS,
   ENGINE_RESTART_POST_ONLY_MS,
+  EXCHANGE_V2_DOMAIN_VERSION,
   EXCHANGE_V3_DOMAIN_NAME,
   EXCHANGE_V3_DOMAIN_VERSION,
   MIN_RESTING_ORDER_SHARES,
@@ -30,6 +16,7 @@ export {
   PUSD_COLLATERAL_ADDRESS,
   V1_CTF_EXCHANGE_ADDRESS,
   ZERO_BUILDER_CODE,
+  ZERO_METADATA_BYTES32,
   type ClobV2ExchangeConfig,
   type ClobV2OrderIntent,
   type ClobV2OrderType,
@@ -38,11 +25,25 @@ export {
 } from './clob-v2-venue-constants';
 
 export {
+  CLOB_V2_ORDER_FIELD_TYPES,
   buildClobV2TypedData,
   computeClobV2OrderHash,
   signClobV2Order,
   type ClobV2SignedOrder,
+  type ClobV2SignedOrderMessage,
 } from './clob-v2-order-signing';
+
+export {
+  verifyClobV2SignedOrder,
+  type ClobV2VerifyFailureCode,
+  type ClobV2VerifyResult,
+} from './clob-v2-order-verifier';
+
+export {
+  buildClobV2TransportPayload,
+  type ClobV2TransportOptions,
+  type ClobV2TransportPayload,
+} from './clob-v2-order-transport';
 
 export { validateClobV2Order } from './clob-v2-order-validation';
 

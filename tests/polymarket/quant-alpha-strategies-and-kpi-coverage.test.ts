@@ -56,11 +56,13 @@ describe('Quant Alpha strategies, CLOB V2 barrel, and KPI performance branch cov
     const valid = validateClobV2Order(intent);
     expect(valid.ok).toBe(true);
 
+    const wallet = new Wallet('0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
     const cfg = {
       verifyingContract: '0x0000000000000000000000000000000000000001',
       chainId: POLYGON_CHAIN_ID,
+      maker: wallet.address,
+      signer: wallet.address,
     };
-    const wallet = new Wallet('0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
     const signed = await signClobV2Order(wallet, intent, cfg);
     expect(signed.signature.startsWith('0x')).toBe(true);
     const typed = buildClobV2TypedData(intent, cfg);
