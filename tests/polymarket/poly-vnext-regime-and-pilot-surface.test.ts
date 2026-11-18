@@ -661,6 +661,8 @@ describe('4. Strategy 2 eth_call Preflight, Poly1271 Session Key Signer & pUSD D
       verifyingContract: EXCHANGE_V3,
       chainId: POLYGON_CHAIN_ID,
       signatureType: POLY_1271_SIGNATURE_TYPE,
+      maker: DEPOSIT_WALLET,
+      signer: sessionWallet.address,
     });
     const recovered = ethers.verifyTypedData(
       typed.domain,

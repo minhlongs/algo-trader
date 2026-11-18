@@ -1,0 +1,54 @@
+# Isolated Cloudflare Worker Configuration for POLY-G5 Release A (Public Beta)
+#
+# SAFETY INVARIANTS:
+# 1. Dedicated Worker name `poly-beta-api` — NEVER touches `algo-trader` Worker.
+# 2. `routes = []` + `workers_dev = true` — NEVER touches `cashclaw.cc` or `api.cashclaw.cc/*`.
+# 3. `LIVE_TRADING_ENABLED = "false"` — hard-locked to simulated $100 paper portfolio.
+# 4. Separate D1 (`poly-beta-db`), separate KV (`POLY_BETA_KV`), separate DO (`TenantPaperEngine`).
+
+name = "poly-beta-api"
+main = "src/platform/poly-beta/poly-beta-worker.ts"
+compatibility_date = "2025-02-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+routes = []
+
+[vars]
+ENVIRONMENT = "public-beta"
+LIVE_TRADING_ENABLED = "false"
+G1_SOAK_LOCK = "locked"
+G2_POLY_SHADOW_LOCK = "locked"
+ALLOWED_ORIGINS = "https://poly-beta-dashboard.pages.dev"
+POLYMARKET_PUBLIC_GAMMA_URL = "https://gamma-api.polymarket.com"
+POLYMARKET_PUBLIC_CLOB_URL = "https://clob.polymarket.com"
+
+# Local development overrides (`wrangler dev --config wrangler.poly-beta.toml --env dev`)
+# keep localhost origins out of the production `public-beta` SameSite=None cookie surface.
+[env.dev.vars]
+ENVIRONMENT = "dev"
+LIVE_TRADING_ENABLED = "false"
+G1_SOAK_LOCK = "locked"
+G2_POLY_SHADOW_LOCK = "locked"
+ALLOWED_ORIGINS = "https://poly-beta-dashboard.pages.dev,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+POLYMARKET_PUBLIC_GAMMA_URL = "https://gamma-api.polymarket.com"
+POLYMARKET_PUBLIC_CLOB_URL = "https://clob.polymarket.com"
+
+[[durable_objects.bindings]]
+name = "TENANT_PAPER_ENGINE"
+class_name = "TenantPaperEngine"
+
+[[migrations]]
+tag = "v1-poly-beta-engine"
+new_sqlite_classes = ["TenantPaperEngine"]
+
+# Placeholder IDs below are populated at isolated beta resource creation in Phase 8
+# and never reference production `algo-trader-db` (`f29559f2-...`) or `CACHE` (`6c7199c0-...`).
+[[d1_databases]]
+binding = "POLY_BETA_DB"
+database_name = "poly-beta-db"
+database_id = "9abb7e79-aeae-452e-a626-d913bc2a8a51"
+migrations_dir = "migrations/poly-beta-d1"
+
+[[kv_namespaces]]
+binding = "POLY_BETA_KV"
+id = "d6bbbfe9aab64ea88a15ec3d51714430"

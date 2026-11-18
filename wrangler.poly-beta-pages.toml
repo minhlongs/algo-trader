@@ -1,0 +1,12 @@
+#:schema node_modules/wrangler/config-schema.json
+# ============================================================================
+# POLY-G5 Isolated Public Beta Dashboard Pages Config (`poly-beta-dashboard`)
+# Keeps CashClaw (`dashboard/wrangler.toml` / `wrangler.toml`) 100% untouched.
+# ============================================================================
+name = "poly-beta-dashboard"
+pages_build_output_dir = "dist/dashboard"
+compatibility_date = "2026-04-01"
+
+[[services]]
+binding = "POLY_BETA_API"
+service = "poly-beta-api"

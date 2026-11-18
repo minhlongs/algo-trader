@@ -23,6 +23,7 @@ export type Poly1271IsolationErrorCode =
   | 'MASTER_KEY_FORBIDDEN_IN_RUNTIME'
   | 'MISSING_SESSION_SIGNER'
   | 'SESSION_KEY_EQUALS_DEPOSIT_WALLET'
+  | 'SESSION_EXPIRED'
   | 'INVALID_EXCHANGE_V3_CONTRACT'
   | 'INVALID_COLLATERAL_TOKEN'
   | 'ORDER_VALIDATION_FAILED'
@@ -30,7 +31,6 @@ export type Poly1271IsolationErrorCode =
 
 export class Poly1271IsolationError extends Error {
   readonly code: Poly1271IsolationErrorCode;
-
   constructor(code: Poly1271IsolationErrorCode, message: string) {
     super(`[${code}] ${message}`);
     this.name = 'Poly1271IsolationError';
@@ -53,6 +53,9 @@ export interface Poly1271SessionSignerConfig {
   ownerMasterPrivateKey?: unknown;
   collateralToken?: string;
   runtimeEnv?: Record<string, string | undefined>;
+  domainVersion?: '2' | '3';
+  sessionExpiresAtSec?: number;
+  nowSec?: () => number;
 }
 
 export interface Poly1271SignedOrder extends ClobV2SignedOrder {
@@ -63,10 +66,7 @@ export interface Poly1271SignedOrder extends ClobV2SignedOrder {
 }
 
 class RemoteEip712Signer extends ethers.AbstractSigner {
-  constructor(
-    private readonly signerAddress: string,
-    private readonly signCallback: RemoteTypedDataSigner,
-  ) {
+  constructor(private readonly signerAddress: string, private readonly signCallback: RemoteTypedDataSigner) {
     super();
   }
   async getAddress(): Promise<string> { return this.signerAddress; }
@@ -89,6 +89,9 @@ export class Poly1271SessionSigner {
   readonly sessionSignerAddress: string;
   readonly verifyingContract: string;
   private readonly signer: ethers.Signer;
+  private readonly domainVersion: '2' | '3' | undefined;
+  private readonly sessionExpiresAtSec: number | undefined;
+  private readonly nowSecFn: () => number;
 
   constructor(config: Poly1271SessionSignerConfig) {
     const env = config.runtimeEnv ?? (typeof process !== 'undefined' ? process.env : undefined);
@@ -140,9 +143,15 @@ export class Poly1271SessionSigner {
 
     this.depositWalletAddress = depositWallet;
     this.verifyingContract = verifyingContract;
+    this.domainVersion = config.domainVersion;
+    this.sessionExpiresAtSec = config.sessionExpiresAtSec;
+    this.nowSecFn = config.nowSec ?? (() => Math.floor(Date.now() / 1000));
   }
 
   async signOrder(intent: ClobV2OrderIntent, engineRestartPostOnly = false): Promise<Poly1271SignedOrder> {
+    if (this.sessionExpiresAtSec !== undefined && this.nowSecFn() >= this.sessionExpiresAtSec) {
+      throw new Poly1271IsolationError('SESSION_EXPIRED', `Delegated session key expired at ${this.sessionExpiresAtSec}`);
+    }
     const normalized: ClobV2OrderIntent = { ...intent, builderCode: intent.builderCode ?? ZERO_BUILDER_CODE };
     const validation = validateClobV2Order(normalized, engineRestartPostOnly);
     if (!validation.ok) {
@@ -151,17 +160,17 @@ export class Poly1271SessionSigner {
 
     const exchangeCfg = {
       verifyingContract: this.verifyingContract,
+      ...(this.domainVersion ? { domainVersion: this.domainVersion } : {}),
       chainId: POLYGON_CHAIN_ID,
       signatureType: POLY_1271_SIGNATURE_TYPE,
+      maker: this.depositWalletAddress,
+      signer: this.sessionSignerAddress,
     } as const;
     const signed = await signClobV2Order(this.signer, normalized, exchangeCfg);
     const typed = buildClobV2TypedData(normalized, exchangeCfg);
     let recovered = '';
-    try {
-      recovered = ethers.verifyTypedData(typed.domain, { Order: typed.types.Order }, typed.message, signed.signature);
-    } catch {
-      recovered = '';
-    }
+    try { recovered = ethers.verifyTypedData(typed.domain, { Order: typed.types.Order }, typed.message, signed.signature); }
+    catch { recovered = ''; }
     if (recovered.toLowerCase() !== this.sessionSignerAddress.toLowerCase()) {
       throw new Poly1271IsolationError(
         'SIGNATURE_RECOVERY_MISMATCH',
@@ -170,14 +179,13 @@ export class Poly1271SessionSigner {
     }
 
     return {
+      ...signed,
       order: normalized,
-      signature: signed.signature,
       maker: this.depositWalletAddress,
       signer: this.sessionSignerAddress,
       signatureType: POLY_1271_SIGNATURE_TYPE,
       collateralToken: PUSD_COLLATERAL_ADDRESS,
       chainId: POLYGON_CHAIN_ID,
-      orderHash: signed.orderHash,
     };
   }
 }
