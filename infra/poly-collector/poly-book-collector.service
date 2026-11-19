@@ -1,0 +1,81 @@
+# systemd service unit for Polymarket Public Read-Only L2 Book Collector (POLY-G7.4)
+# Install path: /etc/systemd/system/poly-book-collector.service
+#
+# SECURITY BOUNDARY:
+# - Public read-only market data ONLY (zero trading credentials, zero wallets, zero order endpoints).
+# - Isolated from CashClaw production and Poly-Beta Cloudflare infrastructure.
+# - Dedicated unprivileged user `polycollector` with strict filesystem and privilege sandboxing.
+
+[Unit]
+Description=Polymarket Public Read-Only L2 Collector (poly-book)
+Documentation=file:///opt/poly-collector/docs/poly-g7-4/01-COLLECTOR-DEPLOYMENT-DESIGN.md
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=polycollector
+Group=polycollector
+WorkingDirectory=/var/lib/poly-collector
+
+# Least-privilege environment file containing ONLY collector & R2 upload settings.
+# MUST NOT contain wallet private keys, CLOB API keys, or LIVE_TRADING_ENABLED.
+EnvironmentFile=/etc/poly-collector/r2.env
+
+# Core collector runtime settings (UTC enforced, loopback-only metrics, WAL + Parquet enabled)
+Environment=TZ=UTC
+Environment=RUST_LOG=info
+Environment=PB__LOGGING__FORMAT=json
+Environment=PB__WAL__BASE_PATH=/var/lib/poly-collector/wal
+Environment=PB__STORAGE__PARQUET_BASE_PATH=/var/lib/poly-collector/parquet
+Environment=PB__STORAGE__PARQUET_FLUSH_INTERVAL_SECS=300
+Environment=PB__METRICS__LISTEN_ADDR=127.0.0.1:9090
+Environment=PB__API__LISTEN_ADDR=127.0.0.1:3000
+
+# Verify NTP time sync before starting ingest (fail-closed if clock unsynchronized)
+ExecStartPre=/usr/bin/env sh -c 'test "$(/usr/bin/timedatectl show -p NTPSynchronized --value)" = "yes"'
+ExecStart=/opt/poly-collector/bin/poly-book ingest \
+  --tokens-file /etc/poly-collector/tokens.txt \
+  --parquet=true \
+  --metrics=true
+
+# Graceful shutdown: SIGTERM flushes active WAL segment and Parquet row groups cleanly
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+
+# Resource ceilings to prevent host OOM or disk exhaustion
+MemoryMax=2G
+CPUQuota=150%
+LimitNOFILE=65536
+TasksMax=256
+
+# Hardening & least-privilege sandboxing
+NoNewPrivileges=true
+CapabilityBoundingSet=
+UMask=0027
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryDenyWriteExecute=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadWritePaths=/var/lib/poly-collector /var/log/poly-collector
+ReadOnlyPaths=/etc/poly-collector /opt/poly-collector
+
+StandardOutput=append:/var/log/poly-collector/poly-book-collector.log
+StandardError=append:/var/log/poly-collector/poly-book-collector.err.log
+
+[Install]
+WantedBy=multi-user.target
