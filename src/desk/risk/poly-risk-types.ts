@@ -7,6 +7,12 @@
  * blocks. There is deliberately no `boolean` shortcut that defaults to "fine".
  */
 
+import {
+  DEFAULT_MARKET_DATA_MAX_AGE_MS,
+  type FreshnessTimestampOrigin,
+  type MarketDataFreshnessPolicy,
+} from './poly-freshness-policy';
+
 export type Unresolved = 'unknown' | undefined;
 
 export interface PolyOrderIntent {
@@ -24,6 +30,10 @@ export interface PolyOrderIntent {
 export interface PolyMarketDataState {
   /** Epoch ms of the newest book/quote this intent was priced against. */
   observedAtMs: number | 'unknown';
+  /** Optional timestamp origin (`recv_time` vs `exchange_time`) for clock-skew auditing. */
+  timestampOrigin?: FreshnessTimestampOrigin;
+  /** Optional governed freshness policy override (strategy profile, approval, stress regime). */
+  freshnessPolicy?: MarketDataFreshnessPolicy;
 }
 
 /**
@@ -88,7 +98,12 @@ export interface PolyRiskState {
   portfolioKelly?: PolyPortfolioKellyRiskState | Unresolved;
 }
 
-export const MARKET_DATA_MAX_AGE_MS = 5_000;
+/**
+ * Fail-closed default market data freshness gate (1,500 ms), aligned with the
+ * governed freshness policy (`poly-freshness-policy.ts`) and IC Pre-Trade Risk
+ * Gate (p.50: halt if feed stale > 1.5s).
+ */
+export const MARKET_DATA_MAX_AGE_MS = DEFAULT_MARKET_DATA_MAX_AGE_MS;
 export const POSITION_RECONCILIATION_MAX_AGE_MS = 60_000;
 /** Polymarket rejects resting GTC/GTD orders smaller than 5 shares. */
 export const MIN_RESTING_ORDER_SIZE_SHARES = 5;

@@ -15,7 +15,10 @@
  * throw as "unknown", never as "free".
  */
 
+import { CLOB_V2_MAX_BASE_FEE_BPS } from '../execution/polymarket-clob-v2-fee-categories';
 import type { PolymarketFeeSchedule } from './polymarket-fee-calculator';
+
+const STATUTORY_MAX_RATE = CLOB_V2_MAX_BASE_FEE_BPS / 10_000;
 
 export interface FeeScheduleResolver {
   /** `null` => the market is exempt (`feesEnabled: false`). Throws only on transport failure. */
@@ -69,7 +72,7 @@ function parseFeeSchedule(raw: unknown): PolymarketFeeSchedule | null {
   const exponent = obj['exponent'] === undefined ? 1 : parseFiniteNumber(obj['exponent']);
   const rebateRate = obj['rebateRate'] === undefined ? 0 : parseFiniteNumber(obj['rebateRate']);
   if (
-    rate === null || rate < 0 ||
+    rate === null || rate < 0 || rate > STATUTORY_MAX_RATE ||
     exponent === null || exponent <= 0 ||
     rebateRate === null || rebateRate < 0 || rebateRate > 1
   ) {
