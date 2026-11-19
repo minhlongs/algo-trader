@@ -1,16 +1,19 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
+const loggerScript = fileURLToPath(new URL('../../scripts/poly-market-blind-logger.ts', import.meta.url));
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'mb-cli-')); roots.push(root);
   const ledger = join(root, 'ledger.jsonl'), checkpoint = join(root, 'head', 'independent.json');
   return { root, ledger, checkpoint, run: (...args: string[]) => spawnSync(process.execPath,
-    ['--import', 'tsx', resolve('scripts/poly-market-blind-logger.ts'), '--ledger', ledger, '--checkpoint', checkpoint, ...args],
-    { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 }) };
+    ['--import', 'tsx', loggerScript, '--ledger', ledger, '--checkpoint', checkpoint, ...args],
+    { cwd: projectRoot, encoding: 'utf8', timeout: 10000 }) };
 }
 describe('local market-blind logger CLI', () => {
   it('wires independent checkpoint, forecast metadata and approval-bound empirical status without market calls', () => {
