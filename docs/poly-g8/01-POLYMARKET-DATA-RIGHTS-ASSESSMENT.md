@@ -37,16 +37,15 @@ Phạm vi hạn chế thương mại được đọc không đồng nghĩa cấm
 
 `DATA_RIGHTS_OUTREACH=READY_FOR_FOUNDER_SEND`; `DATA_LICENSE=PERMISSION_PENDING`.
 
-**Chưa gửi / UNSENT.** Không có danh tính pháp lý hoặc tài khoản gửi được xác minh; không dùng GitHub identity làm bằng chứng thẩm quyền. Founder điền thông tin đúng thực tế và gửi **một thư duy nhất** đến hai địa chỉ bên dưới; không có tệp đính kèm. Không ký hợp đồng, nhận gói trả phí hoặc đồng ý điều khoản bằng thư này. / No verified legal sender identity or authorized sending account is available. Founder must complete the truthful identity fields before dispatching this single inquiry; no attachments or acceptance of terms.
+**Chưa gửi / UNSENT.** Không có danh tính pháp lý hoặc tài khoản gửi được xác minh; không dùng GitHub identity làm bằng chứng thẩm quyền. Founder điền thông tin đúng thực tế và gửi **một thư duy nhất** tới địa chỉ Polymarket đã xác minh bên dưới; không có tệp đính kèm. Địa chỉ email ICE từng được ghi trong bản trước không xác minh được trên trang ICE hiện hành nên đã loại khỏi nơi nhận. Thư hỏi Polymarket liệu có cần thỏa thuận ICE riêng và bên cấp phép phù hợp; không tự gửi tới địa chỉ ICE chưa xác minh. Không ký hợp đồng, nhận gói trả phí hoặc đồng ý điều khoản bằng thư này. / No verified legal sender identity or authorized sending account is available. Founder must complete the truthful identity fields before dispatching this single inquiry to the verified Polymarket address below; no attachments. The previously listed ICE email could not be verified on ICE's current official contact page and is excluded. The inquiry asks Polymarket whether a separate ICE agreement and contact is required; it is not sent to an unverified ICE address. This does not accept terms or financial obligations.
 
-Địa chỉ được đối chiếu lại ngày 2026-11-19 trên [Polymarket Institutional](https://institutional.polymarket.com/). / Recipients rechecked against the official page on 2026-11-19.
+Địa chỉ được đối chiếu lại ngày 2026-11-19 trên [Polymarket Institutional](https://institutional.polymarket.com/); chỉ địa chỉ To dưới đây được xác minh. ICE contact riêng chưa được xác minh trên [ICE Contact Us](https://www.ice.com/contact), vì vậy không thêm vào To/Cc. / Only the To address below was verified on 2026-11-19 against the official Polymarket page. No separate ICE contact has been verified on ICE's current Contact Us page, so none is included in To/Cc.
 
 **To:** data-licensing@polymarket.com
 
-**Cc:** sales-icedataservices-usinsidesales@theice.com
 **Subject:** Written data-use authorization inquiry — Vietnam research pilot, up to 150 markets, 30-day L2 archive
 
-Dear Polymarket Data Licensing and ICE Data Services teams,
+Dear Polymarket Data Licensing team,
 
 I am [actual sender name], writing as [truthful individual/business status and, only if applicable, legal entity and authorized role]. I operate from Vietnam and am preparing a limited private quantitative research project. Please advise on the permissions required for the scope below before any continuous collection is activated.
 
