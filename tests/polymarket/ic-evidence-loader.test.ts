@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadICEvidenceForScorecard } from '../../src/desk/polymarket/ic-evidence-loader';
 import { evaluateICKpiScorecard } from '../../src/desk/polymarket/ic-kpi-scorecard';
 import { buildL2ArchiveManifest } from '../../src/desk/polymarket/l2/l2-archive-manifest';
+import { COVERAGE_TEST_NOW, coverageBookRecords, sealCoverageFixture, writeCoverageWal } from './l2/l2-coverage-fixtures';
 import { createNodeJsonlAppendStore } from '../../src/desk/polymarket/market-blind/node-market-blind-ledger-adapter';
 import {
   attachPostCommitMarketSnapshot,
@@ -49,33 +50,57 @@ describe('IC Evidence Loader (POLY-G7.5 Phase 5)', () => {
     expect(report.verdicts.REAL_MONEY_TRADING).toBe('DISABLED');
   });
 
-  it('counts distinct UTC days from a verified L2 archive and rejects tampered manifests fail-closed', () => {
+  it('counts verified WAL book coverage, not archive path dates, and rejects manifest tampering', () => {
     const root = makeTempDir();
-    mkdirSync(join(root, '2026-11-18'), { recursive: true });
-    mkdirSync(join(root, '2026-11-19'), { recursive: true });
-    writeFileSync(join(root, '2026-11-18', '2026-11-18.wal'), Buffer.from('day1-wal'));
-    writeFileSync(join(root, '2026-11-19', '2026-11-19.wal'), Buffer.from('day2-wal'));
-    const manifest = buildL2ArchiveManifest(root);
-    writeFileSync(join(root, 'l2-archive-manifest.json'), JSON.stringify(manifest));
+    mkdirSync(join(root, '2026-11-17'));
+    writeCoverageWal(root, coverageBookRecords());
+    const l2CoveragePolicy = sealCoverageFixture(root);
+    const options = { l2ArchiveDir: root, l2CoveragePolicy, generatedAtIso: COVERAGE_TEST_NOW };
 
-    const valid = loadICEvidenceForScorecard({ l2ArchiveDir: root });
-    expect(valid.samples.recordedL2Days).toBe(2);
+    const valid = loadICEvidenceForScorecard(options);
+    expect(valid.samples.recordedL2Days).toBe(1);
     expect(valid.integrity.l2ManifestChecked).toBe(true);
     expect(valid.integrity.l2ManifestOk).toBe(true);
     expect(valid.integrity.errors).toEqual([]);
+    const noPolicy = loadICEvidenceForScorecard({ l2ArchiveDir: root });
+    expect(noPolicy.samples.recordedL2Days).toBe(0);
+    expect(noPolicy.integrity.errors).toEqual([expect.stringContaining('POLICY')]);
 
-    // Tamper with a WAL file -> manifest verification must collapse recordedL2Days to 0
-    writeFileSync(join(root, '2026-11-18', '2026-11-18.wal'), Buffer.from('tampered-wal'));
-    const tampered = loadICEvidenceForScorecard({ l2ArchiveDir: root });
+    writeFileSync(join(root, 'wal', 'segment_0001.wal'), 'tampered-wal');
+    const tampered = loadICEvidenceForScorecard(options);
     expect(tampered.samples.recordedL2Days).toBe(0);
     expect(tampered.integrity.l2ManifestOk).toBe(false);
-    expect(tampered.integrity.errors.length).toBe(1);
+    expect(tampered.integrity.errors).toEqual([expect.stringContaining('MANIFEST')]);
 
-    // Corrupt manifest JSON -> fail-closed
     writeFileSync(join(root, 'l2-archive-manifest.json'), '{not-json');
-    const corrupt = loadICEvidenceForScorecard({ l2ArchiveDir: root });
+    const corrupt = loadICEvidenceForScorecard(options);
     expect(corrupt.samples.recordedL2Days).toBe(0);
     expect(corrupt.integrity.l2ManifestOk).toBe(false);
+  });
+
+  it('does not count an empty date-named directory, even with a verified empty manifest', () => {
+    const root = makeTempDir();
+    mkdirSync(join(root, '2026-11-18'));
+    writeFileSync(join(root, 'l2-archive-manifest.json'), JSON.stringify(buildL2ArchiveManifest(root)));
+    expect(loadICEvidenceForScorecard({ l2ArchiveDir: root }).samples.recordedL2Days).toBe(0);
+  });
+
+  it.each([
+    ['empty WAL', 'wal', Buffer.alloc(0)],
+    ['corrupt WAL', 'wal', Buffer.from('not-a-wal')],
+    ['empty Parquet', 'parquet', Buffer.alloc(0)],
+    ['fake Parquet', 'parquet', Buffer.from('PAR1-not-valid-rows-PAR1')],
+  ])('does not count %s merely because its filename contains a date', (_label, extension, bytes) => {
+    const root = makeTempDir();
+    writeFileSync(join(root, `2026-11-18.${extension}`), bytes);
+    writeFileSync(join(root, 'l2-archive-manifest.json'), JSON.stringify(buildL2ArchiveManifest(root)));
+    expect(loadICEvidenceForScorecard({ l2ArchiveDir: root }).samples.recordedL2Days).toBe(0);
+  });
+
+  it('does not qualify an archive without a manifest or approved coverage policy', () => {
+    const root = makeTempDir();
+    mkdirSync(join(root, '2026-11-18'));
+    expect(loadICEvidenceForScorecard({ l2ArchiveDir: root }).samples.recordedL2Days).toBe(0);
   });
 
   it('loads valid prospective Market-Blind JSONL ledger and fails closed on chain tamper', () => {
