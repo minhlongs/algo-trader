@@ -257,6 +257,6 @@ async fn wal_drain(
 
     // Durably flush + fsync whatever is buffered before the process stops.
     if let Err(e) = wal_writer.sync() {
-        tracing::error!(error = %e, "WAL sync failed during shutdown");
+        fail(&e, "sync during shutdown");
     }
 }

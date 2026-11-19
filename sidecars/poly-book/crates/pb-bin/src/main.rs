@@ -9,6 +9,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod commands;
+mod ingest_options;
 mod settings;
 
 #[derive(Parser)]
@@ -44,9 +45,15 @@ enum Commands {
     /// Start live orderbook ingestion (feed -> WAL -> Parquet) for fixed
     /// tokens or the rotating BTC 5-minute market
     Ingest {
-        /// Comma-separated token IDs to subscribe to
-        #[arg(long, conflicts_with = "auto_rotate")]
+        /// Comma-separated canonical positive decimal uint256 token IDs
+        #[arg(long, conflicts_with_all = ["auto_rotate", "tokens_file"])]
         tokens: Option<String>,
+        /// UTF-8 file: one canonical positive decimal uint256 token ID per line; no blanks or duplicates
+        #[arg(long, conflicts_with = "auto_rotate")]
+        tokens_file: Option<std::path::PathBuf>,
+        /// Validate CLI, config, PB__ overrides and token universe without network or runtime writes
+        #[arg(long, default_value_t = false)]
+        validate_only: bool,
         /// Follow the live BTC 5-minute market, rotating every 5 minutes
         #[arg(long, default_value_t = false)]
         auto_rotate: bool,
@@ -137,7 +144,22 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::process::ExitCode {
+    match run().await {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("Error: {error:#}");
+            // EX_CONFIG: a supervisor must not retry an unchanged invalid universe/config.
+            std::process::ExitCode::from(if error.is::<ingest_options::ConfigurationError>() {
+                78
+            } else {
+                1
+            })
+        }
+    }
+}
+
+async fn run() -> Result<()> {
     // Install a process-level rustls crypto provider before anything opens a
     // TLS connection. The dependency graph links two providers (`ring` and
     // `aws-lc-rs` via the metrics exporter), and rustls panics on first use if
@@ -155,10 +177,45 @@ async fn main() -> Result<()> {
     // absent so the binary still runs from an arbitrary CWD.
     const DEFAULT_CONFIG_PATH: &str = "config/default.toml";
     let config_is_default = cli.config == DEFAULT_CONFIG_PATH;
-    if !config_is_default && !std::path::Path::new(&cli.config).exists() {
-        anyhow::bail!("config file not found: {}", cli.config);
+    let loaded = (|| {
+        if !config_is_default && !std::path::Path::new(&cli.config).exists() {
+            anyhow::bail!("config file not found: {}", cli.config);
+        }
+        settings::Settings::load(&cli.config, !config_is_default)
+    })();
+    let settings = if matches!(&cli.command, Commands::Ingest { .. }) {
+        ingest_options::configuration(loaded)?
+    } else {
+        loaded?
+    };
+    let mut ingest_plan = None;
+    if let Commands::Ingest {
+        tokens,
+        tokens_file,
+        auto_rotate,
+        validate_only,
+        parquet,
+        metrics,
+        ..
+    } = &cli.command
+    {
+        let plan = ingest_options::configuration(ingest_options::resolve(
+            tokens.clone(),
+            tokens_file.clone(),
+            *auto_rotate,
+        ))?;
+        ingest_options::configuration(ingest_options::validate_settings(&settings))?;
+        if *validate_only {
+            return ingest_options::print_validation(
+                &cli.config,
+                &settings,
+                &plan,
+                *parquet,
+                *metrics,
+            );
+        }
+        ingest_plan = Some(plan);
     }
-    let settings = settings::Settings::load(&cli.config, !config_is_default)?;
 
     // Initialize tracing: RUST_LOG env > --log-level CLI > config logging.level
     let filter = if std::env::var("RUST_LOG").is_ok() {
@@ -225,13 +282,12 @@ async fn main() -> Result<()> {
             commands::discover::run(settings, filter, limit, slug_registry).await?;
         }
         Commands::Ingest {
-            tokens,
-            auto_rotate,
             parquet,
             metrics,
             standby,
+            ..
         } => {
-            let plan = commands::feed::FeedPlan::from_flags(tokens, auto_rotate)?;
+            let plan = ingest_plan.expect("ingest plan validated before runtime startup");
             commands::ingest::run(
                 settings,
                 plan,
@@ -401,6 +457,7 @@ mod tests {
                 parquet,
                 metrics,
                 standby,
+                ..
             } => {
                 assert!(tokens.is_none());
                 assert!(!auto_rotate);
