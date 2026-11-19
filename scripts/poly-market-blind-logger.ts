@@ -5,10 +5,16 @@
  *   npx tsx scripts/poly-market-blind-logger.ts --ledger <path> commit --question-id <id> --raw-prob <p> --evidence <text> --model-version <ver> [--prompt-version <ver>] [--category <cat>] [--committed-at-ms <ms>]
  *   npx tsx scripts/poly-market-blind-logger.ts --ledger <path> attach-price --entry-hash <hash> --market-prob <p> [--read-at-ms <ms>]
  *   npx tsx scripts/poly-market-blind-logger.ts --ledger <path> resolve --question-id <id> --status RESOLVED_YES|RESOLVED_NO|VOIDED|CANCELLED|UMA_DISPUTED [--entry-hash <hash>] [--resolved-at-ms <ms>] [--market-prob <p>]
- *   npx tsx scripts/poly-market-blind-logger.ts --ledger <path> status [--category <cat>]
+ *   npx tsx scripts/poly-market-blind-logger.ts --ledger <path> --checkpoint <independent-path> status --mode empirical --model-version <ver> --policy <approved-policy.json>
+ * Chẩn đoán không phải bằng chứng IC. / Diagnostic reports are not empirical IC evidence.
+ * Commit metadata: --forecast-id --research-question-id --event-id --market-id --forecast-horizon-ms
+ * Nguồn thật / Real provenance: --provenance-kind REAL --provenance-source <source> --provenance-reference <ref>.
+ * Không tạo phê duyệt; ledger cũ thiếu checkpoint bị từ chối. / No approval creation or unanchored-ledger migration.
  */
 
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { approvedPolicySchema } from '../src/desk/polymarket/market-blind/market-blind-pipeline-contract';
 import {
   ProspectivePipelineLedger,
   attachPostCommitMarketSnapshot,
@@ -37,7 +43,10 @@ function parseCli(argv: readonly string[]): ParsedCli {
       if (value === undefined || value.startsWith('--')) {
         throw new Error(`Missing value for flag ${token}`);
       }
-      flags.set(token.slice(2), value);
+      const name = token.slice(2);
+      const known = new Set(['ledger', 'checkpoint', 'question-id', 'raw-prob', 'evidence', 'model-version', 'prompt-version', 'category', 'prompt', 'committed-at-ms', 'forecast-id', 'research-question-id', 'event-id', 'market-id', 'forecast-horizon-ms', 'provenance-kind', 'provenance-source', 'provenance-reference', 'entry-hash', 'market-prob', 'read-at-ms', 'source', 'status', 'resolved-at-ms', 'note', 'mode', 'policy']);
+      if (!known.has(name) || flags.has(name)) throw new Error(`Unknown or duplicate flag ${token}`);
+      flags.set(name, value);
       i += 1;
     } else if (!command) {
       command = token;
@@ -71,7 +80,8 @@ function parseNumberFlag(flags: Map<string, string>, name: string, required = fa
 function main(): void {
   const { command, flags } = parseCli(process.argv.slice(2));
   const ledgerPath = resolve(process.cwd(), flags.get('ledger') ?? DEFAULT_LEDGER_PATH);
-  const store = createNodeJsonlAppendStore(ledgerPath);
+  const checkpointPath = resolve(process.cwd(), flags.get('checkpoint') ?? `${ledgerPath}.checkpoint.json`);
+  const store = createNodeJsonlAppendStore(ledgerPath, checkpointPath);
   const ledger = ProspectivePipelineLedger.hydrateFromStore(store);
 
   if (command === 'commit') {
@@ -84,6 +94,20 @@ function main(): void {
       category: flags.get('category') ?? 'general',
       prompt: flags.get('prompt'),
       committedAtMs: parseNumberFlag(flags, 'committed-at-ms'),
+      forecastId: flags.get('forecast-id'),
+      researchQuestionId: flags.get('research-question-id'),
+      eventId: flags.get('event-id'),
+      marketId: flags.get('market-id'),
+      forecastHorizonMs: parseNumberFlag(flags, 'forecast-horizon-ms'),
+      provenance: flags.has('provenance-kind') ? {
+        kind: (() => {
+          const kind = requireFlag(flags, 'provenance-kind');
+          if (kind !== 'REAL' && kind !== 'SYNTHETIC') throw new Error('Invalid --provenance-kind');
+          return kind;
+        })(),
+        source: requireFlag(flags, 'provenance-source'),
+        reference: requireFlag(flags, 'provenance-reference'),
+      } : undefined,
     });
     process.stdout.write(`${JSON.stringify({ ledgerPath, receipt }, null, 2)}\n`);
     return;
@@ -118,7 +142,11 @@ function main(): void {
   }
 
   if (command === 'status') {
-    const report = evaluateProspectiveOosReport(ledger, { category: flags.get('category') });
+    const mode = flags.get('mode') ?? 'diagnostic';
+    if (mode !== 'diagnostic' && mode !== 'empirical') throw new Error('Invalid --mode');
+    const policyPath = flags.get('policy');
+    const policy = policyPath ? approvedPolicySchema.parse(JSON.parse(readFileSync(resolve(process.cwd(), policyPath), 'utf8')) as unknown) : undefined;
+    const report = evaluateProspectiveOosReport(ledger, { category: flags.get('category'), mode, modelVersion: flags.get('model-version'), policy });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return;
   }
