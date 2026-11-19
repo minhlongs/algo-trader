@@ -39,13 +39,15 @@ Phạm vi hạn chế thương mại được đọc không đồng nghĩa cấm
 
 **Chưa gửi / UNSENT.** Không có danh tính pháp lý hoặc tài khoản gửi được xác minh; không dùng GitHub identity làm bằng chứng thẩm quyền. Founder điền thông tin đúng thực tế và gửi **một thư duy nhất** tới hai địa chỉ được xác minh bên dưới; không có tệp đính kèm. Cả hai địa chỉ được Polymarket Institutional liệt kê cho Capital Markets Entities; thư hỏi liệu có cần thỏa thuận ICE riêng, không chấp nhận điều khoản hoặc nghĩa vụ tài chính. / No verified legal sender identity or authorized sending account is available. Founder must complete the truthful identity fields before dispatching this single inquiry to both recipients verified below; no attachments. Polymarket Institutional lists both addresses for Capital Markets Entities. The inquiry asks whether a separate ICE agreement is required and does not accept terms or financial obligations.
 
-Địa chỉ được đối chiếu lại ngày 2026-11-19 trên [Polymarket Institutional](https://institutional.polymarket.com/); chỉ địa chỉ To dưới đây được xác minh. ICE contact riêng chưa được xác minh trên [ICE Contact Us](https://www.ice.com/contact), vì vậy không thêm vào To/Cc. / Only the To address below was verified on 2026-11-19 against the official Polymarket page. No separate ICE contact has been verified on ICE's current Contact Us page, so none is included in To/Cc.
+Địa chỉ được đối chiếu trực tiếp ngày 2026-11-19 trên [Polymarket Institutional](https://institutional.polymarket.com/), nơi Polymarket liệt kê đồng thời cả hai địa chỉ dưới đây cho Capital Markets Entities (`data-licensing@polymarket.com` và `sales-icedataservices-usinsidesales@theice.com`). Dù địa chỉ ICE không xuất hiện riêng trên trang Contact Us chung của ICE, cả hai đều được xác minh trực tiếp từ nguồn chính thức do Polymarket công bố. / Both addresses below were verified on 2026-11-19 directly on the official [Polymarket Institutional](https://institutional.polymarket.com/) page, which lists `data-licensing@polymarket.com` and `sales-icedataservices-usinsidesales@theice.com` together for Capital Markets Entities (even though the ICE address is not separately listed on ICE's general Contact Us page).
 
 **To:** data-licensing@polymarket.com
 
+**Cc:** sales-icedataservices-usinsidesales@theice.com
+
 **Subject:** Written data-use authorization inquiry — Vietnam research pilot, up to 150 markets, 30-day L2 archive
 
-Dear Polymarket Data Licensing team,
+Dear Polymarket Data Licensing and ICE Data Services teams,
 
 I am [actual sender name], writing as [truthful individual/business status and, only if applicable, legal entity and authorized role]. I operate from Vietnam and am preparing a limited private quantitative research project. Please advise on the permissions required for the scope below before any continuous collection is activated.
 
