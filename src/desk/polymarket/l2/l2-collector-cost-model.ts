@@ -1,140 +1,83 @@
 /**
- * Empirically parameterized storage, bandwidth, and ops cost model for
+ * Conservative, boundary-validated storage, bandwidth, and ops cost model for
  * continuous read-only Polymarket L2 orderbook collection.
+ * Modeled outputs are never provisioning authorization or a guaranteed bill cap.
  */
+import {
+  L2_COST_PRICING_SOURCES,
+  resolveL2CostAssumptions,
+  r2PricingStatus,
+  roundCost,
+  vpsPricingStatus,
+} from './l2-collector-cost-assumptions';
+import { projectL2MarketTier } from './l2-collector-cost-projection';
+import type { L2CostModelInput, L2CostModelReport } from './l2-collector-cost-types';
 
-export interface L2CostModelInput {
-  measuredBytes: number;
-  durationSec: number;
-  measuredMarkets: number;
-  targetMarketTiers?: readonly number[];
-  compressionRatioRange?: readonly [number, number];
-  r2RateUsdPerGbMonth?: number;
-}
+export { L2_COST_PRICING_SOURCES } from './l2-collector-cost-assumptions';
+export type {
+  L2ArtifactStorageProjection,
+  L2BudgetHoldReason,
+  L2CostAssumptions,
+  L2CostModelInput,
+  L2CostModelReport,
+  L2MandatoryCosts,
+  L2MarketTierProjection,
+  L2NumberRange,
+  L2PricingStatus,
+  L2R2Billing,
+  L2RatioRange,
+} from './l2-collector-cost-types';
 
-export interface L2MarketTierProjection {
-  targetMarkets: number;
-  bytesPerMarketHour: number;
-  rawWalGbPerDay: number;
-  zstdParquetGbPerDay: {
-    min: number;
-    max: number;
-    compressionRatioRange: [number, number];
-  };
-  monthlyStorageGb: {
-    rawWal: number;
-    zstdParquetMin: number;
-    zstdParquetMax: number;
-  };
-  r2StorageMonthlyUsd: {
-    min: number;
-    max: number;
-  };
-  vpsMonthlyUsdRange: [number, number];
-  totalMonthlyUsdRange: [number, number];
-}
-
-export interface L2CostModelReport {
-  measuredBytes: number;
-  durationSec: number;
-  measuredMarkets: number;
-  bytesPerMarketHour: number;
-  compressionRatioRange: [number, number];
-  r2RateUsdPerGbMonth: number;
-  projections: L2MarketTierProjection[];
-}
-
-const DEFAULT_TIERS: readonly number[] = [50, 150, 300];
-const DEFAULT_COMPRESSION_RANGE: [number, number] = [3.5, 6.0];
-const DEFAULT_R2_RATE_USD_PER_GB_MONTH = 0.015; // Cloudflare R2 Standard (zero egress)
-const BYTES_PER_DECIMAL_GB = 1_000_000_000;
-const DAYS_PER_MONTH = 30;
-
-function round(val: number, decimals = 4): number {
-  const factor = 10 ** decimals;
-  return Math.round(val * factor) / factor;
-}
-
-function vpsMonthlyRangeForMarkets(targetMarkets: number): [number, number] {
-  if (targetMarkets <= 75) return [6, 12];
-  if (targetMarkets <= 200) return [12, 24];
-  return [20, 40];
-}
+const MODEL_LIMITATIONS = [
+  'Legacy input name measuredBytes does not verify throughput; provenance stays UNVERIFIED unless an evidence note is supplied.',
+  'Compression ratios and Parquet raw-equivalent size are modeled, not measured; the 1x-compression stress case is always reported separately.',
+  'R2 storage rounds up per whole GB-month and Class A/B operations round up per million, independently; no shared free allowance is deducted.',
+  'VPS list price proves neither CPU/RAM/disk capacity, region eligibility, nor transfer headroom for the modeled load.',
+  'Taxes, data licensing, bandwidth overage, restores/retries, and connected services are caller estimates or unknown; billing alerts are not spending caps.',
+  'The $30 budget check fails closed on unknown mandatory costs, minimum/range overruns, or 1x compression stress; a pass is not provisioning authorization.',
+  'Stopping collection does not delete stored data or stop storage charges; market count and retention are never reduced to fit the budget.',
+] as const;
 
 export function estimateL2CollectionStorageAndCost(input: L2CostModelInput): L2CostModelReport {
-  const { measuredBytes, durationSec, measuredMarkets } = input;
-  if (!Number.isFinite(measuredBytes) || measuredBytes < 0) {
-    throw new RangeError(`measuredBytes must be a non-negative finite number, got ${measuredBytes}`);
-  }
-  if (!Number.isFinite(durationSec) || durationSec <= 0) {
-    throw new RangeError(`durationSec must be a positive finite number, got ${durationSec}`);
-  }
-  if (!Number.isFinite(measuredMarkets) || measuredMarkets <= 0) {
-    throw new RangeError(`measuredMarkets must be a positive finite number, got ${measuredMarkets}`);
+  const assumptions = resolveL2CostAssumptions(input);
+  const hours = input.durationSec / 3600;
+  const bytesPerMarketHour = input.measuredBytes / (input.measuredMarkets * hours);
+  if (!Number.isFinite(bytesPerMarketHour) || bytesPerMarketHour < 0) {
+    throw new RangeError(`Computed bytesPerMarketHour is invalid: ${bytesPerMarketHour}`);
   }
 
-  const ratioTuple = input.compressionRatioRange ?? DEFAULT_COMPRESSION_RANGE;
-  const minRatio = ratioTuple[0];
-  const maxRatio = ratioTuple[1];
-  if (!Number.isFinite(minRatio) || !Number.isFinite(maxRatio) || minRatio <= 0 || maxRatio < minRatio) {
-    throw new RangeError(`Invalid compressionRatioRange: [${minRatio}, ${maxRatio}]`);
-  }
-
-  const r2Rate = input.r2RateUsdPerGbMonth ?? DEFAULT_R2_RATE_USD_PER_GB_MONTH;
-  if (!Number.isFinite(r2Rate) || r2Rate < 0) {
-    throw new RangeError(`r2RateUsdPerGbMonth must be non-negative, got ${r2Rate}`);
-  }
-
-  const tiers = input.targetMarketTiers?.length ? [...input.targetMarketTiers] : [...DEFAULT_TIERS];
-  const hours = durationSec / 3600;
-  const bytesPerMarketHour = measuredBytes / (measuredMarkets * hours);
-
-  const projections: L2MarketTierProjection[] = tiers.map((targetMarkets) => {
-    if (!Number.isFinite(targetMarkets) || targetMarkets <= 0) {
-      throw new RangeError(`targetMarkets must be positive, got ${targetMarkets}`);
-    }
-    const rawWalGbPerDay = (bytesPerMarketHour * targetMarkets * 24) / BYTES_PER_DECIMAL_GB;
-    const zstdMinGbPerDay = rawWalGbPerDay / maxRatio;
-    const zstdMaxGbPerDay = rawWalGbPerDay / minRatio;
-
-    const monthlyRawWalGb = rawWalGbPerDay * DAYS_PER_MONTH;
-    const monthlyZstdMinGb = zstdMinGbPerDay * DAYS_PER_MONTH;
-    const monthlyZstdMaxGb = zstdMaxGbPerDay * DAYS_PER_MONTH;
-
-    const r2MinUsd = monthlyZstdMinGb * r2Rate;
-    const r2MaxUsd = monthlyZstdMaxGb * r2Rate;
-    const vpsRange = vpsMonthlyRangeForMarkets(targetMarkets);
-
-    return {
-      targetMarkets,
-      bytesPerMarketHour: round(bytesPerMarketHour, 2),
-      rawWalGbPerDay: round(rawWalGbPerDay, 4),
-      zstdParquetGbPerDay: {
-        min: round(zstdMinGbPerDay, 4),
-        max: round(zstdMaxGbPerDay, 4),
-        compressionRatioRange: [minRatio, maxRatio],
-      },
-      monthlyStorageGb: {
-        rawWal: round(monthlyRawWalGb, 3),
-        zstdParquetMin: round(monthlyZstdMinGb, 3),
-        zstdParquetMax: round(monthlyZstdMaxGb, 3),
-      },
-      r2StorageMonthlyUsd: {
-        min: round(r2MinUsd, 2),
-        max: round(r2MaxUsd, 2),
-      },
-      vpsMonthlyUsdRange: vpsRange,
-      totalMonthlyUsdRange: [round(vpsRange[0] + r2MinUsd, 2), round(vpsRange[1] + r2MaxUsd, 2)],
-    };
-  });
+  const vpsStatus = vpsPricingStatus(input);
+  const projections = assumptions.targetMarketTiers.map((targetMarkets) =>
+    projectL2MarketTier(assumptions, targetMarkets, bytesPerMarketHour, vpsStatus),
+  );
 
   return {
-    measuredBytes,
-    durationSec,
-    measuredMarkets,
-    bytesPerMarketHour: round(bytesPerMarketHour, 2),
-    compressionRatioRange: [minRatio, maxRatio],
-    r2RateUsdPerGbMonth: r2Rate,
+    measuredBytes: input.measuredBytes,
+    durationSec: input.durationSec,
+    measuredMarkets: input.measuredMarkets,
+    bytesPerMarketHour: roundCost(bytesPerMarketHour, 2),
+    compressionRatioRange: [...assumptions.compressionRatioRange],
+    r2RateUsdPerGbMonth: assumptions.r2RateUsdPerGbMonth,
+    inputs: { ...input },
+    assumptions,
+    provenance: {
+      projection: 'MODELED',
+      throughput: input.throughputProvenance ?? 'UNVERIFIED',
+      throughputSourceNote: input.throughputSourceNote
+        ?? 'No throughput evidence supplied; the legacy measuredBytes name does not verify measurement.',
+      compression: 'MODELED',
+      parquetSize: 'MODELED',
+      vpsPricing: vpsStatus,
+      vpsCapacityAdequacy: 'UNVERIFIED',
+      r2Pricing: r2PricingStatus(input),
+      nonStorageCosts: 'CALLER_ESTIMATES_OR_UNKNOWN',
+    },
+    pricingSources: {
+      accessedDate: L2_COST_PRICING_SOURCES.accessedDate,
+      cloudflareR2: { ...L2_COST_PRICING_SOURCES.cloudflareR2 },
+      digitalOceanDroplets: { ...L2_COST_PRICING_SOURCES.digitalOceanDroplets },
+    },
+    limitations: [...MODEL_LIMITATIONS],
     projections,
   };
 }
