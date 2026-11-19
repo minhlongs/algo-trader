@@ -5,7 +5,6 @@
 import {
   CLUSTER_TAIL_LOSS_MAX_NAV_FRACTION,
   DRAWDOWN_AUTO_HALT_PCT,
-  MARKET_DATA_MAX_AGE_MS,
   MIN_RESTING_ORDER_SIZE_SHARES,
   PORTFOLIO_KELLY_DRAWDOWN_FREEZE_PCT,
   PORTFOLIO_UMA_DISPUTE_MAX_NAV_PCT,
@@ -20,6 +19,10 @@ import {
   type PolyRiskBudgetState,
   type PolyRiskVerdict,
 } from './poly-risk-types';
+import {
+  evaluateMarketDataFreshness,
+  type MarketDataFreshnessPolicy,
+} from './poly-freshness-policy';
 
 const VALID_ORDER_TYPES = new Set(['GTC', 'GTD', 'FOK', 'IOC']);
 
@@ -70,12 +73,20 @@ export function checkKillSwitch(flag: PolyKillSwitchState): PolyRiskVerdict | nu
   return deny('KILL_SWITCH_STATE_UNKNOWN', `kill switch state is ${String(flag)}; it must be positively known to be inactive`);
 }
 
-export function checkMarketData(marketInput: PolyMarketDataState | 'unknown' | undefined, nowMs: number): PolyRiskVerdict | null {
-  const observedAtMs = resolved(marketInput)?.observedAtMs;
-  if (!isNumber(observedAtMs)) return deny('UNRESOLVED_STATE', 'market data: observation timestamp is unknown');
-  const ageMs = nowMs - observedAtMs;
-  if (ageMs < 0) return deny('STALE_MARKET_DATA', `market data is ${-ageMs}ms in the future of the clock`);
-  return ageMs <= MARKET_DATA_MAX_AGE_MS ? null : deny('STALE_MARKET_DATA', `market data is ${ageMs}ms old, TTL is ${MARKET_DATA_MAX_AGE_MS}ms`);
+export function checkMarketData(
+  marketInput: PolyMarketDataState | 'unknown' | undefined,
+  nowMs: number,
+  policyOrMaxAgeMs?: MarketDataFreshnessPolicy | number,
+): PolyRiskVerdict | null {
+  const market = resolved(marketInput);
+  const policy: MarketDataFreshnessPolicy | undefined =
+    typeof policyOrMaxAgeMs === 'number'
+      ? { ...market?.freshnessPolicy, maxMarketDataAgeMs: policyOrMaxAgeMs }
+      : (policyOrMaxAgeMs ?? market?.freshnessPolicy);
+  const verdict = evaluateMarketDataFreshness(market ?? 'unknown', nowMs, policy);
+  if (verdict.ok) return null;
+  if (verdict.unresolved) return deny('UNRESOLVED_STATE', verdict.reason);
+  return deny('STALE_MARKET_DATA', `[${verdict.action}] ${verdict.reason}`);
 }
 
 export function checkFeeSchedule(input: PolyFeeScheduleState | 'unknown' | undefined, intent: PolyOrderIntent): PolyRiskVerdict | null {

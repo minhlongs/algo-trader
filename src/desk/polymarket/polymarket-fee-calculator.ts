@@ -4,8 +4,12 @@
  * category rates re-exported from the execution layer.
  */
 
+import { CLOB_V2_MAX_BASE_FEE_BPS } from './polymarket-clob-v2-fee-categories';
+import { roundFeePusd } from './clob-v2-fee-reconciler';
+
 export * from './polymarket-clob-v2-fee-categories';
 export * from '../execution/polymarket-clob-v2-fee-math';
+export * from './clob-v2-fee-reconciler';
 
 export interface PolymarketFeeSchedule {
   /** Curve exponent the exchange applies. Live value: 1 (linear in p*(1-p)). */
@@ -29,6 +33,8 @@ export const EXEMPT_FEE_SCHEDULE: PolymarketFeeSchedule = Object.freeze({
   rebateRate: 0,
 }) as PolymarketFeeSchedule;
 
+const STATUTORY_MAX_RATE = CLOB_V2_MAX_BASE_FEE_BPS / 10_000;
+
 /** Clamp a probability into the open interval the exchange prices on. */
 function clampPrice(price: number): number {
   if (!Number.isFinite(price)) return 0;
@@ -38,14 +44,28 @@ function clampPrice(price: number): number {
 }
 
 /**
- * Taker fee in USDC **per share** at `price`: `rate * (p * (1 - p)) ^ exponent`.
+ * Taker fee in USDC **per share** at `price`: `rate * (p * (1 - p)) ^ exponent`,
+ * capped at the CLOB V2 statutory base fee ceiling (1000 bps = 10%).
  */
 export function calcTakerFeePerShare(schedule: PolymarketFeeSchedule, price: number): number {
   const p = clampPrice(price);
   if (schedule.rate <= 0) return 0;
   const curve = Math.pow(p * (1 - p), schedule.exponent);
   if (!Number.isFinite(curve) || curve <= 0) return 0;
-  return schedule.rate * curve;
+  return Math.min(schedule.rate * curve, STATUTORY_MAX_RATE);
+}
+
+/**
+ * Rounded total taker fee in pUSD for `contracts` shares at `price` (5 decimals, 0.00001 floor).
+ */
+export function calcRoundedTakerFeePusd(
+  schedule: PolymarketFeeSchedule,
+  price: number,
+  contracts: number,
+  postOnly = false,
+): number {
+  if (postOnly || !Number.isFinite(contracts) || contracts <= 0) return 0;
+  return roundFeePusd(contracts * calcTakerFeePerShare(schedule, price));
 }
 
 /**

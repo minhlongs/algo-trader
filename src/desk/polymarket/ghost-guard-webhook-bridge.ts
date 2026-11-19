@@ -1,19 +1,23 @@
 /**
- * `GhostGuard` webhook payload handler and loopback HTTP receiver (`127.0.0.1`).
+ * `GhostGuard` webhook payload handler and authenticated HTTP receiver.
  *
- * Any `FillVerdict::Ghost`, `FillVerdict::Timeout`, or `GhostFillEvent` immediately
- * invokes `killSwitch.fire(...)` synchronously latching `PolyKillSwitch` and issuing
- * CLOB `DELETE /cancel-all` on the first trigger.
+ * Any authenticated `FillVerdict::Ghost`, `FillVerdict::Timeout`, or `GhostFillEvent`
+ * immediately invokes `killSwitch.fire(...)` synchronously latching `PolyKillSwitch`
+ * and issuing CLOB `DELETE /cancel-all` on the first trigger.
  */
 
 import { createServer } from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
 import type { PolyKillSwitch } from '../risk/poly-kill-switch';
+import { createGhostGuardHmacVerifier, hasUsableKeyRing } from './ghost-guard-auth';
 import {
   LOOPBACK_HOSTS,
+  MAX_WEBHOOK_BODY_BYTES,
   guardLoopbackAndAuth,
+  readLatchSnapshot,
   readWebhookBody,
   sendWebhookJson,
+  writeLatchSnapshot,
 } from './ghost-guard-http-helpers';
 import {
   createEmptyGhostGuardStats,
@@ -76,9 +80,7 @@ export async function handleGhostGuardPayload(
 
   const fireReason = `ghost-guard:${verdictKind}:tx=${data.tx_hash}:reason=${reason}`;
   // Fire synchronously before awaiting so killSwitch.isFired() latches immediately.
-  const firePromise = killSwitch.fire(fireReason);
-  const fireResult = await firePromise;
-
+  const fireResult = await killSwitch.fire(fireReason);
   if (fireResult.issued) stats.killSwitchFires += 1;
   else stats.idempotentReplays += 1;
   stats.lastTriggeredReason = fireReason;
@@ -100,49 +102,74 @@ export async function startGhostGuardWebhookServer(
 ): Promise<GhostGuardWebhookServer> {
   const host = options.host ?? '127.0.0.1';
   const port = options.port ?? 0;
-  if (!LOOPBACK_HOSTS.has(host) && (!options.authToken || options.authToken.trim().length === 0)) {
-    throw new Error(`Refusing to bind GhostGuard webhook server to non-loopback host "${host}" without authToken`);
+  const maxBodyBytes = options.maxBodyBytes ?? MAX_WEBHOOK_BODY_BYTES;
+  const hasBearer = Boolean(options.authToken && options.authToken.trim().length > 0);
+  const hasHmac = Boolean(options.hmacAuth && hasUsableKeyRing(options.hmacAuth.keyRing));
+
+  if (options.requireHmac && !hasHmac) {
+    throw new Error('Refusing to start GhostGuard webhook server with requireHmac=true and no usable keyRing');
+  }
+  if (!LOOPBACK_HOSTS.has(host) && !hasBearer && !hasHmac) {
+    throw new Error(`Refusing to bind GhostGuard webhook server to non-loopback host "${host}" without authToken or hmacAuth`);
+  }
+  if (options.latchStatePath) {
+    const snap = await readLatchSnapshot(options.latchStatePath);
+    if (snap?.latched && !options.killSwitch.isFired()) {
+      await options.killSwitch.fire(snap.reason ?? 'ghost-guard:rehydrated-latch');
+    }
   }
 
+  const verifier = options.hmacAuth ? createGhostGuardHmacVerifier(options.hmacAuth) : undefined;
   const stats: GhostGuardBridgeStats = createEmptyGhostGuardStats();
   const sockets = new Set<Socket>();
 
   const server = createServer(async (req, res) => {
     const pathname = (req.url ?? '/').split('?')[0];
-    if (!guardLoopbackAndAuth(req, res, host, options.authToken, stats)) return;
+    if (!guardLoopbackAndAuth(req, res, host, options.authToken, stats, Boolean(verifier))) return;
     if (req.method === 'GET' && pathname === '/health') {
       sendWebhookJson(res, 200, { ok: true, latched: options.killSwitch.isFired() });
       return;
     }
-    if (req.method !== 'POST') {
-      sendWebhookJson(res, 405, { ok: false, error: 'Method Not Allowed' });
-      return;
-    }
-    if (pathname !== '/ghost-alert') {
-      sendWebhookJson(res, 404, { ok: false, error: 'Not Found' });
-      return;
-    }
+    if (req.method !== 'POST') return sendWebhookJson(res, 405, { ok: false, error: 'Method Not Allowed' });
+    if (pathname !== '/ghost-alert') return sendWebhookJson(res, 404, { ok: false, error: 'Not Found' });
     if (!/^application\/json\b/i.test(String(req.headers['content-type'] ?? ''))) {
       stats.invalidPayloads += 1;
-      sendWebhookJson(res, 415, { ok: false, error: 'Expected application/json content-type' });
-      return;
+      return sendWebhookJson(res, 415, { ok: false, error: 'Expected application/json content-type' });
     }
-    const readRes = await readWebhookBody(req);
+    const readRes = await readWebhookBody(req, maxBodyBytes);
     if (!readRes.ok) {
       stats.invalidPayloads += 1;
-      sendWebhookJson(res, readRes.status, { ok: false, error: readRes.error }, true);
-      return;
+      return sendWebhookJson(res, readRes.status, { ok: false, error: readRes.error }, true);
+    }
+    if (verifier) {
+      const preCheck = verifier.verifyHeadersPreBody(req.headers);
+      if (!preCheck.ok) {
+        stats.unauthorizedRequests += 1;
+        return sendWebhookJson(res, 401, { ok: false, error: preCheck.error });
+      }
     }
     let decoded: unknown;
     try { decoded = JSON.parse(readRes.body); }
     catch {
       stats.invalidPayloads += 1;
-      sendWebhookJson(res, 400, { ok: false, error: 'Malformed JSON body' });
-      return;
+      return sendWebhookJson(res, 400, { ok: false, error: 'Malformed JSON body' });
+    }
+    if (verifier) {
+      const authRes = verifier.verifyAndConsume(req.headers, decoded);
+      if (!authRes.ok) {
+        stats.unauthorizedRequests += 1;
+        if (authRes.isReplay) stats.replayRejections += 1;
+        return sendWebhookJson(res, 401, { ok: false, error: authRes.error });
+      }
     }
     const result = await handleGhostGuardPayload(decoded, options.killSwitch, {
       stats, onGhostFill: options.onGhostFill, nowMs: options.nowMs,
     });
+    if (result.ok && result.latched && options.latchStatePath) {
+      await writeLatchSnapshot(options.latchStatePath, {
+        latched: true, reason: result.fireReason, txHash: result.txHash, updatedAtMs: Date.now(),
+      });
+    }
     sendWebhookJson(res, result.ok ? 200 : 400, { ...result });
   });
 

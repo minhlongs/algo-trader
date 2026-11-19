@@ -78,8 +78,31 @@ export interface GhostGuardBridgeStats {
   idempotentReplays: number;
   invalidPayloads: number;
   unauthorizedRequests: number;
+  replayRejections: number;
   lastTriggeredReason?: string;
   lastTxHash?: string;
+}
+
+export interface GhostGuardHmacAuthOptions {
+  /** Active and rotated HMAC-SHA256 secrets keyed by `X-GhostGuard-Key-Id`. */
+  keyRing: Readonly<Record<string, string>>;
+  /** Allowed `X-GhostGuard-Source` values (if provided and non-empty, strictly enforced). */
+  allowedSources?: readonly string[];
+  /** Maximum permitted clock skew in milliseconds (default 30_000). */
+  maxSkewMs?: number;
+  /** Nonce replay-cache TTL in milliseconds (default max(60_000, 2 * maxSkewMs)). */
+  nonceTtlMs?: number;
+  /** Maximum cached nonce entries before oldest entries are evicted (default 10_000). */
+  maxNonceEntries?: number;
+  /** Wall-clock epoch ms provider for timestamp checks (defaults to `Date.now`). */
+  nowEpochMs?: () => number;
+}
+
+export interface GhostGuardLatchSnapshot {
+  latched: boolean;
+  reason?: string;
+  txHash?: string;
+  updatedAtMs: number;
 }
 
 export interface GhostGuardAlertSummary {
@@ -115,6 +138,13 @@ export interface GhostGuardWebhookServerOptions {
   killSwitch: PolyKillSwitch;
   onGhostFill?: (alert: GhostGuardAlertSummary) => void;
   authToken?: string;
+  hmacAuth?: GhostGuardHmacAuthOptions;
+  /** When true, server refuses to start unless `hmacAuth` is configured. */
+  requireHmac?: boolean;
+  /** Maximum accepted JSON request body bytes (default 16_384). */
+  maxBodyBytes?: number;
+  /** Optional JSON file path used to persist and rehydrate kill-switch latch state across restarts. */
+  latchStatePath?: string;
   nowMs?: () => number;
 }
 
@@ -137,5 +167,6 @@ export function createEmptyGhostGuardStats(): GhostGuardBridgeStats {
     idempotentReplays: 0,
     invalidPayloads: 0,
     unauthorizedRequests: 0,
+    replayRejections: 0,
   };
 }
