@@ -1,0 +1,17 @@
+# Bounded log rotation for Polymarket L2 Collector (POLY-G7.4)
+# Install path: /etc/logrotate.d/poly-collector
+
+/var/log/poly-collector/*.log /var/log/poly-collector/*.jsonl {
+    daily
+    rotate 14
+    maxsize 100M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
+    su polycollector polycollector
+    create 0640 polycollector polycollector
+}

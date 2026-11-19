@@ -1,48 +1,31 @@
 /**
- * Polymarket G7.2b Machine-Readable IC KPI Scorecard CLI
+ * Polymarket G7.2b / G7.5 Machine-Readable IC KPI Scorecard CLI
  *
  * Usage:
  *   npx tsx scripts/poly-g7-scorecard.ts
  *   npx tsx scripts/poly-g7-scorecard.ts --input path/to/scorecard-input.json
+ *   npx tsx scripts/poly-g7-scorecard.ts --l2-dir data/polymarket/l2-wal --market-blind-ledger data/polymarket/market-blind.jsonl
  *
  * Without `--input`, inspects workspace empirical sample directories (defaulting
  * fail-closed to 0 recorded L2 WAL days, 0 qualifying maker fills, and 0 resolved
  * OOS forecasts) and prints the machine-readable JSON scorecard to stdout.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { loadICEvidenceForScorecard } from '../src/desk/polymarket/ic-evidence-loader';
 import {
   evaluateICKpiScorecard,
   type ICEmpiricalSamples,
   type ICScorecardInput,
 } from '../src/desk/polymarket/ic-kpi-scorecard';
 
-function inspectWorkspaceEmpiricalSamples(cwd: string): ICEmpiricalSamples {
-  const l2WalDir = resolve(cwd, 'data/polymarket/l2-wal');
-  let recordedL2Days = 0;
-  if (existsSync(l2WalDir)) {
-    const entries = readdirSync(l2WalDir);
-    const distinctDays = new Set(
-      entries
-        .map((name) => /^(\d{4}-\d{2}-\d{2})\.(?:jsonl|ndjson|wal)$/i.exec(name)?.[1])
-        .filter((day): day is string => typeof day === 'string'),
-    );
-    recordedL2Days = distinctDays.size;
-  }
-  return {
-    recordedL2Days,
-    qualifyingMakerFills: 0,
-    resolvedOosForecasts: 0,
-  };
-}
-
-function parseInputPath(argv: readonly string[]): string | null {
-  const idx = argv.indexOf('--input');
+function parseFlagValue(argv: readonly string[], flag: string): string | null {
+  const idx = argv.indexOf(flag);
   if (idx === -1) return null;
   const candidate = argv[idx + 1];
   if (!candidate || candidate.startsWith('--')) {
-    throw new Error('Missing JSON file path after --input');
+    throw new Error(`Missing value after ${flag}`);
   }
   return resolve(process.cwd(), candidate);
 }
@@ -69,14 +52,18 @@ function loadInputFromJson(filePath: string): ICScorecardInput {
 }
 
 function main(): void {
-  const inputPath = parseInputPath(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const inputPath = parseFlagValue(argv, '--input');
+  const l2Dir = parseFlagValue(argv, '--l2-dir') ?? resolve(process.cwd(), 'data/polymarket/l2-wal');
+  const mbLedger =
+    parseFlagValue(argv, '--market-blind-ledger') ?? resolve(process.cwd(), 'data/polymarket/market-blind.jsonl');
+
   const scorecardInput: ICScorecardInput = inputPath
     ? loadInputFromJson(inputPath)
-    : {
-        mode: 'sim',
-        strategyClass: 'mm',
-        samples: inspectWorkspaceEmpiricalSamples(process.cwd()),
-      };
+    : loadICEvidenceForScorecard({
+        l2ArchiveDir: l2Dir,
+        marketBlindLedgerPath: mbLedger,
+      }).scorecardInput;
   const report = evaluateICKpiScorecard(scorecardInput);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }
