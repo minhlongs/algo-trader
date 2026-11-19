@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { WebSocketServer } from 'ws';
 import {
+  encodeRowsToWalFrames,
   runPublicL2CaptureDrill,
   type CaptureRunnerContext,
   type CaptureRunnerResult,
@@ -119,5 +121,77 @@ describe('l2-public-capture-drill', () => {
     expect(report.status).toBe('HOLD');
     expect(report.holdReason).toContain('CRC32C mismatch');
     expect(report.restoreParity.ok).toBe(false);
+  });
+
+  it('encodeRowsToWalFrames encodes book snapshots/deltas and drops overflow or negative timestamps', () => {
+    const seqByAsset = new Map<string, number>();
+    const state = { ordinal: 0 };
+    const frames = encodeRowsToWalFrames(
+      [
+        {
+          t: 1_700_000_000_000,
+          assetId: 'tok-1',
+          eventType: 'book',
+          bids: [{ price: '0.45', size: '50' }, { price: '0.44', size: '1e20' }],
+          asks: [{ price: '0.55', size: '60' }],
+        },
+        {
+          t: 1_700_000_000_100,
+          assetId: 'tok-1',
+          eventType: 'price_change',
+          bids: [{ price: '0.46', size: '10' }],
+          asks: [],
+        },
+        {
+          t: -5,
+          assetId: 'tok-1',
+          eventType: 'price_change',
+          bids: [{ price: '0.47', size: '10' }],
+          asks: [],
+        },
+      ],
+      seqByAsset,
+      state,
+      1_700_000_000_000_000,
+    );
+    expect(frames).toHaveLength(3);
+    expect(state.ordinal).toBe(3);
+  });
+
+  it('captures WAL v3 frames from a local loopback WebSocket fallback and passes restore parity', async () => {
+    const wss = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    await new Promise<void>((res) => wss.once('listening', () => res()));
+    const addr = wss.address();
+    const port = typeof addr === 'object' && addr ? addr.port : 0;
+    wss.on('connection', (socket) => {
+      socket.on('message', () => {
+        socket.send(
+          JSON.stringify({
+            event_type: 'book',
+            market: '0xmkt-loopback',
+            asset_id: 'tok-loopback',
+            timestamp: '1700000000000',
+            bids: [{ price: '0.48', size: '100' }],
+            asks: [{ price: '0.52', size: '120' }],
+          }),
+        );
+        socket.send('not-valid-json');
+      });
+    });
+    try {
+      const report = await runPublicL2CaptureDrill({
+        outDir,
+        durationSec: 1,
+        preferPolyBook: false,
+        tokenIds: ['tok-loopback'],
+        wsUrl: `ws://127.0.0.1:${port}`,
+      });
+      expect(report.status).toBe('CAPTURE_READY');
+      expect(report.backend).toBe('ws-fallback');
+      expect(report.restoreParity.ok).toBe(true);
+      expect(report.restoreParity.originalContinuity?.validFrames).toBeGreaterThanOrEqual(2);
+    } finally {
+      await new Promise<void>((res) => wss.close(() => res()));
+    }
   });
 });

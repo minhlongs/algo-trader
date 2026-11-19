@@ -54,6 +54,9 @@ const sha256 = (data: Buffer | string): string => createHash('sha256').update(da
 function collectArchiveFiles(dir: string, out: string[]): void {
   if (!existsSync(dir)) return;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) {
+      throw new Error(`L2 archive symlink rejected: ${join(dir, entry.name)}`);
+    }
     const full = join(dir, entry.name);
     if (entry.isDirectory()) collectArchiveFiles(full, out);
     else if (entry.isFile() && ARCHIVE_EXTENSIONS.has(extname(entry.name).toLowerCase())) out.push(full);

@@ -1,9 +1,4 @@
-/**
- * Bounded read-only Polymarket L2 public capture drill (zero API keys, zero wallets,
- * zero order endpoints). Runs `poly-book` (`ingest --auto-rotate --parquet`) or a
- * bounded public WebSocket fallback writing WAL v3 segments, then verifies SHA-256
- * archive manifest and restore/replay parity.
- */
+/** Bounded read-only Polymarket L2 public capture drill (WAL v3 + SHA-256 manifest + restore parity). */
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -88,16 +83,18 @@ async function discoverPublicTokens(gammaUrl: string): Promise<string[]> {
   return tokens;
 }
 
-function encodeRowsToWalFrames(rows: readonly RecordedL2Row[], seqByAsset: Map<string, number>, state: { ordinal: number }, nowUs: number): Uint8Array[] {
+export function encodeRowsToWalFrames(rows: readonly RecordedL2Row[], seqByAsset: Map<string, number>, state: { ordinal: number }, nowUs: number): Uint8Array[] {
   const frames: Uint8Array[] = [];
   for (const row of rows) {
     const emit = (kind: 'Snapshot' | 'Delta', side: 'Bid' | 'Ask', price: string, size: string, seq: number): void => {
       const pRaw = Math.round(Number(price) * 10_000), sNum = Number(size);
-      if (!Number.isInteger(pRaw) || pRaw < 0 || pRaw > 10_000 || !Number.isFinite(sNum) || sNum < 0) return;
-      const sRaw = BigInt(Math.round(sNum * 1_000_000));
+      const scaledSize = Math.round(sNum * 1_000_000);
+      const exchangeUs = row.t * 1_000;
+      if (!Number.isInteger(pRaw) || pRaw < 0 || pRaw > 10_000 || !Number.isSafeInteger(scaledSize) || scaledSize < 0 || row.t < 0 || !Number.isSafeInteger(exchangeUs)) return;
+      const sRaw = BigInt(scaledSize);
       const rec: PolyBookPersistedRecord = {
         tag: 'Book', assetId: row.assetId, kind, side, priceRaw: pRaw, price: formatFixedPrice(pRaw), sizeRaw: sRaw, size: formatFixedSize(sRaw),
-        provenance: { recvTimestampUs: nowUs, exchangeTimestampUs: row.t * 1_000, source: 'WebSocket', sequence: seq, ingestOrdinal: ++state.ordinal },
+        provenance: { recvTimestampUs: nowUs, exchangeTimestampUs: exchangeUs, source: 'WebSocket', sequence: seq, ingestOrdinal: ++state.ordinal },
       };
       frames.push(encodePolyBookWalFrame(encodePolyBookWalRecord(rec)));
     };
@@ -143,8 +140,13 @@ async function runPublicWsFallback(ctx: CaptureRunnerContext, wsUrl: string, gam
       pingTimer = setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.send('PING'); }, 10_000);
     });
     ws.addEventListener('message', (evt) => {
-      const nowMs = Date.now(), rows = normalizeMarketMessage(typeof evt.data === 'string' ? evt.data : String(evt.data), nowMs);
-      if (rows.length > 0) frames.push(...encodeRowsToWalFrames(rows, seqByAsset, state, nowMs * 1_000));
+      try {
+        const nowMs = Date.now(), rows = normalizeMarketMessage(typeof evt.data === 'string' ? evt.data : String(evt.data), nowMs);
+        if (rows.length > 0) frames.push(...encodeRowsToWalFrames(rows, seqByAsset, state, nowMs * 1_000));
+      } catch (err: unknown) {
+        wsError = err instanceof Error ? err.message : String(err);
+        finish();
+      }
     });
     ws.addEventListener('error', () => { wsError = 'websocket_connection_error'; finish(); });
     ws.addEventListener('close', finish);

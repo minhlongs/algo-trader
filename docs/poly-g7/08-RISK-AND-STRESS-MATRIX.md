@@ -61,7 +61,7 @@ Implemented in `src/desk/polymarket/quant-stress-and-bootstrap.ts` (`CODE VERIFI
    - Computes per-period Sharpe, sample skewness, and sample kurtosis (`src/desk/backtesting/metrics-calculator-robustness.ts`), then evaluates `deflatedSharpeRatio` (`src/desk/backtesting/deflated-sharpe.ts`) adjusting for multiple-testing bias across `nTrials` strategy/parameter configurations and non-normal higher moments.
    - Annualizes observed Sharpe and expected maximum Sharpe under the null by `sqrt(periodsPerYear)` (default `252`).
    - **IC KPI #2 Gate:** `Sortino >= 2.0` AND `Deflated Sharpe >= 1.5` (`CODE VERIFIED`, `ic-kpi-scorecard.ts:115`).
-3. **Current Empirical Verdict:** `STRESS_RESILIENCE = INSUFFICIENT_DATA`, `EXECUTION_SAFETY = INSUFFICIENT_DATA` (empirical sample floor unmet in `ic-kpi-scorecard.ts`; `UNKNOWN — INSUFFICIENT EMPIRICAL SAMPLE`).
+3. **Current Empirical Verdict:** `ECONOMIC_G11 = HOLD` (`MAKER_ALPHA`, `NEGRISK_ALPHA`, `MARKET_BLIND_ALPHA` = `INSUFFICIENT_DATA`; empirical sample floor unmet in `ic-kpi-scorecard.ts`; `UNKNOWN — INSUFFICIENT EMPIRICAL SAMPLE`).
 
 ---
 

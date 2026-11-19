@@ -171,7 +171,7 @@ Captured directly from this worktree on 2026-11-19 (`CODE VERIFIED`):
 
 ## 4. Alignment with Executive 10-Verdict Summary
 
-The CLI `verdicts` object governs the empirical and capital-release gates (`30_DAY_L2_DATA`, `MAKER_ALPHA`, `NEGRISK_ALPHA`, `MARKET_BLIND_ALPHA`, `ECONOMIC_G11`, `LEGAL_G12`, `FOUNDER_G13`, `REAL_MONEY_TRADING`), plus the runtime stress/safety sub-gates (`STRESS_RESILIENCE`, `EXECUTION_SAFETY`) (`CODE VERIFIED`). Combined with the two pre-empirical readiness verdicts in `00-EXECUTIVE-VERDICT.md` (`ARCHITECTURE_PARITY: PASS`, `L2_CAPTURE_READINESS: PASS`), all 10 Executive Verdicts remain mutually consistent (`CODE VERIFIED`).
+The CLI `verdicts` object emits all 10 canonical Executive Verdicts (`ARCHITECTURE_PARITY`, `L2_CAPTURE_READINESS`, `30_DAY_L2_DATA`, `MAKER_ALPHA`, `NEGRISK_ALPHA`, `MARKET_BLIND_ALPHA`, `ECONOMIC_G11`, `LEGAL_G12`, `FOUNDER_G13`, `REAL_MONEY_TRADING`), aligning identically with `00-EXECUTIVE-VERDICT.md` and `11-FOUNDER-DECISION-GATE.md` (`CODE VERIFIED`).
 
 ---
 

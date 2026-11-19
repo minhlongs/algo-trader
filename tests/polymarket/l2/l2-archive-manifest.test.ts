@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cp, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -140,5 +140,15 @@ describe('l2-archive-manifest', () => {
     expect(parity.replayHashMatched).toBe(false);
     expect(parity.continuityOk).toBe(false);
     expect(parity.error).toContain('CRC32C mismatch');
+  });
+
+  it('rejects symbolic links inside L2 archive directory', async () => {
+    const walDir = join(rootDir, 'wal');
+    await mkdir(walDir, { recursive: true });
+    const target = join(rootDir, 'outside.wal');
+    await writeFile(target, buildValidWalSegment());
+    await symlink(target, join(walDir, 'segment_00000000000000000000.wal'));
+
+    expect(() => buildL2ArchiveManifest(rootDir)).toThrow(/symlink rejected/i);
   });
 });

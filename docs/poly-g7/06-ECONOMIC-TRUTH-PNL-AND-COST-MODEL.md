@@ -64,7 +64,7 @@ Polymarket liquidity rewards are discretionary and can be cut or re-weighted wit
 - `netEconomicPnlExRewardsPusd = grossClosedTradingPnlPusd + makerRebatesPusd - totalCostsPusd`
 - `isRewardsDependent = netEconomicPnlPusd > 0 && netEconomicPnlExRewardsPusd <= 0` (`CODE VERIFIED`, `economic-truth-pnl.ts:155–177`).
 
-Under IC KPI #9 (`ic-kpi-scorecard.ts:122`), a strategy MUST remain strictly net-positive (`> 0 pUSD`) even after a **`-50%` liquidity rewards haircut** (`LIQUIDITY_REWARDS_MINUS_50PCT` in `quant-stress-and-bootstrap.ts:180`; `CODE VERIFIED`). If `isRewardsDependent === true`, the strategy is classified as subsidy-farming rather than durable alpha and cannot pass `ECONOMIC_G11`.
+Under IC KPI #9 (`ic-kpi-scorecard.ts:129`), a strategy MUST remain strictly net-positive (`> 0 pUSD`) even after a **`-50%` liquidity rewards haircut** (`LIQUIDITY_REWARDS_MINUS_50PCT` in `quant-stress-and-bootstrap.ts:180`; `CODE VERIFIED`). If `isRewardsDependent === true`, the strategy is classified as subsidy-farming rather than durable alpha and cannot pass `ECONOMIC_G11`.
 
 ---
 
