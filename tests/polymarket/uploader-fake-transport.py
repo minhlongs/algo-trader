@@ -35,6 +35,11 @@ manifest = "manifest" in key
 with (root / "calls.jsonl").open("a") as log:
     log.write(json.dumps({"op": operation, "key": key, "conditional": "--if-none-match" in args}) + "\n")
 
+if mode == "timeout":
+    with (root / "child-pids").open("a") as log:
+        log.write(str(os.getpid()) + "\n")
+    time.sleep(30)
+
 if put:
     if source is None:
         sys.exit("missing source path")

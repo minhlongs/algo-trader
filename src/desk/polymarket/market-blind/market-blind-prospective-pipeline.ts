@@ -21,7 +21,7 @@ export class ProspectivePipelineLedger {
   get commitsByQuestion(): ReadonlyMap<string, readonly ProspectiveCommitReceipt[]> { return new Map([...this.questions].map(([q, values]) => [q, [...values]])); }
   get snapshots(): ReadonlyMap<string, PostCommitMarketSnapshotRecord> { return new Map(this.prices); }
   get resolutions(): ReadonlyMap<string, MarketBlindResolutionAuditRecord> { return new Map(this.outcomes); }
-  constructor(store: MarketBlindAppendOnlyStore = createInMemoryAppendOnlyStore()) {
+  constructor(store: MarketBlindAppendOnlyStore = createInMemoryAppendOnlyStore(), private readonly nowMs: () => number = Date.now) {
     this.journal = new MarketBlindJournal(store);
     try {
       for (const r of this.journal.records) {
@@ -46,7 +46,7 @@ export class ProspectivePipelineLedger {
   static hydrateFromStore(store: MarketBlindAppendOnlyStore): ProspectivePipelineLedger { return new ProspectivePipelineLedger(store); }
   commit(input: CommitPayload): ProspectiveCommitReceipt {
     this.journal.assertHealthy();
-    const p = commitPayloadSchema.parse(input), staged = this.cloneInner(), receipt = this.prepareCommit(p, staged);
+    const p = commitPayloadSchema.parse({ ...input, recordedAtMs: this.nowMs() }), staged = this.cloneInner(), receipt = this.prepareCommit(p, staged);
     this.journal.append('FORECAST_COMMIT', { ...p, forecastId: receipt.forecastId, forecastEntryHash: receipt.entryHash, forecastPrevEntryHash: receipt.prevChainHash });
     this.inner = staged; this.indexCommit(receipt); return receipt;
   }

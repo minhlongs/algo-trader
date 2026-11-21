@@ -43,7 +43,7 @@ export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, 
   }
   const scored: Array<{ commit: ProspectiveCommitReceipt; res: MarketBlindResolutionAuditRecord }> = [];
   let voidedCount = 0, cancelledCount = 0, umaDisputedCount = 0, pendingCount = 0;
-  let hindcastDetected = ledger.hasHindcastViolation(), excludedMetadata = 0, excludedBeforeApproval = 0;
+  let hindcastDetected = ledger.hasHindcastViolation(), excludedMetadata = 0, excludedBeforeApproval = 0, excludedUnattested = 0;
   for (const c of selected.values()) {
     const r = ledger.resolutions.get(c.entryHash), s = ledger.snapshots.get(c.entryHash);
     if (s && s.marketReadAtMs < c.committedAtMs) hindcastDetected = true;
@@ -52,11 +52,16 @@ export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, 
     if (r.status === 'VOIDED') { voidedCount += 1; continue; }
     if (r.status === 'CANCELLED') { cancelledCount += 1; continue; }
     if (r.status === 'UMA_DISPUTED') { umaDisputedCount += 1; continue; }
+    if (!Number.isFinite(c.recordedAtMs) || c.recordedAtMs! <= 0 || c.recordedAtMs! >= r.resolvedAtMs) {
+      excludedUnattested += 1;
+      if (strict) continue;
+    }
     if (strict && (!hasEmpiricalMetadata(c) || !s || synthetic(s.source))) { excludedMetadata += 1; continue; }
     if (strict && policy.success && c.committedAtMs < policy.data.approvedAtMs) { excludedBeforeApproval += 1; continue; }
     if (r.outcome !== null && r.marketProb !== null) scored.push({ commit: c, res: r });
   }
   const globalBlock = reasons.some((r) => r !== 'DIAGNOSTIC_ONLY');
+  if (excludedUnattested) reasons.push('UNATTESTED_OR_BACKFILL_FORECASTS_EXCLUDED');
   if (excludedMetadata) reasons.push('FORECASTS_WITHOUT_REAL_PROVENANCE_OR_METADATA_EXCLUDED');
   if (excludedBeforeApproval) reasons.push('PRE_APPROVAL_FORECASTS_EXCLUDED');
   if (hindcastDetected) reasons.push('HINDCAST_DETECTED');

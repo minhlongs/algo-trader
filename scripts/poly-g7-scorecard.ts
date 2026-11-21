@@ -4,7 +4,7 @@
  * Usage:
  *   npx tsx scripts/poly-g7-scorecard.ts
  *   npx tsx scripts/poly-g7-scorecard.ts --input path/to/scorecard-input.json
- *   npx tsx scripts/poly-g7-scorecard.ts --l2-dir data/polymarket/l2-wal --market-blind-ledger data/polymarket/market-blind.jsonl
+ *   npx tsx scripts/poly-g7-scorecard.ts --l2-dir data/polymarket/l2-wal --market-blind-ledger data/polymarket/market-blind-prospective.jsonl
  *
  * Without `--input`, inspects workspace empirical sample directories (defaulting
  * fail-closed to 0 recorded L2 WAL days, 0 qualifying maker fills, and 0 resolved
@@ -75,7 +75,7 @@ function main(): void {
   const inputPath = parseFlagValue(argv, '--input');
   const l2Dir = parseFlagValue(argv, '--l2-dir') ?? resolve(process.cwd(), 'data/polymarket/l2-wal');
   const mbLedger =
-    parseFlagValue(argv, '--market-blind-ledger') ?? resolve(process.cwd(), 'data/polymarket/market-blind.jsonl');
+    parseFlagValue(argv, '--market-blind-ledger') ?? resolve(process.cwd(), 'data/polymarket/market-blind-prospective.jsonl');
   const mbCheckpoint = parseFlagValue(argv, '--market-blind-checkpoint');
   const mbPolicy = parseJsonFlag<ApprovedRepeatedForecastPolicy>(argv, '--market-blind-policy');
   const l2Policy = parseJsonFlag<L2CoveragePolicy>(argv, '--l2-policy');

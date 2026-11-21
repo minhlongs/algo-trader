@@ -16,6 +16,13 @@ function fixture() {
     { cwd: projectRoot, encoding: 'utf8', timeout: 10000 }) };
 }
 describe('local market-blind logger CLI', () => {
+  it('uses the same canonical default ledger in both CLIs', () => {
+    const logger = readFileSync(loggerScript, 'utf8');
+    const scorecard = readFileSync(join(projectRoot, 'scripts/poly-g7-scorecard.ts'), 'utf8');
+    const canonical = 'data/polymarket/market-blind-prospective.jsonl';
+    expect(logger).toContain(`const DEFAULT_LEDGER_PATH = '${canonical}'`);
+    expect(scorecard).toContain(`resolve(process.cwd(), '${canonical}')`);
+  });
   it('wires independent checkpoint, forecast metadata and approval-bound empirical status without market calls', () => {
     const f = fixture();
     const committed = f.run('commit', '--question-id', 'q1', '--raw-prob', '0.6', '--evidence', 'Official document.', '--model-version', 'model-v1',
@@ -28,7 +35,7 @@ describe('local market-blind logger CLI', () => {
     expect(existsSync(`${f.ledger}.checkpoint.json`)).toBe(false);
     const price = f.run('attach-price', '--entry-hash', receipt.entryHash, '--market-prob', '0.5', '--read-at-ms', '1100', '--source', 'official-market-feed');
     expect(price.status, price.stderr).toBe(0);
-    const resolution = f.run('resolve', '--entry-hash', receipt.entryHash, '--status', 'RESOLVED_YES', '--resolved-at-ms', '2000');
+    const resolution = f.run('resolve', '--entry-hash', receipt.entryHash, '--status', 'RESOLVED_YES', '--resolved-at-ms', String(Date.now() + 60000));
     expect(resolution.status, resolution.stderr).toBe(0);
     const noPolicy = f.run('status', '--mode', 'empirical', '--model-version', 'model-v1');
     expect(JSON.parse(noPolicy.stdout)).toMatchObject({ resolvedEligibleCount: 0, empiricalEligible: false });

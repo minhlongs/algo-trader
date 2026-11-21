@@ -12,7 +12,7 @@ export interface ProspectiveCommitInput {
   forecastHorizonMs?: number; provenance?: ForecastProvenance;
 }
 export interface ProspectiveCommitReceipt {
-  readonly entryHash: string; readonly prevChainHash: string; readonly committedAtMs: number; readonly modelVersion: string;
+  readonly entryHash: string; readonly prevChainHash: string; readonly committedAtMs: number; readonly recordedAtMs?: number; readonly modelVersion: string;
   readonly promptVersion: string; readonly questionId: string; readonly category: string; readonly pRaw: number;
   readonly contextHash: string; readonly sealedReceipt: SealedForecastReceipt; readonly forecastId: string;
   readonly researchQuestionId?: string; readonly eventId?: string; readonly marketId?: string;
@@ -51,7 +51,7 @@ const probability = z.number().gt(0).lt(1);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const commitPayloadSchema = z.object({
   questionId: identifier, category: identifier, pRaw: probability, modelVersion: identifier, promptVersion: identifier,
-  committedAtMs: timestamp, contextHash: hash, forecastId: identifier.optional(), researchQuestionId: identifier.optional(),
+  committedAtMs: timestamp, recordedAtMs: timestamp.optional(), contextHash: hash, forecastId: identifier.optional(), researchQuestionId: identifier.optional(),
   eventId: identifier.optional(), marketId: identifier.optional(), forecastHorizonMs: timestamp.optional(),
   provenance: z.object({ kind: z.enum(['REAL', 'SYNTHETIC']), source: identifier, reference: identifier }).strict().optional(),
 }).strict();

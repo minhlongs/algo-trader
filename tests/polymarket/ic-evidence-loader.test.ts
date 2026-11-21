@@ -136,7 +136,7 @@ describe('IC Evidence Loader (POLY-G7.5 Phase 5)', () => {
     const ledgerPath = join(root, 'market-blind.jsonl');
     const checkpointPath = join(root, 'trusted-checkpoint.json');
     const store = createNodeJsonlAppendStore(ledgerPath, checkpointPath);
-    const ledger = new ProspectivePipelineLedger(store);
+    const ledger = new ProspectivePipelineLedger(store, () => Date.UTC(2026, 10, 19, 10, 0, 0));
     const baseMs = Date.UTC(2026, 10, 19, 10, 0, 0);
     const approvedAtMs = baseMs - 1_000;
     const policy = {
@@ -218,7 +218,7 @@ describe('IC Evidence Loader (POLY-G7.5 Phase 5)', () => {
     const ledgerPath = join(root, 'market-blind.jsonl');
     const checkpointPath = join(root, 'market-blind.checkpoint.json');
     const store = createNodeJsonlAppendStore(ledgerPath, checkpointPath);
-    const ledger = new ProspectivePipelineLedger(store);
+    const ledger = new ProspectivePipelineLedger(store, () => Date.UTC(2026, 10, 19, 10, 0, 0));
     const baseMs = Date.UTC(2026, 10, 19, 10, 0, 0);
     const policy = {
       policyId: 'policy-g83-tamper-check',

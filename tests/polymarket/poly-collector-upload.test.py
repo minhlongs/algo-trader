@@ -114,6 +114,46 @@ class UploaderTests(unittest.TestCase):
         self.assertFalse(value and value.get("status") in ("SEALED_VERIFIED", "ARCHIVED_VERIFIED"))
         self.assertFalse((self.batch / ".uploaded-verified").exists())
 
+    def test_transport_timeout_reaps_child_and_preserves_source(self):
+        started = time.monotonic()
+        result = self.run_upload(FAKE_MODE="timeout", POLY_UPLOAD_TIMEOUT_SECONDS="0.15")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertLess(time.monotonic() - started, 2)
+        self.assertEqual(self.source.read_bytes(), self.content)
+        self.assertIsNone(self.receipt())
+        pids = (self.remote / "child-pids").read_text().splitlines()
+        self.assertTrue(pids)
+        for pid in pids:
+            with self.assertRaises(ProcessLookupError):
+                os.kill(int(pid), 0)
+
+    def test_unreadable_source_fails_without_receipt(self):
+        original = self.source.stat().st_mode
+        try:
+            self.source.chmod(0)
+            result = self.run_upload()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIsNone(self.receipt())
+        finally:
+            self.source.chmod(original)
+        self.assertEqual(self.source.read_bytes(), self.content)
+
+    def test_read_only_lock_or_receipt_directory_fails_without_receipt(self):
+        for directory in (self.data, self.data / "manifests"):
+            with self.subTest(directory=directory.name):
+                directory.mkdir(exist_ok=True)
+                # An existing lock remains writable when its parent is read-only.
+                (self.data / "upload.lock").unlink(missing_ok=True)
+                original = directory.stat().st_mode
+                try:
+                    directory.chmod(0o500)
+                    result = self.run_upload()
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(self.source.read_bytes(), self.content)
+                    self.assertIsNone(self.receipt())
+                finally:
+                    directory.chmod(original)
+
     def test_dry_run_is_strictly_read_only_even_under_retention_pressure(self):
         old = self.data / "staging/2000-01-01-00"
         old.mkdir()

@@ -1,9 +1,27 @@
 """Conditional-create transport; downloaded bytes, never size/ETag, prove integrity."""
 import hashlib
+import math
 import os
 from pathlib import Path
 import signal
 import subprocess
+
+DEFAULT_TIMEOUT_SECONDS = 120.0
+MIN_TIMEOUT_SECONDS = 0.05
+MAX_TIMEOUT_SECONDS = 3600.0
+
+
+def resolve_timeout_seconds():
+    raw = os.environ.get("POLY_UPLOAD_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_TIMEOUT_SECONDS
+    if not math.isfinite(value):
+        return DEFAULT_TIMEOUT_SECONDS
+    return max(MIN_TIMEOUT_SECONDS, min(value, MAX_TIMEOUT_SECONDS))
 
 
 def sha256_path(path):
@@ -25,7 +43,7 @@ class Transport:
         child = subprocess.Popen(args, stdout=subprocess.DEVNULL,
                                  stderr=subprocess.PIPE, start_new_session=True)
         try:
-            _, error = child.communicate(timeout=120)
+            _, error = child.communicate(timeout=resolve_timeout_seconds())
             return child.returncode, error
         except BaseException:
             # Stop the whole client process group, including its subprocesses.
