@@ -25,7 +25,6 @@ import {
   computeLegScore,
   estimateSlippage,
   buildReason,
-  summarizeExecutionPlan,
 } from './execution-path-scorer';
 
 export * from './execution-path-planner-types';

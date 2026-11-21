@@ -18,7 +18,6 @@ import type {
 import type {
   UnwindHandlerConfig,
   ConnectorResolver,
-  UnwindEventPayload,
 } from './execution/compensatory-unwind-types';
 import {
   normalizeUnwindRequest,

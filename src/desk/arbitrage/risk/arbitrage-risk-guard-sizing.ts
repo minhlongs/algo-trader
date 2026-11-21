@@ -8,7 +8,6 @@ import { logger } from '../../../shared/utils/logger';
 import {
   type ArbitrageRiskConfig,
   type MultiLegArbitrageBasket,
-  type ArbitrageBasketLeg,
   type ArbitrageRiskContext,
   type ArbitrageRiskGateChecks,
   type ArbitrageRiskCheckResult,

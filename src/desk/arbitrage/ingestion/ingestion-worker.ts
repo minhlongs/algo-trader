@@ -4,7 +4,6 @@
  */
 
 import type { ArbitrageOpportunity } from '../spread-detector-types';
-import type { NetProfitabilityAnalysis } from '../net-profitability-calculator';
 import { logger } from '../../../shared/utils/logger';
 import type {
   IngestionMetrics,

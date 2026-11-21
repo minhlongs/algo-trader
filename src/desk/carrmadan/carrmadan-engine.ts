@@ -1,4 +1,4 @@
-import { CarrMadanReplicationResult, CarrMadanReplicationTerms, OptionQuoteStrike } from './carrmadan-types';
+import { CarrMadanReplicationResult, CarrMadanReplicationTerms } from './carrmadan-types';
 
 export class CarrMadanEngine {
   public replicateFairVariance(terms: CarrMadanReplicationTerms): CarrMadanReplicationResult {

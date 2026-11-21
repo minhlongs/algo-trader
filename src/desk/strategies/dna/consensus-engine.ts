@@ -41,11 +41,9 @@ import {
   DEFAULT_DNA_CONFIG,
 } from './multi-tf-types';
 import {
-  DEFAULT_TF_WEIGHTS,
   aggregateTfSignals,
   adjustRegimeConfidence,
   formatConsensusReason,
-  type AggregatedTfVotes,
 } from './consensus-math';
 
 export {

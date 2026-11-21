@@ -11,7 +11,6 @@ import { setProviderHealthScore } from '../../platform/middleware/prometheus-met
 import type {
   SlaTrackerConfig,
   WindowMetrics,
-  SlaWindowReport,
   SlaReport,
 } from './sla-tracker-types';
 import {

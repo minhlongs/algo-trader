@@ -13,7 +13,6 @@ import {
   type MultiLegExecutionPlan,
   type MultiLegExecutionReport,
   type LegExecutionRecord,
-  type LegOrderSpec,
   type ExecutionState,
   calculateMultiLegRealizedPnl,
 } from './atomic-multileg-types';

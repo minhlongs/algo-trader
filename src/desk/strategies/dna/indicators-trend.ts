@@ -19,9 +19,6 @@ import {
   EMA_FAST,
   EMA_MID,
   EMA_SLOW,
-  ADX_PERIOD,
-  ADX_TRENDING_THRESHOLD,
-  ADX_WEAK_THRESHOLD,
   computeEMA,
   computeADX,
 } from './indicators-trend-math';

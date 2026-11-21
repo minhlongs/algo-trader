@@ -8,7 +8,6 @@
 import { MarketDataSource } from './types';
 import type { Candle } from './types';
 import type {
-  OutlierSeverity,
   OutlierEvent,
   OutlierDetectorConfig,
   SymbolStats,
@@ -22,7 +21,6 @@ import {
 } from './outlier-detection-algorithms';
 import {
   DEFAULT_CONFIG,
-  SEVERITY_ORDER,
   appendWindowSample,
   computeMedianValue,
   dispatchOutlierEvent,

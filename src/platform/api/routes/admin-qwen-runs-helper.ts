@@ -2,7 +2,6 @@
  * Admin Qwen Runs Helper — query helpers for Router status and signals-loop runs journal.
  */
 
-import type { Router } from 'express';
 import {
   isQwenEnabled,
   isKillSwitchActive,

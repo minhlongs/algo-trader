@@ -6,7 +6,7 @@
 import { lookup, ADDRCONFIG, V4MAPPED } from 'node:dns';
 import { promisify } from 'node:util';
 import { logger } from '../../shared/utils/logger';
-import type { DnsCacheEntry, PoolConfig } from './http2-pool-types';
+import type { DnsCacheEntry } from './http2-pool-types';
 import { dnsCacheHitsTotal } from './http2-pool-metrics';
 
 const dnsLookup = promisify(lookup);

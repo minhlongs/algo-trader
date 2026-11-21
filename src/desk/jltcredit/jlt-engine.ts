@@ -1,4 +1,4 @@
-import { CreditRating, JltBondParams, JltPricingResult, JltTransitionMatrix } from './jlt-types.js';
+import { CreditRating, JltBondParams, JltPricingResult } from './jlt-types.js';
 import { JltMath } from './jlt-math.js';
 
 export class JltEngine {

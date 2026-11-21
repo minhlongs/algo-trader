@@ -6,7 +6,7 @@
  * @module desk/sandbox/paper-trading-types
  */
 
-import type { BookLevel, OutcomeSide, OrderAction } from '../execution/pm-sor-types';
+import type { OutcomeSide, OrderAction } from '../execution/pm-sor-types';
 
 export interface PaperOrderRequest {
   readonly orderId: string;

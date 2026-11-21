@@ -3,7 +3,7 @@
  * Split from signal-validator.ts (S16 tranche 3). Pure type module, no runtime logic.
  */
 
-import type { SwarmVote, SwarmConsensus } from '../../intelligence/signal-consensus-swarm';
+import type { SwarmVote } from '../../intelligence/signal-consensus-swarm';
 
 export interface SignalCandidate {
   /** Strategy type that generated this signal */

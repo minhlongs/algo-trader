@@ -4,7 +4,7 @@
  * @module desk/arbitrage/execution/multileg-risk-helper
  */
 
-import type { ArbitrageRiskGuard, MultiLegArbitrageBasket } from '../arbitrage-risk-guard';
+import type { MultiLegArbitrageBasket } from '../arbitrage-risk-guard';
 import type { MultiLegArbitrageOrder } from '../execution-types';
 
 /**

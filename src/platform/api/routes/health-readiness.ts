@@ -1,4 +1,3 @@
-import type { Router } from 'express';
 import { Request, Response } from 'express';
 import { getRedisClient } from '../../../redis';
 import { getDbClient } from '../../../shared/db/postgres-client';

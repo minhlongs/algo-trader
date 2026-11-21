@@ -24,7 +24,6 @@ import {
   formatGatesCheck,
   formatLedgerCheck,
   pass,
-  renderDoctorReport,
 } from './system-doctor-helpers';
 
 export {

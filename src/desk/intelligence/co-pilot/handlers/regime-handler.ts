@@ -7,7 +7,6 @@ import type { CopilotResponse } from '../response-formatter';
 import { detectRegime } from '../../../strategies/dna/regime-detector';
 import { fuseSignals } from '../../../intelligence/signal-fusion-engine';
 import type { RegimeSnapshot, TfId, TimeframeIndicators } from '../../../strategies/dna/multi-tf-types';
-import type { SignalInput } from '../../../intelligence/signal-fusion-engine';
 
 export interface RegimeData {
   regime: string;

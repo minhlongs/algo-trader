@@ -1,5 +1,3 @@
-import { DuffieKanParams } from './duffie-kan-types.js';
-
 export class DuffieKanMath {
   public static solveRiccati(
     speedK: number[],
