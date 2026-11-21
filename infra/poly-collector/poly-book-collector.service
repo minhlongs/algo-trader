@@ -12,7 +12,7 @@ Documentation=file:///opt/poly-collector/docs/poly-g7-4/01-COLLECTOR-DEPLOYMENT-
 After=network-online.target time-sync.target
 Wants=network-online.target time-sync.target
 StartLimitIntervalSec=300
-StartLimitBurst=10
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -20,9 +20,9 @@ User=polycollector
 Group=polycollector
 WorkingDirectory=/var/lib/poly-collector
 
-# Least-privilege environment file containing ONLY collector & R2 upload settings.
-# MUST NOT contain wallet private keys, CLOB API keys, or LIVE_TRADING_ENABLED.
-EnvironmentFile=/etc/poly-collector/r2.env
+# Collector has no uploader or cloud credentials; only typed PB__ settings belong here.
+# Không dùng bí mật R2; chỉ cấu hình collector. No wallets, API keys, or trading flags.
+# No EnvironmentFile: do not load the uploader's r2.env into this process.
 
 # Core collector runtime settings (UTC enforced, loopback-only metrics, WAL + Parquet enabled)
 Environment=TZ=UTC
@@ -32,11 +32,19 @@ Environment=PB__WAL__BASE_PATH=/var/lib/poly-collector/wal
 Environment=PB__STORAGE__PARQUET_BASE_PATH=/var/lib/poly-collector/parquet
 Environment=PB__STORAGE__PARQUET_FLUSH_INTERVAL_SECS=300
 Environment=PB__METRICS__LISTEN_ADDR=127.0.0.1:9090
-Environment=PB__API__LISTEN_ADDR=127.0.0.1:3000
+# ingest does not start the read-only API; no API listener is configured here.
 
+# Kiểm tra offline trước khi chạy. Same pinned executable, config and complete ingest argv.
+# ExecCondition exit 1..254 skips startup without an automatic restart loop.
+# Config must be installed explicitly; never fall back to an arbitrary working directory.
+ExecCondition=/opt/poly-collector/bin/poly-book --config /etc/poly-collector/collector.toml ingest \
+  --tokens-file /etc/poly-collector/tokens.txt \
+  --parquet=true \
+  --metrics=true \
+  --validate-only
 # Verify NTP time sync before starting ingest (fail-closed if clock unsynchronized)
-ExecStartPre=/usr/bin/env sh -c 'test "$(/usr/bin/timedatectl show -p NTPSynchronized --value)" = "yes"'
-ExecStart=/opt/poly-collector/bin/poly-book ingest \
+ExecCondition=/usr/bin/env sh -c 'test "$(/usr/bin/timedatectl show -p NTPSynchronized --value)" = "yes"'
+ExecStart=/opt/poly-collector/bin/poly-book --config /etc/poly-collector/collector.toml ingest \
   --tokens-file /etc/poly-collector/tokens.txt \
   --parquet=true \
   --metrics=true
@@ -44,8 +52,10 @@ ExecStart=/opt/poly-collector/bin/poly-book ingest \
 # Graceful shutdown: SIGTERM flushes active WAL segment and Parquet row groups cleanly
 KillSignal=SIGTERM
 TimeoutStopSec=30
-Restart=always
-RestartSec=5
+Restart=on-failure
+RestartSec=10
+# 2 = clap CLI schema error, 78 = EX_CONFIG (missing/invalid config or token universe).
+RestartPreventExitStatus=2 78
 
 # Resource ceilings to prevent host OOM or disk exhaustion
 MemoryMax=2G

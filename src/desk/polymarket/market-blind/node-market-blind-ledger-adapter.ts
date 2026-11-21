@@ -1,52 +1,103 @@
-/**
- * Node.js JSONL File Adapter for `MarketBlindAppendOnlyStore`.
- *
- * Isolated from Worker-safe ledger logic so Cloudflare Workers never bundle `node:fs`.
- * Creates parent directories on demand and writes append-only lines with `0o600` mode.
- */
+/** Local-filesystem adapter. Stale crash locks require operator investigation, never automatic stealing. */
+import { closeSync, existsSync, fchmodSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, rmdirSync, unlinkSync, writeSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { MarketBlindIntegrityError, assertCheckpoint, sameCheckpoint, verifyStoreSnapshot, type MarketBlindAppendOnlyStore, type MarketBlindCheckpoint, type MarketBlindCheckpointStore } from './market-blind-journal';
 
-import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
-import type { MarketBlindAppendOnlyStore } from './market-blind-ledger-store';
-
-/** Creates a durable Node.js JSONL append-only store backed by `filePath`. */
-export function createNodeJsonlAppendStore(filePath: string): MarketBlindAppendOnlyStore {
-  const normalizedPath = filePath.trim();
-  if (normalizedPath.length === 0) {
-    throw new Error('createNodeJsonlAppendStore requires a non-empty filePath');
+function canonicalPath(value: string): string {
+  if (!value.trim()) throw new MarketBlindIntegrityError('A non-empty storage path is required');
+  const path = resolve(value.trim());
+  mkdirSync(dirname(path), { recursive: true });
+  if (existsSync(path) && lstatSync(path).isSymbolicLink()) throw new MarketBlindIntegrityError('Symbolic storage files are unsupported');
+  return join(realpathSync(dirname(path)), basename(path));
+}
+function syncDirectory(path: string): void {
+  const fd = openSync(path, 'r');
+  try { fsyncSync(fd); } finally { closeSync(fd); }
+}
+function writeAll(fd: number, text: string): void {
+  const bytes = Buffer.from(text, 'utf8');
+  let offset = 0;
+  while (offset < bytes.length) {
+    const written = writeSync(fd, bytes, offset, bytes.length - offset);
+    if (written <= 0) throw new MarketBlindIntegrityError('Incomplete write');
+    offset += written;
   }
+}
 
-  let permissionsApplied = false;
-
-  return {
-    appendLine(line: string): void {
-      if (line.includes('\n') || line.includes('\r')) {
-        throw new Error('JSONL appendLine rejects embedded newline characters');
+/** Separate checkpoint location may be supplied; default is a sidecar, not an off-host trust anchor. */
+export function createNodeJsonlAppendStore(filePath: string, checkpointPath = `${filePath}.checkpoint.json`): MarketBlindAppendOnlyStore {
+  const journalPath = canonicalPath(filePath), headPath = canonicalPath(checkpointPath);
+  if (journalPath === headPath || (existsSync(journalPath) && existsSync(headPath)
+    && lstatSync(journalPath).dev === lstatSync(headPath).dev && lstatSync(journalPath).ino === lstatSync(headPath).ino)) {
+    throw new MarketBlindIntegrityError('Checkpoint must be separate from ledger');
+  }
+  const lockPaths = [`${journalPath}.writer-lock`, `${headPath}.writer-lock`].sort();
+  function withLock<T>(action: () => T): T {
+    const held: string[] = [];
+    try {
+      for (const lockPath of lockPaths) {
+        try { mkdirSync(lockPath, { mode: 0o700 }); held.push(lockPath); } catch (error) {
+          throw new MarketBlindIntegrityError(`Exclusive writer lock unavailable: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
-      const parentDir = dirname(normalizedPath);
-      if (!existsSync(parentDir)) {
-        mkdirSync(parentDir, { recursive: true });
-      }
-      appendFileSync(normalizedPath, `${line}\n`, { encoding: 'utf8', mode: 0o600 });
-      if (!permissionsApplied) {
-        chmodSync(normalizedPath, 0o600);
-        permissionsApplied = true;
-      }
-    },
-
+      return action();
+    } finally { for (const lockPath of held.reverse()) rmdirSync(lockPath); }
+  }
+  function readCheckpoint(): MarketBlindCheckpoint | null {
+    if (!existsSync(headPath)) return null;
+    let value: unknown;
+    try { value = JSON.parse(readFileSync(headPath, 'utf8')); } catch {
+      throw new MarketBlindIntegrityError('Malformed terminal checkpoint');
+    }
+    assertCheckpoint(value);
+    return value;
+  }
+  function swapCheckpoint(expected: MarketBlindCheckpoint | null, next: MarketBlindCheckpoint): void {
+    assertCheckpoint(next);
+    if (!sameCheckpoint(readCheckpoint(), expected)) throw new MarketBlindIntegrityError('Concurrent checkpoint change');
+    const temp = `${headPath}.${randomUUID()}.tmp`;
+    let created = false;
+    try {
+      const fd = openSync(temp, 'wx', 0o600); created = true;
+      try { writeAll(fd, `${JSON.stringify(next)}\n`); fsyncSync(fd); } finally { closeSync(fd); }
+      renameSync(temp, headPath); created = false;
+      syncDirectory(dirname(headPath));
+    } finally { if (created) unlinkSync(temp); }
+  }
+  const checkpointStore: MarketBlindCheckpointStore = {
+    readCheckpoint,
+    compareAndSwap: (expected, next) => withLock(() => swapCheckpoint(expected, next)),
+  };
+  const store: MarketBlindAppendOnlyStore = {
+    checkpointStore,
+    appendLine(): void { throw new MarketBlindIntegrityError('Unsealed append unsupported; use appendSealed'); },
     readAllLines(): string[] {
-      if (!existsSync(normalizedPath)) {
-        return [];
-      }
-      const raw = readFileSync(normalizedPath, 'utf8');
-      if (raw.length === 0) {
-        return [];
-      }
-      const lines = raw.split('\n');
-      if (lines.length > 0 && lines[lines.length - 1] === '') {
-        lines.pop();
-      }
-      return lines;
+      if (lockPaths.some((path) => existsSync(path))) throw new MarketBlindIntegrityError('Writer in progress or unrecovered crash lock');
+      return readLines();
+    },
+    appendSealed(line, expected, next): void {
+      if (line.includes('\n') || line.includes('\r')) throw new MarketBlindIntegrityError('JSONL embedded newline');
+      withLock(() => {
+        const snapshot = verifyStoreSnapshot({ readAllLines: readLines, appendLine: store.appendLine, checkpointStore });
+        if (!sameCheckpoint(snapshot.checkpoint, expected)) throw new MarketBlindIntegrityError('Stale writer checkpoint');
+        const value: unknown = JSON.parse(line);
+        const record = value as { seq?: unknown; prevHash?: unknown; entryHash?: unknown };
+        if (!record || record.seq !== snapshot.records.length || record.prevHash !== (snapshot.records.at(-1)?.entryHash ?? '0'.repeat(64))
+          || next.recordCount !== snapshot.records.length + 1 || next.headHash !== record.entryHash) throw new MarketBlindIntegrityError('Stale writer record');
+        const fd = openSync(journalPath, 'a', 0o600);
+        try { fchmodSync(fd, 0o600); writeAll(fd, `${line}\n`); fsyncSync(fd); } finally { closeSync(fd); }
+        syncDirectory(dirname(journalPath));
+        swapCheckpoint(expected, next);
+      });
     },
   };
+  function readLines(): string[] {
+    if (!existsSync(journalPath)) return [];
+    const raw = readFileSync(journalPath, 'utf8');
+    if (!raw) return [];
+    if (!raw.endsWith('\n')) throw new MarketBlindIntegrityError('Unterminated/partial JSONL append');
+    return raw.slice(0, -1).split('\n');
+  }
+  return store;
 }

@@ -10,21 +10,27 @@
  *   integrity errors.
  * - Never fabricates maker fills, NegRisk trades, or hindcast forecasts.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { ICScorecardInput, ICEmpiricalSamples } from './ic-kpi-scorecard';
-import { verifyL2ArchiveManifest, type L2ArchiveManifest } from './l2/l2-archive-manifest';
+import { inspectL2ArchiveCoverage } from './l2/l2-archive-coverage';
+import type { L2CoveragePolicy } from './l2/l2-coverage-policy';
 import { createNodeJsonlAppendStore } from './market-blind/node-market-blind-ledger-adapter';
 import {
   evaluateProspectiveOosReport,
   ProspectivePipelineLedger,
+  type ApprovedRepeatedForecastPolicy,
   type ProspectiveOosReport,
 } from './market-blind/market-blind-prospective-pipeline';
 
 export interface ICEvidenceLoaderOptions {
   readonly l2ArchiveDir?: string;
   readonly marketBlindLedgerPath?: string;
+  readonly marketBlindCheckpointPath?: string;
+  readonly marketBlindPolicy?: ApprovedRepeatedForecastPolicy;
+  readonly marketBlindModelVersion?: string;
   readonly manifestFilename?: string;
+  readonly l2CoveragePolicy?: L2CoveragePolicy;
   readonly mode?: 'sim' | 'pilot';
   readonly strategyClass?: 'mm' | 'event';
   readonly generatedAtIso?: string;
@@ -46,75 +52,11 @@ export interface ICEvidenceLoadResult {
   readonly scorecardInput: ICScorecardInput;
 }
 
-const DAY_PATTERN = /(\d{4}-\d{2}-\d{2})/;
-const L2_EXT_PATTERN = /\.(?:wal|parquet|jsonl|ndjson)$/i;
-
-function collectDistinctUtcDays(rootDir: string): number {
-  const days = new Set<string>();
-  const stack: string[] = [rootDir];
-  while (stack.length > 0) {
-    const dir = stack.pop()!;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isSymbolicLink()) continue;
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        const dirMatch = DAY_PATTERN.exec(entry.name);
-        if (dirMatch) days.add(dirMatch[1]);
-        stack.push(full);
-      } else if (entry.isFile() && L2_EXT_PATTERN.test(entry.name)) {
-        const fileMatch = DAY_PATTERN.exec(entry.name);
-        if (fileMatch) days.add(fileMatch[1]);
-      }
-    }
-  }
-  return days.size;
-}
-
-function inspectL2Archive(
-  l2ArchiveDir: string | undefined,
-  manifestFilename: string,
-  errors: string[],
-): { present: boolean; manifestChecked: boolean; manifestOk: boolean; recordedL2Days: number } {
-  if (!l2ArchiveDir) {
-    return { present: false, manifestChecked: false, manifestOk: true, recordedL2Days: 0 };
-  }
-  const absDir = resolve(l2ArchiveDir);
-  if (!existsSync(absDir)) {
-    return { present: false, manifestChecked: false, manifestOk: true, recordedL2Days: 0 };
-  }
-  const manifestPath = join(absDir, manifestFilename);
-  let manifestChecked = false;
-  let manifestOk = true;
-  if (existsSync(manifestPath)) {
-    manifestChecked = true;
-    try {
-      const parsed = JSON.parse(readFileSync(manifestPath, 'utf8')) as L2ArchiveManifest;
-      const verification = verifyL2ArchiveManifest(absDir, parsed);
-      manifestOk = verification.ok;
-      if (!verification.ok) {
-        errors.push(
-          `L2 manifest failed: missing=${verification.missing.length} mismatched=${verification.mismatched.length} unexpected=${verification.unexpected.length}`,
-        );
-        return { present: true, manifestChecked: true, manifestOk: false, recordedL2Days: 0 };
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`L2 manifest parse error: ${msg}`);
-      return { present: true, manifestChecked: true, manifestOk: false, recordedL2Days: 0 };
-    }
-  }
-  return {
-    present: true,
-    manifestChecked,
-    manifestOk,
-    recordedL2Days: collectDistinctUtcDays(absDir),
-  };
-}
-
 function inspectMarketBlindLedger(
-  ledgerPath: string | undefined,
+  options: Pick<ICEvidenceLoaderOptions, 'marketBlindLedgerPath' | 'marketBlindCheckpointPath' | 'marketBlindPolicy' | 'marketBlindModelVersion'>,
   errors: string[],
 ): { present: boolean; chainOk: boolean; report: ProspectiveOosReport | null; resolvedCount: number } {
+  const ledgerPath = options.marketBlindLedgerPath;
   if (!ledgerPath) {
     return { present: false, chainOk: true, report: null, resolvedCount: 0 };
   }
@@ -123,16 +65,23 @@ function inspectMarketBlindLedger(
     return { present: false, chainOk: true, report: null, resolvedCount: 0 };
   }
   try {
-    const store = createNodeJsonlAppendStore(absPath);
+    const store = createNodeJsonlAppendStore(absPath, options.marketBlindCheckpointPath);
     const ledger = ProspectivePipelineLedger.hydrateFromStore(store);
-    const report = evaluateProspectiveOosReport(ledger);
+    const report = evaluateProspectiveOosReport(ledger, {
+      mode: 'empirical',
+      modelVersion: options.marketBlindModelVersion,
+      policy: options.marketBlindPolicy,
+    });
     if (!report.chainVerified || report.hindcastDetected) {
       errors.push(
         `Market-Blind integrity violation: chainVerified=${report.chainVerified} hindcastDetected=${report.hindcastDetected}`,
       );
       return { present: true, chainOk: false, report, resolvedCount: 0 };
     }
-    return { present: true, chainOk: true, report, resolvedCount: report.resolvedScoredCount };
+    if (!report.integrityVerified) errors.push('Market-Blind independent checkpoint missing or integrity verification failed');
+    if (!report.empiricalEligible) errors.push(`Market-Blind empirical eligibility failed: ${report.eligibilityReasons.join(',')}`);
+    const eligible = report.integrityVerified && report.empiricalEligible;
+    return { present: true, chainOk: eligible, report, resolvedCount: eligible ? report.resolvedEligibleCount : 0 };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(`Market-Blind ledger tamper/error: ${msg}`);
@@ -143,8 +92,13 @@ function inspectMarketBlindLedger(
 export function loadICEvidenceForScorecard(options: ICEvidenceLoaderOptions = {}): ICEvidenceLoadResult {
   const errors: string[] = [];
   const manifestFilename = options.manifestFilename ?? 'l2-archive-manifest.json';
-  const l2 = inspectL2Archive(options.l2ArchiveDir, manifestFilename, errors);
-  const mb = inspectMarketBlindLedger(options.marketBlindLedgerPath, errors);
+  const l2 = inspectL2ArchiveCoverage({
+    rootDir: options.l2ArchiveDir,
+    manifestFilename,
+    policy: options.l2CoveragePolicy,
+    generatedAtIso: options.generatedAtIso,
+  }, errors);
+  const mb = inspectMarketBlindLedger(options, errors);
 
   const samples: ICEmpiricalSamples = {
     recordedL2Days: l2.recordedL2Days,
@@ -159,8 +113,8 @@ export function loadICEvidenceForScorecard(options: ICEvidenceLoaderOptions = {}
     samples,
     ...(mb.report && mb.chainOk && mb.report.bssOos !== null && mb.report.ece !== null
       ? {
-          brierSkillScoreOos: mb.report.bssOos,
-          brierEce: mb.report.ece,
+          bssOos: mb.report.bssOos,
+          ece: mb.report.ece,
         }
       : {}),
   };
