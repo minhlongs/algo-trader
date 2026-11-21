@@ -1,4 +1,4 @@
-import { MarketOptionQuote, OptionFitMetric, TerminalNode } from './rubinstein-types';
+import { MarketOptionQuote, OptionFitMetric } from './rubinstein-types';
 
 export class RubinsteinMath {
   public static calculateBinomialGrid(

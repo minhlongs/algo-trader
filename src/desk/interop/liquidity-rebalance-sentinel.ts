@@ -5,7 +5,7 @@
  * @module desk/interop/liquidity-rebalance-sentinel
  */
 
-import { ChainLiquidityBalance, RebalanceAction, SupportedChain } from './interop-types';
+import { ChainLiquidityBalance, RebalanceAction } from './interop-types';
 
 export class LiquidityRebalanceSentinel {
   private readonly balances = new Map<string, ChainLiquidityBalance>();

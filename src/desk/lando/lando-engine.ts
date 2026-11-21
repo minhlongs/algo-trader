@@ -1,5 +1,4 @@
 import {
-  CreditRating,
   LandoParams,
   LandoResult,
   RatingTenorMetric,

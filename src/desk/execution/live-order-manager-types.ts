@@ -11,7 +11,7 @@
 
 import type { PolymarketAdapter, PolymarketOrderResponse } from './polymarket-adapter';
 import type { PolymarketOrder } from './polymarket-signer';
-import type { LivePositionTracker, FilledOrder } from './live-position-tracker';
+import type { LivePositionTracker } from './live-position-tracker';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
 import type { PolymarketV2PreTradeRiskGate } from './polymarket-v2-pretrade-risk-gate';

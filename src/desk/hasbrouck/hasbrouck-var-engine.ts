@@ -1,5 +1,5 @@
 import { CholeskySolver, Matrix2x2 } from './cholesky-solver';
-import { HasbrouckImpactResult, TradeQuoteObservation, VarCoefficients } from './hasbrouck-types';
+import { HasbrouckImpactResult, TradeQuoteObservation } from './hasbrouck-types';
 
 export class HasbrouckVarEngine {
   public fitVarAndEstimateImpact(data: TradeQuoteObservation[]): HasbrouckImpactResult {

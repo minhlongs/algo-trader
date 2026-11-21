@@ -5,7 +5,7 @@
  */
 
 import { query } from '../../shared/db/postgres-client.js';
-import type { Experiment, ExperimentStatus, GroupName } from './ab-test-manager';
+import type { Experiment, GroupName } from './ab-test-manager';
 
 /* ── row types ─────────────────────────────────────────── */
 

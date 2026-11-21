@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { UnifiedTradeIntentSchema, VenueIdSchema } from '../orchestrator/orchestrator-types';
+import { VenueIdSchema } from '../orchestrator/orchestrator-types';
 
 export const TriModeSchema = z.enum(['PAPER', 'SHADOW', 'LIVE']);
 export type TriMode = z.infer<typeof TriModeSchema>;

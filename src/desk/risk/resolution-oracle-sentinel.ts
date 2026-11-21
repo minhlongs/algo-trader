@@ -11,7 +11,6 @@ import { EventEmitter } from 'events';
 import type {
   OracleAssertionRecord,
   OracleFreezeAlert,
-  OracleDisputeStatus,
 } from './resolution-oracle-types';
 
 export class ResolutionOracleSentinel extends EventEmitter {

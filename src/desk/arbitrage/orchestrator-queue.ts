@@ -6,7 +6,7 @@
 
 import type { ArbitrageOpportunity, ExecutionResult } from './types';
 import type { SignalScore } from './signal-scorer';
-import type { QueuedOpportunity, OrchestratorContext } from './orchestrator-types';
+import type { OrchestratorContext } from './orchestrator-types';
 import type { UnifiedExecutionEngine } from './unified-executor';
 import { logger } from '../../shared/utils/logger';
 

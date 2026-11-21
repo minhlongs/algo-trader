@@ -16,7 +16,6 @@ import { enforceQuotaGate } from '@platform/middleware/signal-quota-gate';
 import { usageTrackingMiddleware } from '@platform/middleware/usage-tracking-express';
 import { getCachedSignals, setCachedSignals } from '@desk/signal/signal-rest-cache';
 import { signalTtlEnforcer } from '@desk/signal/signal-ttl-enforcer';
-import { signalSubscriberRepo } from '@platform/signal/signal-subscriber-repository-d1';
 import { logger } from '@shared/utils/logger';
 
 export const signalFeedRouter: ReturnType<typeof Router> = Router();

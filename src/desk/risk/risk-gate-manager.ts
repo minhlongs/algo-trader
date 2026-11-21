@@ -19,7 +19,7 @@
 
 import type { LiveExecutionGuard } from '../execution/live-execution-guard';
 import type { CircuitBreaker } from './circuit-breaker';
-import type { PortfolioRebalanceGuard, PositionSnapshot } from './portfolio-rebalance-guard';
+import type { PortfolioRebalanceGuard } from './portfolio-rebalance-guard';
 import type { PolymarketOrder } from '../execution/polymarket-signer';
 import { logger } from '../../shared/utils/logger';
 

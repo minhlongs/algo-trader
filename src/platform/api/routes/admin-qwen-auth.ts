@@ -3,7 +3,7 @@
  * Checks X-Admin-Key header against ADMIN_API_KEY environment variable.
  */
 
-import type { Request, Response, Router } from 'express';
+import type { Request, Response } from 'express';
 
 /** Simple Express-compatible admin auth — checks X-Admin-Key header for Router handlers */
 export function requireAdminKey(req: Request, res: Response): boolean {

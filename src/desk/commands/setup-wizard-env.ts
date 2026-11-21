@@ -2,9 +2,9 @@
  * Setup Wizard - Environment File Generation and Persistence
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { logger } from '../../shared/utils/logger';
-import { SetupConfig, ENV_PATH, ENV_EXAMPLE_PATH } from './setup-wizard-types';
+import { SetupConfig, ENV_PATH } from './setup-wizard-types';
 
 export function generateEnvContent(config: Partial<SetupConfig>): string {
   const timestamp = new Date().toISOString();

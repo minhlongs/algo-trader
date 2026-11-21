@@ -4,8 +4,7 @@
  */
 
 import { calibrateDcc } from './dcc-calibrator';
-import { evaluateDccSeries } from './dcc-math';
-import { DccFitResult, DccParams, DccStepPoint } from './dcc-types';
+import { DccFitResult, DccParams } from './dcc-types';
 
 export class DccGarchEngine {
   public fit(

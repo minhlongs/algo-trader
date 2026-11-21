@@ -14,12 +14,8 @@ import type { GammaClient } from '../polymarket/gamma-client';
 import type { ClobClient } from '../polymarket/clob-client';
 import { startNatsEventLoop, type NatsEventLoop } from './nats-event-loop';
 import {
-  ENABLED_IDS,
   env,
-  POLY_STRATEGIES,
   registerPolymarketStrategies,
-  type PolyStrategyDescriptor,
-  type StrategyFactory,
 } from './strategy-wiring-registry';
 
 export {

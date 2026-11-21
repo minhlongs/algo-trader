@@ -1,4 +1,3 @@
-import type { Router } from 'express';
 /**
  * Health and system metrics collectors
  */

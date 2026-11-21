@@ -12,8 +12,6 @@ import { logger } from '../../shared/utils/logger';
 import type { PaperTrade, PaperPortfolio } from '../../desk/wiring/paper-trading-orchestrator';
 import type { WhaleActivity } from '../../desk/feeds/whale-activity-feed';
 import {
-  truncate,
-  sign,
   formatTradeAlert,
   formatPnlSummary,
   formatWhaleAlert,

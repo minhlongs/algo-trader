@@ -7,7 +7,7 @@ import type { SupportedVenue, StreamerConfig, WebSocketFactory } from '../data/m
 import type { CrossVenueArbConfig, CrossVenueArbOpportunity } from '../arbitrage/connectors/cross-venue-arb-detector';
 import type { RelayerConfig, RelayerOrderResponse } from '../polymarket/polymarket-relayer-engine';
 import type { GeneticAlgorithmConfig, EvolutionSummary } from '../../alpha-lab/alpha-discovery/genetic-evolution-types';
-import type { CanaryStage, CanaryVerificationCriteria, CanaryTelemetrySample, CanaryVerificationVerdict } from '../execution/edge-canary-deployment-verifier';
+import type { CanaryStage, CanaryVerificationCriteria, CanaryVerificationVerdict } from '../execution/edge-canary-deployment-verifier';
 import type { RollbackLayer } from '../../rollback/rollback-types';
 
 export type PipelineStatus = 'uninitialized' | 'idle' | 'running' | 'paused' | 'stopped' | 'error';

@@ -10,7 +10,6 @@ import type {
   ArbitrageRiskCheckResult,
   ArbitrageRiskGateChecks,
   ArbitrageRiskContext,
-  ArbitrageRiskCheckParams,
 } from './arbitrage-risk-types';
 import type { LiveExecutionGuard } from '../../execution/live-execution-guard-core';
 import type { RiskGateManager } from '../../risk/risk-gate-manager';

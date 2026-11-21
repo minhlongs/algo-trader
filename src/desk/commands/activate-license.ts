@@ -23,10 +23,7 @@ import {
 } from './activate-license-storage';
 import {
   applyLicenseStoreActivation,
-  buildNewLicenseEntry,
-  getMaxUsageForTier,
   logActivationComplete,
-  type LicenseTier,
 } from './activate-license-helpers';
 
 export {
