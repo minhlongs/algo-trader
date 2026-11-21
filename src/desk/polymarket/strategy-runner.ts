@@ -14,7 +14,6 @@ import { logger } from '@shared/utils/logger';
 import { tradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
 import type { StrategyRunnerConfig, StrategyConstructor } from './strategy-runner-types';
 import { createTickTimer, type TickTimerContext } from './strategy-runner-tick-timer';
-import { createEventBusSubscription, type EventHandlerContext } from './strategy-runner-event-handlers';
 import { buildRunnerStatusSnapshot } from './strategy-runner-status-builder';
 import {
   processPriceUpdate, deriveStrategyName, createRunnerStrategyDeps,
@@ -34,6 +33,7 @@ export class StrategyRunner {
   private proxy: LiveOrderManagerProxy | null = null;
   private strategy: BasePolymarketStrategy | null = null;
   private executionCount = 0;
+  private isExecuting = false;
   private status: 'stopped' | 'running' | 'error' = 'stopped';
   private strategyName: string;
   private ownsOrchestrator: boolean;
@@ -134,6 +134,8 @@ export class StrategyRunner {
       strategyName: this.strategyName,
       executionCount: this.executionCount,
       getExecutionCount: () => this.executionCount,
+      getIsExecuting: () => this.isExecuting,
+      setIsExecuting: (executing: boolean) => { this.isExecuting = executing; },
       lastExecutionTime: this.lastExecutionTime,
       getLastExecutionTime: () => this.lastExecutionTime,
       trackedTokens: this.trackedTokens,
@@ -148,10 +150,9 @@ export class StrategyRunner {
   }
 
   private setupEventBus(): void {
-    const ctx: EventHandlerContext = { ...this.buildExecutionBase(), config: this.config };
-    const sub = createEventBusSubscription(this.eventBus, ctx);
-    sub.subscribe();
-    this.unsubscribeFromEvents = () => sub.unsubscribe();
+    const handler = (payload: PriceUpdatePayload) => this.handlePriceUpdate(payload);
+    this.eventBus.on('PRICE_UPDATE', handler);
+    this.unsubscribeFromEvents = () => this.eventBus.off('PRICE_UPDATE', handler);
   }
 
   private createTickTimer(): NodeJS.Timeout {
