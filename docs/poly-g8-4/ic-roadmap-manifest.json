@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "1.0.0",
+  "releaseId": "POLY-G8.5",
+  "generatedAt": "2026-11-21T12:48:00Z",
+  "baselineMainSha": "7319b8d04305d14c95cd366a1593d3bdfa9235ec",
+  "integratedPreDocsMainSha": "45f2629871b613b326d839fe138a635133865d29",
+  "mergedPullRequests": [
+    { "pr": 288, "headSha": "156642fd95cb5fa58a6e2c0b8e7999986c705003", "mergeSha": "951ddb0b6258ca177c7ac4d83bc38c382300a19e", "mainCi": "PASS" },
+    { "pr": 282, "headSha": "b54e349e014a71082f28c2434dc98d0a0e6d94db", "mergeSha": "46aac02451873bcd44dcdcb8189079841e925f3e", "mainCi": "PASS" },
+    { "pr": 285, "headSha": "784d6e986b0e3bad1009af0e1bf1e09400d3b4e7", "mergeSha": "e52190b4ee3a15fb09f4acec6b198787e434e5fb", "mainCi": "PASS" },
+    { "pr": 289, "headSha": "a9463d9560aed5e5c07218e297dbd0fd91804a80", "mergeSha": "8586b37486658aed4b2fbc70e6470621ac5f15b4", "mainCi": "PASS" },
+    { "pr": 290, "headSha": "7e7faca0aaadf3ad58d91077bb52eb49419c09a8", "mergeSha": "45f2629871b613b326d839fe138a635133865d29", "mainCi": "PASS" }
+  ],
+  "icDay0": null,
+  "icClockActive": false,
+  "rawPdfAvailableLocally": false,
+  "sourceAuthority": "POLY ALPHA HUNTER v4 (reconciled via #POLY-G8.4 spec and docs/poly-g7/01-IC-PDF-TO-REPO-TRACEABILITY.md)",
+  "governanceLocks": {
+    "LIVE_TRADING_ENABLED": false,
+    "DATA_LICENSE": "HOLD",
+    "VIETNAM_G12": "HOLD",
+    "INFRA_BUDGET": "HOLD",
+    "VPS_R2_ACTIVATION": "HOLD",
+    "ECONOMIC_G11": "HOLD",
+    "LEGAL_G12": "HOLD",
+    "FOUNDER_G13": "HOLD",
+    "REAL_MONEY_TRADING": "DISABLED",
+    "MICRO_PILOT": "HOLD",
+    "USER_001_INVITE": "HOLD",
+    "LINUX_SYSTEMD_RUNTIME": "NOT_TESTED",
+    "w_skill": 0
+  },
+  "empiricalDenominators": {
+    "recordedL2Days": { "observed": 0, "requiredStage1": 7, "requiredGate1": 30, "status": "INSUFFICIENT_DATA" },
+    "qualifyingMakerFills": { "observed": 0, "required": 500, "status": "INSUFFICIENT_DATA" },
+    "negriskMultiLegCycles": { "observed": 0, "required": "qualifying_l2_and_shadow_cycles", "status": "INSUFFICIENT_DATA" },
+    "resolvedOosForecasts": { "observed": 0, "required": 150, "status": "INSUFFICIENT_DATA" },
+    "shadowObservationDays": { "observed": 0, "required": 14, "status": "INSUFFICIENT_DATA" }
+  },
+  "stages": [
+    {
+      "id": "STAGE_1_DAY_0_14",
+      "window": "Day 0-14",
+      "name": "Audit, Data Ingest & Key Isolation",
+      "engineeringStatus": "TESTED",
+      "operationalPermissionStatus": "BLOCKED_BY_PERMISSION",
+      "empiricalStatus": "NOT_STARTED",
+      "blockingGates": ["DATA_LICENSE", "INFRA_BUDGET", "VPS_R2_ACTIVATION", "LINUX_SYSTEMD_RUNTIME"],
+      "acceptanceConditions": [
+        "5-repo architecture and license matrix verified",
+        "Written Polymarket data-rights clearance obtained",
+        "Approved collector budget covers verified VPS+R2+ops cost",
+        "Linux systemd runtime and live R2 SHA-256 read-back verified",
+        ">=150 eligible markets captured for 7 continuous qualifying days",
+        "Read-only no-trading security proof verified"
+      ]
+    },
+    {
+      "id": "STAGE_2_DAY_15_30",
+      "window": "Day 15-30",
+      "name": "Execution Simulator & Baseline (Gate 1)",
+      "engineeringStatus": "TESTED",
+      "operationalPermissionStatus": "BLOCKED_BY_PERMISSION",
+      "empiricalStatus": "NOT_STARTED",
+      "blockingGates": ["STAGE_1_DAY_0_14", "DATA_LICENSE"],
+      "acceptanceConditions": [
+        "Deterministic point-in-time Parquet replay with zero lookahead",
+        "Conservative behind-queue maker simulation with partial fills and cancel delay",
+        "CLOB V2 dynamic fee precision (5-decimal rounding) verified",
+        "Reproducible baseline backtest on genuine eligible L2 data (no synthetic-only PASS)"
+      ]
+    },
+    {
+      "id": "STAGE_3_DAY_31_45",
+      "window": "Day 31-45",
+      "name": "Anchored Walk-Forward & Adversarial Stress",
+      "engineeringStatus": "PARTIAL",
+      "operationalPermissionStatus": "BLOCKED_BY_PERMISSION",
+      "empiricalStatus": "NOT_STARTED",
+      "blockingGates": ["STAGE_2_DAY_15_30", "30_DAY_L2_DATA"],
+      "acceptanceConditions": [
+        ">=30 continuous qualifying days of L2 data",
+        "Chronological train/calibration/test split across 4 regimes",
+        "Parameter sensitivity +/-20% and Regime/OFI/Queue ablations",
+        "1.5x cost/slippage stress, 1.5x cancel latency stress, 50% reward haircut",
+        "Bootstrap 95% CI LB > 0 and Deflated Sharpe >= 1.5"
+      ]
+    },
+    {
+      "id": "STAGE_4_DAY_46_60",
+      "window": "Day 46-60",
+      "name": "Live Data Paper/Shadow & Calibration (Gate 2)",
+      "engineeringStatus": "TESTED",
+      "operationalPermissionStatus": "BLOCKED_BY_PERMISSION",
+      "empiricalStatus": "NOT_STARTED",
+      "blockingGates": ["STAGE_3_DAY_31_45", "DATA_LICENSE"],
+      "acceptanceConditions": [
+        ">=14 real days of paper/shadow observation",
+        "Live feed vs replay calibration and 5s/60s/300s maker markout",
+        "Multi-leg partial-fill and unwind completion >= 92%",
+        ">=150 genuinely resolved prospective OOS forecasts (BSS_OOS >= +0.02, ECE < 0.035) before unlocking w_skill > 0",
+        "Independent Maker, NegRisk, and AI/News gate verdicts"
+      ]
+    },
+    {
+      "id": "STAGE_5_DAY_61_75",
+      "window": "Day 61-75",
+      "name": "Shadow Verification & Conditional Micro-Pilot",
+      "engineeringStatus": "DESIGN_ONLY",
+      "operationalPermissionStatus": "BLOCKED_BY_LEGAL",
+      "empiricalStatus": "HOLD",
+      "blockingGates": ["ECONOMIC_G11", "LEGAL_G12", "FOUNDER_G13", "ISSUE_272_SIGNING_PARITY"],
+      "acceptanceConditions": [
+        "Independent Vietnam legal counsel clearance (LEGAL_G12)",
+        "IC economic clearance (ECONOMIC_G11)",
+        "Explicit Founder sign-off (FOUNDER_G13)",
+        "Heartbeat 10s, HTTP 425 cooldown, GhostGuard emergency-stop, and ExchangeV3 signing drills passed"
+      ]
+    },
+    {
+      "id": "STAGE_6_DAY_76_90",
+      "window": "Day 76-90",
+      "name": "Capacity, Tail Risk & Investment Decision (Gate 3)",
+      "engineeringStatus": "DESIGN_ONLY",
+      "operationalPermissionStatus": "BLOCKED_BY_CAPITAL",
+      "empiricalStatus": "NOT_STARTED",
+      "blockingGates": ["STAGE_5_DAY_61_75", "ECONOMIC_G11", "LEGAL_G12", "FOUNDER_G13"],
+      "acceptanceConditions": [
+        "Capacity curve and marginal execution cost across deployable tiers",
+        "Separated MTM, Realized, and Settled PnL reporting",
+        "99% CVaR, event concentration, UMA dispute risk, and infra cost drag modeled",
+        "Explicit IC resolution: SCALE (requires new approval) | HOLD | REJECT"
+      ]
+    }
+  ]
+}

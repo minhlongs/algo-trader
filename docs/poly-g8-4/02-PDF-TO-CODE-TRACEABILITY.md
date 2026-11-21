@@ -1,0 +1,52 @@
+# POLY-G8.4 — IC PDF-to-Code Traceability Matrix
+
+- **Document ID:** `POLY-G8.4-02`
+- **Date:** 2026-11-21
+- **Baseline `main` SHA:** `7319b8d04305d14c95cd366a1593d3bdfa9235ec`
+- **Source Provenance Note:** The raw 80-page `POLY ALPHA HUNTER v4 — Kiến Trúc Quant Alpha Polymarket` PDF (reference date November 12, 2026) is **not present in the local workspace**. This matrix reconciles the exact specifications reproduced in `#POLY-G8.4` against `docs/poly-g7/01-IC-PDF-TO-REPO-TRACEABILITY.md` and live committed source code. No uninspected PDF page is claimed as directly read.
+
+---
+
+## 1. Status Taxonomy
+
+- `IMPLEMENTED` — Present in committed source code.
+- `TESTED` — Covered by reproducible automated unit/integration tests (does **not** imply empirical alpha).
+- `EMPIRICALLY_VALIDATED` — Proven on genuine qualifying out-of-sample or continuous L2 data meeting IC sample floors.
+- `PARTIAL` — Partially implemented or missing required runtime/operational proof.
+- `MISSING` — Not implemented.
+- `UNKNOWN` — Cannot be verified from available evidence.
+- `BLOCKED_BY_PERMISSION` — Requires explicit third-party data-rights or platform authorization.
+- `BLOCKED_BY_LEGAL` — Requires independent Vietnam legal counsel sign-off (`LEGAL_G12`).
+- `BLOCKED_BY_CAPITAL` — Requires Founder capital allocation and `ECONOMIC_G11` + `LEGAL_G12` clearance (`FOUNDER_G13`).
+
+---
+
+## 2. Five Approved Repositories — Architecture & License Matrix
+
+| # | IC Approved Repo | Purpose in IC Doctrine | Current Repo Implementation / Equivalent | Applicable Source | License / Provenance | Status |
+|---|---|---|---|---|---|---|
+| 1 | **NautilusTrader** | Deterministic order lifecycle, async execution, backtest/live semantic parity, session-key isolation, restart reconciliation | Retained **Hybrid Rust Sidecars + TypeScript Core (ADR Option A)** with 9/9 behavioral parity controls (`deterministic-client-order-id.ts`, `polymarket-cancel-replace.ts`, `execution-model-matrix.ts`) | `src/desk/execution/deterministic-client-order-id.ts`, `src/desk/execution/polymarket-cancel-replace.ts`, `src/desk/polymarket/execution-model-matrix.ts`, `docs/poly-g7/02-HYBRID-ARCHITECTURE-ADR.md` | First-party MIT (no NautilusTrader code copied) | `TESTED` |
+| 2 | **poly-book** | Fixed-point L2 order books, CRC32C WAL, Parquet export, deterministic replay, point-in-time timestamps | Rust sidecar `sidecars/poly-book/` (`pb-bin`, `pb-wal`, `pb-book`) + TS capture/replay harness (`l2-public-capture-drill.ts`, `scripts/poly-l2-collector.ts`) | `sidecars/poly-book/`, `scripts/poly-l2-collector.ts`, `scripts/poly-l2-capture-drill.ts`, `infra/poly-collector/` | First-party MIT; Linux systemd runtime `NOT_TESTED` on macOS | `PARTIAL` |
+| 3 | **poly-maker** | Post-only market making, microprice, OFI, toxicity-aware quoting, 5-state regime control, maker economics | Dedicated maker-only simulator & strategy contract separated from taker smoke harness via `execution-model-matrix.ts` | `src/desk/polymarket/execution-model-matrix.ts`, `src/desk/polymarket/maker-queue-simulator.ts`, `src/desk/strategies/polymarket/` | First-party MIT; `0/500` empirical maker fills | `TESTED` |
+| 4 | **GhostGuard** | Settlement integrity verification, status=0/reverted tx detection, independent fail-closed circuit breaker | Rust sidecar `sidecars/ghost-guard/` (54 Rust tests pass) + TS HMAC webhook bridge (`ghost-guard-webhook-bridge.ts`, `<100 ms` latch) | `sidecars/ghost-guard/`, `src/desk/polymarket/ghost-guard-webhook-bridge.ts`, `tests/polymarket/ghost-guard-webhook-bridge.test.ts` | First-party MIT; LLMs cannot override GhostGuard | `TESTED` |
+| 5 | **predict-raven** | Primary-source evidence processing, market-blind probability estimation, Bayesian shrinkage, prospective forecast logging, Brier calibration | Canonical prospective CLI `scripts/poly-market-blind-logger.ts` + hash-chained durable ledger + resolution ingestor + OOS scorer (`w_skill=0` fail-closed) | `scripts/poly-market-blind-logger.ts`, `src/desk/polymarket/market-blind/` | First-party MIT (no third-party predict-raven code imported); `0/150` resolved OOS forecasts | `TESTED` |
+
+> **Canonical Prospective Logger CLI:** `scripts/poly-market-blind-logger.ts` is the sole committed canonical prospective logger CLI in `scripts/`. Prior report references to alternate filenames are superseded by this path.
+
+---
+
+## 3. IC Requirements Traceability Matrix (Deliverables A–H)
+
+| IC Requirement | PDF Section / Page | Current Implementation | Applicable Source | Tests | Observed Evidence | Remaining Gap | Owner Decision |
+|---|---|---|---|---|---|---|---|
+| **Deliv. A — Executive Decision Brief & Capital Preservation** | Deliv. A (raw PDF unavailable; reconciled via `#POLY-G8.4` + G7-01) | Fail-closed governance (`LIVE_TRADING_ENABLED=false`), G11/G12/G13 locked at `HOLD` | `scripts/poly-g7-scorecard.ts`, `src/desk/polymarket/ic-kpi-scorecard.ts` | `tests/polymarket/ic-evidence-loader.test.ts` | `npx tsx scripts/poly-g7-scorecard.ts` exits 0 with all 11 KPIs `UNKNOWN`, G11/G12/G13 `HOLD` | Empirical sample collection + legal + Founder sign-off | Founder holds capital allocation until G11+G12 pass (`BLOCKED_BY_CAPITAL`) |
+| **Deliv. B — 5-Repo Shortlist & License Audit** | Deliv. B | All 5 capabilities built first-party (MIT) under Hybrid ADR Option A; no unreviewed third-party code copied | `docs/poly-g7/02-HYBRID-ARCHITECTURE-ADR.md`, `sidecars/`, `src/desk/polymarket/` | `cargo test` (GhostGuard 54/54, poly-book PR #285), Vitest | Zero GPL/AGPL contamination; dependency audit #283 reconciled in Draft PR #288 | Verify deployed production Worker lockfile provenance | Founder reviews PR #288 & confirms prod build provenance (`TESTED`) |
+| **Deliv. C — Alpha A (Adaptive Maker-Only + Regime Switching)** | Deliv. C / Sec. 8 | Execution model matrix separates `MAKER_ONLY_QUEUE_CONSERVATIVE` from taker harness; conservative queue & dynamic fee model implemented | `src/desk/polymarket/execution-model-matrix.ts`, `src/desk/polymarket/maker-queue-simulator.ts` | `tests/polymarket/` (12 suites, 108/108 pass on `main`) | `0/500` qualifying real maker fills; `+15 bps` net threshold untested empirically | 30+ days authorized L2 data + `>=500` qualifying maker fills | Blocked by data rights (`BLOCKED_BY_PERMISSION`) |
+| **Deliv. C — Alpha B (Event-Level NegRisk)** | Deliv. C / Sec. 8 | `NEGRISK_MULTI_LEG` model separated; thin-leg-first / partial-fill unwind semantics modeled | `src/desk/polymarket/execution-model-matrix.ts`, `src/desk/polymarket/` | Unit tests only | `0` real multi-leg NegRisk execution cycles on recorded L2 | Authorized L2 + multi-market timestamp sync + shadow cycles | Blocked by data rights (`BLOCKED_BY_PERMISSION`) |
+| **Deliv. C — Alpha C (Market-Blind News & Bayesian Fair Value)** | Deliv. C / Sec. 8 | Hash-chained durable ledger, terminal checkpoint, deduplicated OOS denominator, `w_skill=0` lock | `scripts/poly-market-blind-logger.ts`, `src/desk/polymarket/market-blind/` | `tests/polymarket/market-blind-*.test.ts` | `0/150` genuinely resolved prospective OOS forecasts | 150–200 prospective resolutions with `BSS_OOS >= +0.02`, `ECE < 0.035` | Requires prospective logging program (`TESTED`, empirically `INSUFFICIENT_DATA`) |
+| **Deliv. D — Non-Destructive Uploader & Archive SHA-256 Integrity** | Deliv. D / G8.3 Areas A–B | Python uploader + atomic verification + SHA-256 remote read-back in PR #285 | `infra/poly-collector/poly-collector-upload.py`, `infra/poly-collector/poly-collector-transport.py` | `tests/polymarket/poly-collector-upload.test.py` | Offline unit/fault-injection tests cover dry-run, corrupt remote, same-length substitution, symlink, permissions | Real R2 object round-trip & Linux systemd runtime (`NOT_TESTED` on macOS) | Owner review of PR #285 (`PARTIAL`) |
+| **Deliv. D — GhostGuard & StrategyRunner Reliability** | Deliv. D / Issue #286 | GhostGuard Rust sidecar + HMAC bridge (`<100 ms` latch); StrategyRunner re-entrancy & offline test isolation fixed in PR #289 | `sidecars/ghost-guard/`, `src/desk/polymarket/strategy-runner-executor.ts`, `src/desk/polymarket/strategy-runner.ts` | GhostGuard Rust 54/54; `strategy-runner*.test.ts` 41/41; `ghost-guard-webhook-bridge.test.ts` 4/4 | `<100 ms` threshold preserved; zero network calls in lifecycle tests | Owner review of PR #289 | Merge PR #289 after CI green (`TESTED`) |
+| **Deliv. E — Canonical 11-KPI Scorecard & Backtest Red-Team** | Deliv. E / Sec. 9 | Single source of truth `ic-kpi-scorecard.ts` + `scripts/poly-g7-scorecard.ts`; fail-closed sample floors; MTM/Realized/Settled separated | `src/desk/polymarket/ic-kpi-scorecard.ts`, `scripts/poly-g7-scorecard.ts` | `tests/polymarket/ic-evidence-loader.test.ts` | All 11 KPIs return `UNKNOWN — INSUFFICIENT EMPIRICAL SAMPLE` when floors unmet | Walk-forward, ablation, 1.5x cost/latency stress on genuine 30d L2 | Blocked by 30d L2 data (`TESTED`) |
+| **Deliv. F — 90-Day Roadmap (`IC_DAY_0` Clock Rule)** | Deliv. F / Sec. 7 | Machine-readable `docs/poly-g8-4/ic-roadmap-manifest.json` + 6-stage roadmap separating engineering vs empirical vs legal status | `docs/poly-g8-4/08-30-60-90-DAY-IC-ROADMAP.md`, `docs/poly-g8-4/ic-roadmap-manifest.json` | JSON schema & consistency validated | `IC_DAY_0 = null` (clock not started; licensing & budget on HOLD) | Written Polymarket data permission + budget revision + Linux VPS soak | Founder approves Gate A & Gate D (`BLOCKED_BY_PERMISSION`) |
+| **Deliv. G — Open-Source Watchlist & Dependency Security** | Deliv. G / Issue #283 | `package-lock.json` reconciled in PR #288 (`better-auth` 1.7.7, `proxy-addr` 2.0.8); `npm audit --omit=dev --audit-level=critical` = 0 | `package-lock.json`, `pnpm-lock.yaml` | CI Gate 2 Security + Gate 4 Dependency Hygiene | 0 critical advisories under both `pnpm audit` and `npm audit --omit=dev` | Confirm deployed prod Worker build provenance before `USER_001` invite | Founder verifies prod deploy SHA (`TESTED`) |
+| **Deliv. H — IC Final Resolution (G11/G12/G13)** | Deliv. H | All three gates hard-locked at `HOLD`; `REAL_MONEY_TRADING = DISABLED` | `docs/poly-g8-4/11-DATA-RIGHTS-LEGAL-BUDGET.md`, `docs/poly-g8-4/12-FOUNDER-RELEASE-DECISION.md` | `scripts/poly-g7-scorecard.ts` | `ECONOMIC_G11=HOLD`, `LEGAL_G12=HOLD`, `FOUNDER_G13=HOLD`, `LIVE_TRADING_ENABLED=false` | 30–90d empirical proof + Vietnam counsel + Founder sign-off | Fail-closed (`BLOCKED_BY_LEGAL`, `BLOCKED_BY_CAPITAL`) |
