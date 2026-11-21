@@ -22,6 +22,8 @@ export interface StrategyExecutionContext {
   strategyName: string;
   minExecutionIntervalMs: number;
   maxTicks?: number;
+  getIsExecuting?: () => boolean;
+  setIsExecuting?: (executing: boolean) => void;
   trackedTokens: Set<string>;
   lastExecutionTime: number;
   getLastExecutionTime?: () => number;
@@ -87,7 +89,9 @@ export async function processPriceUpdate(
 ): Promise<void> {
   const status = ctx.getStatus ? ctx.getStatus() : ctx.status;
   const strategy = ctx.getStrategy ? ctx.getStrategy() : ctx.strategy;
-  if (status !== 'running' || !strategy) return;
+  if (status !== 'running' || !strategy || ctx.getIsExecuting?.()) return;
+  const executionCount = ctx.getExecutionCount ? ctx.getExecutionCount() : ctx.executionCount;
+  if (ctx.maxTicks && executionCount >= ctx.maxTicks) return;
 
   const now = Date.now();
   const lastExec = ctx.getLastExecutionTime ? ctx.getLastExecutionTime() : ctx.lastExecutionTime;
@@ -105,8 +109,9 @@ export async function processPriceUpdate(
     strategy.updatePrice(payload.tokenId, payload.bid, payload.ask);
   }
 
-  ctx.updateLastExecutionTime(now);
+  ctx.setIsExecuting?.(true);
   try {
+    ctx.updateLastExecutionTime(now);
     ctx.incrementExecutionCount();
     if (ctx.executeTick) {
       await ctx.executeTick();
@@ -121,5 +126,7 @@ export async function processPriceUpdate(
     logger.debug('Execution complete', 'StrategyRunner', { execution: currentCount });
   } catch (err) {
     logger.error('Execution error', 'StrategyRunner', { err: String(err) });
+  } finally {
+    ctx.setIsExecuting?.(false);
   }
 }
