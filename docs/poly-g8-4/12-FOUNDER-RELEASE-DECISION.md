@@ -7,18 +7,18 @@
 
 ---
 
-## 1. What CAN Be Shipped (After Owner Review & Green CI)
+## 1. Integrated Release Train (Authorized via `GO MERGE G8.5`)
 
-All items below are **reviewable Draft PRs** containing verified engineering, security, reliability, and documentation improvements with zero production deployment, zero live trading, and zero external data ingestion:
+All items below were sequentially integrated into `main` following explicit Founder authorization (`GO MERGE G8.5`) with zero production deployment side effects, zero live trading, and zero external data ingestion:
 
-| Order | PR | Branch | HEAD SHA | Scope | Risk / Impact |
-|---|---|---|---|---|---|
-| 1 | `#288` | `fix/poly-g8-4-security-283` | `156642fd` | Reconcile `package-lock.json` (`better-auth@1.7.7`, `proxy-addr@2.0.8`) for Issue `#283` | Low; lockfile-only; eliminates 2 critical `npm audit` findings |
-| 2 | `#282` | `docs/poly-g8-2-sanitized` | `b54e349e` | Sanitized G8.2 decision dossier (11 docs) | Zero runtime impact; 11/11 CI green |
-| 3 | `#285` | `fix/poly-g8-3-evidence-integrity` | `784d6e98` | G8.3 areas A–F + G8.4 backfill attestation, scorecard default path, and upload timeout hardening | Bounded to `infra/poly-collector/`, `sidecars/poly-book/`, `market-blind/`, `scripts/poly-g7-scorecard.ts`; zero Paper Beta regression |
-| 4 | `#289` | `fix/poly-g8-4-reliability-286` | `a9463d95` | `StrategyRunner` re-entrancy guard + offline lifecycle test isolation (`#286`); GhostGuard `<100 ms` preserved | Low; improves runtime safety & CI determinism |
-| 5 | `#290` | `chore/poly-g8-4-lint-284` | `7e7faca0` | Remove 55 genuine unused imports across 42 files (`143 -> 88 <= 100`) (`#284`) | Low; zero overlap with `#285`/`#289` |
-| 6 | G8.4 Docs PR | `docs/poly-g8-4-ic-release-package` | *(current PR)* | 13 IC release reports + `ic-roadmap-manifest.json` | Docs-only; zero runtime impact |
+| Order | PR | Branch | Pre-Merge HEAD | Merged `main` SHA | Scope | Post-Merge `main` CI |
+|---|---|---|---|---|---|---|
+| 1 | `#288` | `fix/poly-g8-4-security-283` | `156642fd` | `951ddb0b6258` | Reconcile `package-lock.json` (`better-auth@1.7.7`, `proxy-addr@2.0.8`) for Issue `#283` | 3/3 PASS (0 deploys) |
+| 2 | `#282` | `docs/poly-g8-2-sanitized` | `b54e349e` | `46aac0245187` | Sanitized G8.2 decision dossier (11 docs) | 2/2 PASS (0 deploys) |
+| 3 | `#285` | `fix/poly-g8-3-evidence-integrity` | `784d6e98` | `e52190b4ee3a` | G8.3 areas A–F + G8.4 backfill attestation, scorecard default path, and upload timeout hardening | 3/3 PASS (0 deploys) |
+| 4 | `#289` | `fix/poly-g8-4-reliability-286` | `a9463d95` | `8586b3748665` | `StrategyRunner` re-entrancy guard + offline lifecycle test isolation (`#286`); GhostGuard `<100 ms` preserved | 3/3 PASS (0 deploys) |
+| 5 | `#290` | `chore/poly-g8-4-lint-284` | `7e7faca0` | `45f2629871b6` | Remove 55 genuine unused imports across 42 files (`143 -> 88 <= 100`) (`#284`) | 3/3 PASS (0 deploys) |
+| 6 | `#291` | `docs/poly-g8-4-ic-release-package` | *(current PR)* | *(final step)* | 13 IC release reports + `ic-roadmap-manifest.json` reconciled to `45f2629871b6` | Verified on merge |
 
 ---
 

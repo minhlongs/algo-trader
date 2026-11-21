@@ -2,7 +2,8 @@
 
 - **Document ID:** `POLY-G8.4-00`
 - **Date:** 2026-11-21 (Asia/Saigon)
-- **Baseline `origin/main` SHA:** `7319b8d04305d14c95cd366a1593d3bdfa9235ec`
+- **Pre-Release Baseline `origin/main` SHA:** `7319b8d04305d14c95cd366a1593d3bdfa9235ec`
+- **Integrated Pre-Docs `origin/main` SHA (after PRs `#288`, `#282`, `#285`, `#289`, `#290`):** `45f2629871b613b326d839fe138a635133865d29`
 - **Tracking Issue:** `#287` (related issues: `#272`, `#275`, `#278`, `#283`, `#284`, `#286`)
 - **Live Capital Status:** `LIVE_TRADING_ENABLED=false` — zero real funds, zero wallets/keys, zero production deploy, zero continuous external data collection.
 
@@ -10,15 +11,17 @@
 
 ## 1. Executive Summary
 
-POLY-G8.4 completes bounded release hardening, independent PR auditing, security/reliability/lint remediation, offline integrity verification, and 90-day Investment Committee (IC) roadmap reconciliation without crossing any legal, capital, or production boundary.
+POLY-G8.4 / POLY-G8.5 completes bounded release hardening, independent PR auditing, security/reliability/lint remediation, sequential owner-authorized integration (`GO MERGE G8.5`), offline integrity verification, and 90-day Investment Committee (IC) roadmap reconciliation without crossing any legal, capital, or production boundary.
 
-- **Engineering & Security Hardening Delivered (as Reviewable Draft PRs):**
-  - **PR `#282`** (`b54e349e`): Sanitized G8.2 decision dossier audited clean, 11/11 mandatory CI green → **`READY_FOR_OWNER_REVIEW`**.
-  - **PR `#285`** (`784d6e98`): Initial audit identified 3 verified defects (backfill forgery via caller `recordedAtMs`, scorecard default ledger path drift, unbounded upload transport timeout). All 3 were fixed via a non-destructive fast-forward commit; local verification passed across Rust `poly-book` (58/58), Python uploader (31/31), and TypeScript Polymarket tests (418/418).
-  - **PR `#288`** (`156642fd`, Issue `#283`): Reconciled `package-lock.json` (`better-auth@1.7.7`, `proxy-addr@2.0.8`), reducing `npm audit --omit=dev --audit-level=critical` from `2` critical to `0`. `USER_001_INVITE` remains **`HOLD`** until deployed Worker build provenance is confirmed.
-  - **PR `#289`** (`a9463d95`, Issue `#286`): Fixed `StrategyRunner` tick re-entrancy / `maxTicks` race and isolated lifecycle tests offline (41/41 strategy-runner tests pass, GhostGuard Rust 54/54 pass, `<100 ms` webhook bridge threshold preserved).
-  - **PR `#290`** (`7e7faca0`, Issue `#284`): Removed 55 genuine unused imports across 42 files (`143 → 88` warnings, restoring local `--max-warnings 100` gate with 0 errors and unchanged cap).
+- **Engineering & Security Hardening Integrated on `main` (Zero Production Deploy Side Effects):**
+  - **PR `#288`** (`156642fd` → merged `951ddb0b6258`, Issue `#283`): Reconciled `package-lock.json` (`better-auth@1.7.7`, `proxy-addr@2.0.8`), reducing `npm audit --omit=dev --audit-level=critical` from `2` critical to `0`. Post-merge `main` CI 3/3 PASS (`CI`, `Security Hardening`, `CI/CD — Test Suite`; deploy jobs skipped). `USER_001_INVITE` remains **`HOLD`** until deployed Worker build provenance is confirmed.
+  - **PR `#282`** (`b54e349e` → merged `46aac0245187`): Sanitized G8.2 decision dossier. Post-merge `main` CI 2/2 PASS (`CI`, `Security Hardening`).
+  - **PR `#285`** (`784d6e98` → merged `e52190b4ee3a`): G8.3 6-area evidence-integrity remediation plus 3 verified G8.4 fixes (authoritative `recordedAtMs` + backfill exclusion, canonical scorecard default ledger path, bounded upload transport timeout). Post-merge `main` CI 3/3 PASS (deploy jobs skipped). Residual trust boundary preserved: CLI `--resolved-at-ms` is local admin-controlled until Stage 4 binds settlement to authoritative Gamma/CTF venue responses (`w_skill = 0`).
+  - **PR `#289`** (`a9463d95` → merged `8586b3748665`, Issue `#286`): Fixed `StrategyRunner` tick re-entrancy / `maxTicks` race and isolated lifecycle tests offline; preserved GhostGuard `<100 ms` webhook bridge threshold. Post-merge `main` CI 3/3 PASS (deploy jobs skipped).
+  - **PR `#290`** (`7e7faca0` → merged `45f2629871b6`, Issue `#284`): Removed 55 genuine unused imports across 42 files (`143 → 88` warnings, restoring local `--max-warnings 100` gate with 0 errors and unchanged cap). Post-merge `main` CI 3/3 PASS (deploy jobs skipped).
+  - **PR `#291`** (`docs/poly-g8-4-ic-release-package`): Final IC release documentation and machine-readable roadmap manifest reconciled to `45f2629871b6`.
 - **Economic & Governance Truth Preserved (Fail-Closed):**
+  - `ENGINEERING_COMPLETE != EMPIRICAL_ALPHA_VALIDATED`, `CI_GREEN != DATA_LICENSE_GRANTED`, `DATA_LICENSE_GRANTED != VIETNAM_G12_APPROVED`, `G11_PASS != FOUNDER_G13_APPROVED`.
   - No empirical alpha is claimed: `0/30` continuous L2 days, `0/500` qualifying maker fills, `0` real NegRisk multi-leg cycles, `0/150` resolved prospective OOS forecasts.
   - `IC_DAY_0 = null` (clock not started).
   - `DATA_LICENSE = HOLD`, `VIETNAM_G12 = HOLD`, `INFRA_BUDGET = HOLD`, `VPS_R2_ACTIVATION = HOLD`, `ECONOMIC_G11 = HOLD`, `LEGAL_G12 = HOLD`, `FOUNDER_G13 = HOLD`, `REAL_MONEY_TRADING = DISABLED`, `LINUX_SYSTEMD_RUNTIME = NOT_TESTED`.

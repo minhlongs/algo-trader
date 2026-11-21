@@ -3,21 +3,24 @@
 - **Document ID:** `POLY-G8.4-01`
 - **Date:** 2026-11-21 (Asia/Saigon)
 - **Repository:** `https://github.com/minhlongs/algo-trader`
-- **Verified `origin/main` HEAD:** `7319b8d04305d14c95cd366a1593d3bdfa9235ec`
+- **Pre-Release Baseline `origin/main` HEAD:** `7319b8d04305d14c95cd366a1593d3bdfa9235ec`
+- **Integrated Pre-Docs `origin/main` HEAD:** `45f2629871b613b326d839fe138a635133865d29`
 
 ---
 
-## 1. Historical vs. Verified Remote State
+## 1. Historical vs. Verified Integrated State (G8.5 Sequential Merge Train)
 
-| Item | Historical Reference | Live Verified State (2026-11-21) | Notes |
-|---|---|---|---|
-| `origin/main` | `7319b8d04305d14c95cd366a1593d3bdfa9235ec` | `7319b8d04305d14c95cd366a1593d3bdfa9235ec` | Unchanged; PR #277, #280, #281 merged |
-| PR `#282` | `b54e349e014a71082f28c2434dc98d0a0e6d94db` (Draft) | `b54e349e014a71082f28c2434dc98d0a0e6d94db` (Draft) | Audited clean; 11/11 mandatory CI green; `READY_FOR_OWNER_REVIEW` |
-| PR `#285` | `05a1b5262f89b0d07d4c2cdcb2393110b9477605` (Draft) | `784d6e986b0e3bad1009af0e1bf1e09400d3b4e7` (Draft) | Fast-forward remediation commit appended for 3 verified defects (backfill attestation, canonical scorecard ledger default, bounded upload timeout); CI triggered on `784d6e98` |
-| PR `#288` | New (G8.4) | `156642fd` (Draft, `fix/poly-g8-4-security-283`) | Reconciles `package-lock.json` (`better-auth@1.7.7`, `proxy-addr@2.0.8`) for Issue `#283` |
-| PR `#289` | New (G8.4) | `a9463d95` (Draft, `fix/poly-g8-4-reliability-286`) | Fixes `StrategyRunner` tick re-entrancy + offline lifecycle test isolation for Issue `#286`; preserves GhostGuard `<100 ms` threshold |
-| PR `#290` | New (G8.4) | `7e7faca0` (Draft, `chore/poly-g8-4-lint-284`) | Removes 55 unused imports across 42 files (`143 -> 88 <= 100`) for Issue `#284` |
-| G8.4 Docs PR | New (G8.4) | `docs/poly-g8-4-ic-release-package` (Draft) | 13 IC release reports + `ic-roadmap-manifest.json` |
+| Order | PR | Branch | Pre-Merge HEAD | Squash Merge `main` SHA | Post-Merge `main` CI | Post-Merge CI Run URLs |
+|---|---|---|---|---|---|---|
+| 0 | Base | `main` | `7319b8d04305` | `7319b8d04305` | PASS | Baseline after PR #277, #280, #281 |
+| 1 | `#288` | `fix/poly-g8-4-security-283` | `156642fd95cb` | `951ddb0b6258ca177c7ac4d83bc38c382300a19e` | 3/3 PASS (0 deploys) | `CI` `44901055513`, `CI/CD` `44901055416`, `Sec` `44901055417` |
+| 2 | `#282` | `docs/poly-g8-2-sanitized` | `b54e349e014a` | `46aac02451873bcd44dcdcb8189079841e925f3e` | 2/2 PASS (0 deploys) | `CI` `44902000422`, `Sec` `44902000423` |
+| 3 | `#285` | `fix/poly-g8-3-evidence-integrity` | `784d6e986b0e` | `e52190b4ee3a15fb09f4acec6b198787e434e5fb` | 3/3 PASS (0 deploys) | `CI` `44903075351`, `CI/CD` `44903075257`, `Sec` `44903075299` |
+| 4 | `#289` | `fix/poly-g8-4-reliability-286` | `a9463d9560ae` | `8586b37486658aed4b2fbc70e6470621ac5f15b4` | 3/3 PASS (0 deploys) | `CI` `44904452946`, `CI/CD` `44904452935`, `Sec` `44904453018` |
+| 5 | `#290` | `chore/poly-g8-4-lint-284` | `7e7faca0aaad` | `45f2629871b613b326d839fe138a635133865d29` | 3/3 PASS (0 deploys) | `CI` `44905419913`, `CI/CD` `44905419917`, `Sec` `44905419957` |
+| 6 | `#291` | `docs/poly-g8-4-ic-release-package` | *(this PR)* | *(pending final merge)* | *(pending)* | Reconciled to `45f2629871b6` prior to merge |
+
+All GitHub Actions run IDs resolve under `https://github.com/minhlongs/algo-trader/actions/runs/<id>`. Every `CI/CD` run executed `Test Suite` only; `Docker Build`, `Deploy CF Worker`, and `Health Check` were `skipped` (`PAGES_AUTO_DEPLOY=false`, `WORKER_AUTO_DEPLOY=false`).
 
 ---
 

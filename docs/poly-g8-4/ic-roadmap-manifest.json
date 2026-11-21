@@ -1,8 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "releaseId": "POLY-G8.4",
-  "generatedAt": "2026-11-21T11:25:00Z",
+  "releaseId": "POLY-G8.5",
+  "generatedAt": "2026-11-21T12:48:00Z",
   "baselineMainSha": "7319b8d04305d14c95cd366a1593d3bdfa9235ec",
+  "integratedPreDocsMainSha": "45f2629871b613b326d839fe138a635133865d29",
+  "mergedPullRequests": [
+    { "pr": 288, "headSha": "156642fd95cb5fa58a6e2c0b8e7999986c705003", "mergeSha": "951ddb0b6258ca177c7ac4d83bc38c382300a19e", "mainCi": "PASS" },
+    { "pr": 282, "headSha": "b54e349e014a71082f28c2434dc98d0a0e6d94db", "mergeSha": "46aac02451873bcd44dcdcb8189079841e925f3e", "mainCi": "PASS" },
+    { "pr": 285, "headSha": "784d6e986b0e3bad1009af0e1bf1e09400d3b4e7", "mergeSha": "e52190b4ee3a15fb09f4acec6b198787e434e5fb", "mainCi": "PASS" },
+    { "pr": 289, "headSha": "a9463d9560aed5e5c07218e297dbd0fd91804a80", "mergeSha": "8586b37486658aed4b2fbc70e6470621ac5f15b4", "mainCi": "PASS" },
+    { "pr": 290, "headSha": "7e7faca0aaadf3ad58d91077bb52eb49419c09a8", "mergeSha": "45f2629871b613b326d839fe138a635133865d29", "mainCi": "PASS" }
+  ],
   "icDay0": null,
   "icClockActive": false,
   "rawPdfAvailableLocally": false,
