@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { transformDashboardHtmlForMode } from './poly-beta-html-metadata';
 
 const isCloudDeploy = process.env.CF_PAGES === '1';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'poly-beta-truthful-html-metadata',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html) {
+          return transformDashboardHtmlForMode(html, process.env.VITE_APP_MODE);
+        },
+      },
+    },
+  ],
   base: '/',
   build: {
     outDir: isCloudDeploy ? 'dist' : '../dist/dashboard',

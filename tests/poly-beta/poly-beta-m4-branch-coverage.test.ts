@@ -22,7 +22,7 @@ import {
 } from '../../src/desk/polymarket/clob-v2-order-surface';
 import { Poly1271IsolationError, Poly1271SessionSigner } from '../../src/desk/polymarket/poly1271-session-signer';
 import { createRiskGatedOrderGateway } from '../../src/desk/polymarket/poly-settlement-reconciliation-drills';
-import { createPolyBetaTestHarness, seedMarketSnapshots } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, seedMarketSnapshots, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -42,6 +42,7 @@ describe('POLY-G5 M4 — Per-File >=95% Stmt/Line/Func & >=85% Branch Coverage',
         body: JSON.stringify({
           email: 'm4@example.com',
           password: 'Strong#BetaPassword2026!',
+          inviteToken: testInviteTokenForEmail('m4@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),
@@ -128,6 +129,7 @@ describe('POLY-G5 M4 — Per-File >=95% Stmt/Line/Func & >=85% Branch Coverage',
         body: JSON.stringify({
           email: 'm4-do@example.com',
           password: 'Strong#BetaPassword2026!',
+          inviteToken: testInviteTokenForEmail('m4-do@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),
@@ -320,6 +322,7 @@ describe('POLY-G5 M4 — Per-File >=95% Stmt/Line/Func & >=85% Branch Coverage',
         body: JSON.stringify({
           email: 'm4-null@example.com',
           password: 'Strong#BetaPassword2026!',
+          inviteToken: testInviteTokenForEmail('m4-null@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),

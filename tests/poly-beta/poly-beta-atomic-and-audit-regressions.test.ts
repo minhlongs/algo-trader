@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import worker from '../../src/platform/poly-beta/poly-beta-worker';
 import type { PolyBetaMarketSnapshot } from '../../src/platform/poly-beta/poly-beta-types';
-import { createPolyBetaTestHarness } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -76,6 +76,7 @@ describe('POLY-G5 — Round-2 Audit Regressions (Atomic D1 Batch, Read-Only GET,
         body: JSON.stringify({
           email: 'atomic-audit@example.com',
           password: 'AuditSafePassword!99',
+          inviteToken: testInviteTokenForEmail('atomic-audit@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),

@@ -15,13 +15,31 @@ export async function provisionTenantGenesisLedger(
     passwordSalt: string;
     sessionHash: string;
     csrfToken: string;
+    inviteTokenHash: string;
     expiresAtMs: number;
     nowMs: number;
   },
 ): Promise<void> {
-  const { userId, tenantId, email, passwordHash, passwordSalt, sessionHash, csrfToken, expiresAtMs, nowMs } = params;
+  const {
+    userId,
+    tenantId,
+    email,
+    passwordHash,
+    passwordSalt,
+    sessionHash,
+    csrfToken,
+    inviteTokenHash,
+    expiresAtMs,
+    nowMs,
+  } = params;
 
   await runAtomicBatch(db, [
+    db
+      .prepare(
+        `INSERT INTO beta_invite_redemptions (token_hash, email, user_id, tenant_id, redeemed_at_ms)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .bind(inviteTokenHash, email, userId, tenantId, nowMs),
     db
       .prepare(
         `INSERT INTO beta_users (id, tenant_id, email, password_hash, password_salt, disclosure_ack, created_at_ms)

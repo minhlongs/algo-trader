@@ -80,6 +80,7 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
         service: 'poly-beta-api',
         mode: 'PAPER_ONLY',
         liveTradingEnabled: false,
+        signupGateMode: 'allowlist',
         g1SoakLocked: env.G1_SOAK_LOCK !== 'unlocked',
         g2PolyShadowLocked: env.G2_POLY_SHADOW_LOCK !== 'unlocked',
         commitSha: env.COMMIT_SHA ?? 'dev',

@@ -26,6 +26,7 @@ export const betaSignupSchema = z
       .regex(/[0-9]/, 'Password must contain a digit')
       .regex(/[^A-Za-z0-9]/, 'Password must contain a special character'),
     acknowledgeSimulationAndRisk: z.literal(true),
+    inviteToken: z.string().trim().min(32, 'Valid one-time invite token is required').max(128).optional(),
   })
   .strict();
 
@@ -85,10 +86,17 @@ const FORBIDDEN_CALLER_SCOPE_KEYS = [
   'mnemonic',
 ] as const;
 
+const FORBIDDEN_URL_SECRET_KEYS = new Set(['invitetoken', 'invite_token', 'token']);
+
 export function detectForbiddenCallerAuthorityOverride(
   url: URL,
   rawBody: unknown,
 ): string | null {
+  for (const key of url.searchParams.keys()) {
+    if (FORBIDDEN_URL_SECRET_KEYS.has(key.toLowerCase())) {
+      return `Invite tokens must never be supplied in URL query parameters ("${key}")`;
+    }
+  }
   for (const key of FORBIDDEN_CALLER_SCOPE_KEYS) {
     if (url.searchParams.has(key)) {
       return `Caller-supplied query parameter "${key}" is forbidden`;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { handleBetaLogin, handleBetaSignup } from '../../src/platform/poly-beta/poly-beta-auth';
 import type { PolyBetaEnv } from '../../src/platform/poly-beta/poly-beta-types';
-import { createPolyBetaTestHarness } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 const API = 'https://poly-beta-api.workers.dev';
@@ -14,11 +14,16 @@ function signupRequest(body: string, url = `${API}/api/beta/auth/signup`, origin
   });
 }
 
-const VALID_BODY = JSON.stringify({
-  email: 'branch@example.com',
-  password: 'BranchPassword!123',
-  acknowledgeSimulationAndRisk: true,
-});
+function signupBodyFor(email: string, salt = 'default'): string {
+  return JSON.stringify({
+    email,
+    password: 'BranchPassword!123',
+    inviteToken: testInviteTokenForEmail(email, salt),
+    acknowledgeSimulationAndRisk: true,
+  });
+}
+
+const VALID_BODY = signupBodyFor('branch@example.com');
 
 describe('poly-beta auth branch coverage', () => {
   it('rejects origin, over-long payloads, malformed JSON and schema violations on signup', async () => {
@@ -54,7 +59,7 @@ describe('poly-beta auth branch coverage', () => {
     const first = await handleBetaSignup(signupRequest(VALID_BODY), env);
     expect(first.status).toBe(201);
 
-    const duplicate = await handleBetaSignup(signupRequest(VALID_BODY), env);
+    const duplicate = await handleBetaSignup(signupRequest(signupBodyFor('branch@example.com', 'second')), env);
     expect(duplicate.status).toBe(409);
     expect((await duplicate.json<{ code: string }>()).code).toBe('EMAIL_EXISTS');
 
@@ -93,10 +98,10 @@ describe('poly-beta auth branch coverage', () => {
     const nowMs = 1_000_000;
 
     for (let i = 0; i < 10; i += 1) {
-      const ok = await handleBetaSignup(signupRequest(VALID_BODY.replace('branch@', `branch${i}@`)), env, nowMs);
+      const ok = await handleBetaSignup(signupRequest(signupBodyFor(`branch${i}@example.com`)), env, nowMs);
       expect(ok.status).toBe(201);
     }
-    const limited = await handleBetaSignup(signupRequest(VALID_BODY.replace('branch@', 'branch99@')), env, nowMs);
+    const limited = await handleBetaSignup(signupRequest(signupBodyFor('branch99@example.com')), env, nowMs);
     expect(limited.status).toBe(429);
 
     const loginUrl = `${API}/api/beta/auth/login`;
@@ -143,6 +148,7 @@ describe('poly-beta auth branch coverage', () => {
     const httpSignup = await handleBetaSignup(signupRequest(JSON.stringify({
       email: 'dev@example.com',
       password: 'DevPassword!12345',
+      inviteToken: testInviteTokenForEmail('dev@example.com'),
       acknowledgeSimulationAndRisk: true,
     }), 'http://localhost:8787/api/beta/auth/signup', 'http://localhost:5173'), env);
     expect(httpSignup.status).toBe(201);
@@ -153,6 +159,7 @@ describe('poly-beta auth branch coverage', () => {
     const httpsSignup = await handleBetaSignup(signupRequest(JSON.stringify({
       email: 'secure@example.com',
       password: 'SecurePassword!123',
+      inviteToken: testInviteTokenForEmail('secure@example.com'),
       acknowledgeSimulationAndRisk: true,
     })), env);
     expect(httpsSignup.status).toBe(201);

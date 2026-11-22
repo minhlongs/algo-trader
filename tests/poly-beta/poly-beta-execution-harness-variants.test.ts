@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import worker from '../../src/platform/poly-beta/poly-beta-worker';
-import { createPolyBetaTestHarness, seedMarketSnapshots } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, seedMarketSnapshots, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -15,7 +15,9 @@ describe('Beta execution harness variants', () => {
       const signup = await worker.fetch(new Request(`${ORIGIN}/api/beta/auth/signup`, {
         method: 'POST', headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: `${strategyId}@example.com`,
-          password: 'Strong#BetaPassword2026!', acknowledgeSimulationAndRisk: true }),
+          password: 'Strong#BetaPassword2026!',
+          inviteToken: testInviteTokenForEmail(`${strategyId}@example.com`),
+          acknowledgeSimulationAndRisk: true }),
       }), env);
       expect(signup.status).toBe(201);
       const cookie = signup.headers.get('Set-Cookie')!.split(';')[0]!;

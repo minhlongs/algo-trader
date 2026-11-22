@@ -3,6 +3,7 @@
  * for `poly-beta-api` adversarial isolation and ledger accounting verification.
  */
 
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -21,7 +22,12 @@ export function createSqliteD1(): { db: PolyBetaD1Database; raw: DatabaseSync } 
     resolve(__dirname, '../../migrations/poly-beta-d1/0001-poly-beta-ledger.sql'),
     'utf8',
   );
+  const inviteMigrationSql = readFileSync(
+    resolve(__dirname, '../../migrations/poly-beta-d1/0002-poly-beta-invite-redemptions.sql'),
+    'utf8',
+  );
   sqlite.exec(migrationSql);
+  sqlite.exec(inviteMigrationSql);
 
   const db: PolyBetaD1Database = {
     prepare(query: string) {
@@ -131,7 +137,64 @@ export function seedMarketSnapshots(nowMs = Date.now()): PolyBetaMarketSnapshot[
   ];
 }
 
-export async function createPolyBetaTestHarness() {
+const DEFAULT_TEST_SIGNUP_EMAILS = [
+  'atomic-audit@example.com',
+  'branch@example.com',
+  ...Array.from({ length: 10 }, (_, i) => `branch${i}@example.com`),
+  'branch99@example.com',
+  'dev@example.com',
+  'secure@example.com',
+  'c1-ledger@example.com',
+  'risk@example.com',
+  'h3-halt@example.com',
+  'm4-do@example.com',
+  'm4-null@example.com',
+  'm4@example.com',
+  'guard@example.com',
+  'alice@example.com',
+  'bob@example.com',
+  'stale-check@example.com',
+  'trader1@example.com',
+  'serial-do@example.com',
+  'signed-client@example.com',
+  'toxicity-aware-mm-paper@example.com',
+  'neg-risk-bundle-paper@example.com',
+  'bayesian-fair-value-paper@example.com',
+] as const;
+
+const DEFAULT_TEST_SIGNUP_ALLOWLIST = DEFAULT_TEST_SIGNUP_EMAILS.join(',');
+
+export function testInviteTokenForEmail(email: string, salt = 'default'): string {
+  return createHash('sha256')
+    .update(`poly-beta-test-invite:${salt}:${email.trim().toLowerCase()}`)
+    .digest('hex');
+}
+
+export function buildTestInvitesJson(
+  entries: ReadonlyArray<{ rawToken: string; email: string; expiresAtMs?: number; disabled?: boolean }>,
+): string {
+  const defaultExpiry = Date.now() + 24 * 3600 * 1000;
+  return JSON.stringify(
+    entries.map((entry) => ({
+      tokenHash: createHash('sha256').update(entry.rawToken).digest('hex'),
+      email: entry.email.trim().toLowerCase(),
+      expiresAtMs: entry.expiresAtMs ?? defaultExpiry,
+      disabled: entry.disabled ?? false,
+    })),
+  );
+}
+
+const DEFAULT_TEST_SIGNUP_INVITES = buildTestInvitesJson(
+  DEFAULT_TEST_SIGNUP_EMAILS.flatMap((email) => [
+    { rawToken: testInviteTokenForEmail(email, 'default'), email, expiresAtMs: Date.now() + 7 * 24 * 3600 * 1000 },
+    { rawToken: testInviteTokenForEmail(email, 'second'), email, expiresAtMs: Date.now() + 7 * 24 * 3600 * 1000 },
+  ]),
+);
+
+export async function createPolyBetaTestHarness(options?: {
+  signupAllowlist?: string | undefined;
+  signupInvites?: string | undefined;
+}) {
   const { db, raw } = createSqliteD1();
   const kv = createMemoryKv();
   const engines = new Map<string, { instance: TenantPaperEngine; storage: ReturnType<typeof createMemoryDoStorage> }>();
@@ -142,6 +205,13 @@ export async function createPolyBetaTestHarness() {
     TENANT_PAPER_ENGINE: {} as PolyBetaDoNamespace,
     ENVIRONMENT: 'test',
     LIVE_TRADING_ENABLED: 'false',
+    SIGNUP_GATE_MODE: 'allowlist',
+    ...(options && 'signupAllowlist' in options
+      ? (options.signupAllowlist !== undefined ? { BETA_SIGNUP_ALLOWLIST: options.signupAllowlist } : {})
+      : { BETA_SIGNUP_ALLOWLIST: DEFAULT_TEST_SIGNUP_ALLOWLIST }),
+    ...(options && 'signupInvites' in options
+      ? (options.signupInvites !== undefined ? { BETA_SIGNUP_INVITES: options.signupInvites } : {})
+      : { BETA_SIGNUP_INVITES: DEFAULT_TEST_SIGNUP_INVITES }),
     G1_SOAK_LOCK: 'locked',
     G2_POLY_SHADOW_LOCK: 'locked',
     ALLOWED_ORIGINS: 'https://poly-beta-dashboard.pages.dev,http://localhost:5173',
