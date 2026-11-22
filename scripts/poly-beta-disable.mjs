@@ -27,7 +27,7 @@ export const TARGET_BINDINGS = Object.freeze({
   }),
   'poly-beta-staging': Object.freeze({
     wranglerEnv: 'staging',
-    allowedWorkerNames: new Set(['poly-beta-api', 'poly-beta-api-staging']),
+    allowedWorkerNames: new Set(['poly-beta-api-staging']),
     expectedEnvironment: 'staging',
     expectedDatabaseName: 'poly-beta-db-staging',
     requireEnvSection: true,
@@ -87,10 +87,67 @@ function stripTomlComment(line) {
   return line;
 }
 
+const FORBIDDEN_TOML_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function assertSafeKeySegment(key) {
+  if (!key || FORBIDDEN_TOML_KEYS.has(key)) {
+    throw new Error(`Refusing to parse unsafe TOML key "${key}".`);
+  }
+}
+
+function splitTomlPath(rawPath) {
+  const parts = [];
+  let buf = '';
+  let inDouble = false;
+  let inSingle = false;
+  let escaped = false;
+  for (let i = 0; i < rawPath.length; i += 1) {
+    const ch = rawPath[i];
+    if (escaped) {
+      buf += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\' && inDouble) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"' && !inSingle) {
+      inDouble = !inDouble;
+      continue;
+    }
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle;
+      continue;
+    }
+    if (ch === '.' && !inDouble && !inSingle) {
+      const seg = buf.trim();
+      assertSafeKeySegment(seg);
+      parts.push(seg);
+      buf = '';
+      continue;
+    }
+    buf += ch;
+  }
+  if (inDouble || inSingle) {
+    throw new Error(`Unterminated quoted TOML key in "${rawPath}".`);
+  }
+  const last = buf.trim();
+  assertSafeKeySegment(last);
+  parts.push(last);
+  return parts;
+}
+
 function parseTomlValue(raw) {
   const v = raw.trim();
+  if (v.startsWith('"""') || v.startsWith("'''")) {
+    throw new Error('Unsupported multiline TOML string in wrangler config; refusing to parse ambiguously.');
+  }
   if (v.startsWith('{')) {
     throw new Error('Unsupported inline TOML table in wrangler config; refusing to parse ambiguously.');
+  }
+  if (v.startsWith('[') && v.endsWith(']')) {
+    return v;
   }
   if (v.startsWith('"') && v.endsWith('"') && v.length >= 2) {
     return JSON.parse(v);
@@ -100,23 +157,33 @@ function parseTomlValue(raw) {
   }
   if (v === 'true') return true;
   if (v === 'false') return false;
-  return v;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  throw new Error(`Unsupported or ambiguous TOML value "${v}" in wrangler config.`);
 }
 
 function setNestedTomlKey(targetObj, pathParts, value) {
   let cursor = targetObj;
   for (let i = 0; i < pathParts.length - 1; i += 1) {
     const key = pathParts[i];
-    if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
-      cursor[key] = {};
+    assertSafeKeySegment(key);
+    if (!Object.prototype.hasOwnProperty.call(cursor, key)) {
+      cursor[key] = Object.create(null);
+    } else if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+      throw new Error(`TOML key conflict on "${pathParts.join('.')}".`);
     }
     cursor = cursor[key];
   }
-  cursor[pathParts[pathParts.length - 1]] = value;
+  const leaf = pathParts[pathParts.length - 1];
+  assertSafeKeySegment(leaf);
+  if (Object.prototype.hasOwnProperty.call(cursor, leaf)) {
+    throw new Error(`Duplicate TOML key "${pathParts.join('.')}" in wrangler config.`);
+  }
+  cursor[leaf] = value;
 }
 
 export function parseWranglerToml(content) {
-  const root = {};
+  const root = Object.create(null);
+  const declaredTables = new Set();
   let current = root;
   const lines = content.split(/\r?\n/);
 
@@ -125,37 +192,42 @@ export function parseWranglerToml(content) {
     if (!line) continue;
 
     if (line.startsWith('[[') && line.endsWith(']]')) {
-      const pathParts = line
-        .slice(2, -2)
-        .split('.')
-        .map((p) => p.trim().replace(/^["']|["']$/g, ''))
-        .filter(Boolean);
+      const pathParts = splitTomlPath(line.slice(2, -2));
       let cursor = root;
       for (let i = 0; i < pathParts.length - 1; i += 1) {
         const key = pathParts[i];
-        if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
-          cursor[key] = {};
+        if (!Object.prototype.hasOwnProperty.call(cursor, key)) {
+          cursor[key] = Object.create(null);
+        } else if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+          throw new Error(`TOML table conflict on "${pathParts.join('.')}".`);
         }
         cursor = cursor[key];
       }
       const leaf = pathParts[pathParts.length - 1];
-      if (!Array.isArray(cursor[leaf])) cursor[leaf] = [];
-      const item = {};
+      if (!Object.prototype.hasOwnProperty.call(cursor, leaf)) {
+        cursor[leaf] = [];
+      } else if (!Array.isArray(cursor[leaf])) {
+        throw new Error(`TOML array-of-tables conflict on "${pathParts.join('.')}".`);
+      }
+      const item = Object.create(null);
       cursor[leaf].push(item);
       current = item;
       continue;
     }
 
     if (line.startsWith('[') && line.endsWith(']')) {
-      const pathParts = line
-        .slice(1, -1)
-        .split('.')
-        .map((p) => p.trim().replace(/^["']|["']$/g, ''))
-        .filter(Boolean);
+      const pathParts = splitTomlPath(line.slice(1, -1));
+      const tableKey = pathParts.join('.');
+      if (declaredTables.has(tableKey)) {
+        throw new Error(`Duplicate TOML table "[${tableKey}]" in wrangler config.`);
+      }
+      declaredTables.add(tableKey);
       let cursor = root;
       for (const key of pathParts) {
-        if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
-          cursor[key] = {};
+        if (!Object.prototype.hasOwnProperty.call(cursor, key)) {
+          cursor[key] = Object.create(null);
+        } else if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+          throw new Error(`TOML table conflict on "${tableKey}".`);
         }
         cursor = cursor[key];
       }
@@ -164,14 +236,11 @@ export function parseWranglerToml(content) {
     }
 
     const eqIdx = line.indexOf('=');
-    if (eqIdx === -1) continue;
-    const keyPath = line
-      .slice(0, eqIdx)
-      .split('.')
-      .map((p) => p.trim().replace(/^["']|["']$/g, ''))
-      .filter(Boolean);
+    if (eqIdx === -1) {
+      throw new Error(`Malformed TOML line in wrangler config: "${line}".`);
+    }
+    const keyPath = splitTomlPath(line.slice(0, eqIdx));
     const valStr = line.slice(eqIdx + 1).trim();
-    if (keyPath.length === 0) continue;
     setNestedTomlKey(current, keyPath, parseTomlValue(valStr));
   }
 
@@ -206,7 +275,8 @@ export function validateWranglerConfig(configPath, target) {
 
   const envNameOverride =
     envTable && typeof envTable.name === 'string' ? envTable.name.trim() : null;
-  const effectiveWorkerName = envNameOverride ?? topLevelName;
+  const effectiveWorkerName =
+    envNameOverride ?? (binding?.requireEnvSection ? `${topLevelName}-${binding.wranglerEnv}` : topLevelName);
   const allowedNames = binding?.allowedWorkerNames ?? new Set(['poly-beta-api']);
   if (!allowedNames.has(effectiveWorkerName)) {
     throw new Error(

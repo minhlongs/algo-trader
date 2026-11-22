@@ -126,6 +126,7 @@ describe('poly-beta-disable', () => {
       mode: 'full-disable',
       wranglerConfig: stagingConfig,
     });
+    expect(plan.workerName).toBe('poly-beta-api-staging');
     expect(plan.wranglerEnv).toBe('staging');
     expect(plan.databaseName).toBe('poly-beta-db-staging');
     for (const action of plan.actions as Array<{ command: string[] }>) {
@@ -133,6 +134,54 @@ describe('poly-beta-disable', () => {
       expect(envIdx).toBeGreaterThan(-1);
       expect(action.command[envIdx + 1]).toBe('staging');
     }
+
+    // Reject [env.staging].name = "poly-beta-api" (staging must not target prod worker name)
+    const prodNamedStaging = join(tempDir, 'wrangler.prod-named-staging.toml');
+    writeFileSync(
+      prodNamedStaging,
+      [
+        'name = "poly-beta-api"',
+        '[env.staging]',
+        'name = "poly-beta-api"',
+        '[env.staging.vars]',
+        'ENVIRONMENT = "staging"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[[env.staging.d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        'database_name = "poly-beta-db-staging"',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(() =>
+      buildDisablePlan({
+        target: 'poly-beta-staging',
+        mode: 'disable-signup',
+        wranglerConfig: prodNamedStaging,
+      }),
+    ).toThrow(/effective worker name "poly-beta-api" is not allowed/);
+
+    // Reject prototype pollution keys and duplicate TOML keys/tables
+    const protoConfig = join(tempDir, 'wrangler.proto.toml');
+    writeFileSync(
+      protoConfig,
+      'name = "poly-beta-api"\n[__proto__]\npolluted = "true"\n',
+      'utf8',
+    );
+    expect(() => validateWranglerConfig(protoConfig, 'poly-beta-prod')).toThrow(/unsafe TOML key/);
+
+    const dupKeyConfig = join(tempDir, 'wrangler.dup.toml');
+    writeFileSync(
+      dupKeyConfig,
+      [
+        'name = "poly-beta-api"',
+        '[vars]',
+        'ENVIRONMENT = "public-beta"',
+        'LIVE_TRADING_ENABLED = "false"',
+        'LIVE_TRADING_ENABLED = "true"',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(() => validateWranglerConfig(dupKeyConfig, 'poly-beta-prod')).toThrow(/Duplicate TOML key/);
   });
 
   it('rejects unknown targets and invalid modes', () => {
