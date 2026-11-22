@@ -1,8 +1,36 @@
 import { z } from 'zod';
 import type { MarketBlindDocumentInput, MarketBlindPosteriorConfig, MarketBlindSanitizerConfig, SealedForecastReceipt, SkillGateFailureReason } from './market-blind-types';
+import {
+  settlementVerificationReceiptSchema,
+  type SettlementVerificationReceipt,
+  type SettlementVerificationStage,
+  type TrustedSettlementVerifierRegistry,
+} from './settlement-verification-contract';
+
+export type { SettlementVerificationReceipt, SettlementVerificationStage, TrustedSettlementVerifierRegistry };
 
 export type MarketBlindResolutionState = 'RESOLVED_YES' | 'RESOLVED_NO' | 'VOIDED' | 'CANCELLED' | 'UMA_DISPUTED';
 export type ProspectiveOosVerdict = 'INSUFFICIENT_DATA' | 'FAIL_CALIBRATION' | 'PASS_PROSPECTIVE_SKILL';
+export type SettlementSource = 'CTF_ONCHAIN' | 'UMA_ORACLE' | 'GAMMA_API' | 'MANUAL_ADMIN';
+export type SettlementFinalityStatus = 'PROPOSED' | 'DISPUTED' | 'FINALIZED' | 'CORRECTED';
+export const MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS = 64;
+export interface SettlementProvenance {
+  source: SettlementSource;
+  finalityStatus: SettlementFinalityStatus;
+  marketId: string;
+  eventId?: string;
+  conditionId?: string;
+  txHash?: string;
+  blockNumber?: number;
+  confirmations?: number;
+  payoutNumerators?: readonly [number, number];
+  observedAtMs: number;
+  payloadHash: string;
+  reference: string;
+  correctionReason?: string;
+  /** Independently signed verification receipt required for empirical OOS eligibility. */
+  verificationReceipt?: SettlementVerificationReceipt;
+}
 export interface ForecastProvenance { kind: 'REAL' | 'SYNTHETIC'; source: string; reference: string; }
 export interface ProspectiveCommitInput {
   questionId: string; category?: string; pRaw: number; modelVersion: string; promptVersion?: string; prompt?: string;
@@ -22,10 +50,12 @@ export interface PostCommitMarketSnapshotInput { marketProb: number; marketReadA
 export interface PostCommitMarketSnapshotRecord { readonly entryHash: string; readonly marketProb: number; readonly marketReadAtMs: number; readonly source: string; }
 export interface MarketBlindResolutionInput {
   questionId?: string; entryHash?: string; status: MarketBlindResolutionState; resolvedAtMs?: number; marketProb?: number; marketReadAtMs?: number; note?: string;
+  settlementProvenance?: SettlementProvenance;
 }
 export interface MarketBlindResolutionAuditRecord {
   readonly entryHash: string; readonly questionId: string; readonly status: MarketBlindResolutionState; readonly outcome: 0 | 1 | null;
   readonly resolvedAtMs: number; readonly marketProb: number | null; readonly marketReadAtMs: number | null; readonly note?: string;
+  readonly settlementProvenance?: Readonly<SettlementProvenance>;
 }
 /** Caller must supply an actual IC approval record; these fields are not an approval service. */
 export interface ApprovedRepeatedForecastPolicy {
@@ -35,6 +65,7 @@ export interface ApprovedRepeatedForecastPolicy {
 export interface ProspectiveOosReportOptions {
   category?: string; calibrate?: (pRaw: number) => number; config?: Partial<MarketBlindPosteriorConfig>;
   mode?: 'diagnostic' | 'empirical'; modelVersion?: string; policy?: ApprovedRepeatedForecastPolicy;
+  settlementVerifierRegistry?: TrustedSettlementVerifierRegistry;
 }
 export interface ProspectiveOosReport {
   committedCount: number; resolvedScoredCount: number; voidedCount: number; cancelledCount: number; umaDisputedCount: number; pendingCount: number;
@@ -57,10 +88,28 @@ export const commitPayloadSchema = z.object({
 }).strict();
 export const storedCommitSchema = commitPayloadSchema.extend({ forecastEntryHash: hash, forecastPrevEntryHash: hash });
 export const snapshotSchema = z.object({ entryHash: hash, marketProb: probability, marketReadAtMs: timestamp, source: identifier }).strict();
+const hexBytes32 = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
+export const settlementProvenanceSchema = z.object({
+  source: z.enum(['CTF_ONCHAIN', 'UMA_ORACLE', 'GAMMA_API', 'MANUAL_ADMIN']),
+  finalityStatus: z.enum(['PROPOSED', 'DISPUTED', 'FINALIZED', 'CORRECTED']),
+  marketId: identifier,
+  eventId: identifier.optional(),
+  conditionId: hexBytes32.optional(),
+  txHash: hexBytes32.optional(),
+  blockNumber: z.number().int().positive().safe().optional(),
+  confirmations: z.number().int().nonnegative().safe().optional(),
+  payoutNumerators: z.tuple([z.number().int().nonnegative().safe(), z.number().int().nonnegative().safe()]).optional(),
+  observedAtMs: timestamp,
+  payloadHash: hash,
+  reference: identifier,
+  correctionReason: identifier.optional(),
+  verificationReceipt: settlementVerificationReceiptSchema.optional(),
+}).strict();
 export const resolutionSchema = z.object({
   entryHash: hash, questionId: identifier, status: z.enum(['RESOLVED_YES', 'RESOLVED_NO', 'VOIDED', 'CANCELLED', 'UMA_DISPUTED']),
   outcome: z.union([z.literal(0), z.literal(1)]).nullable(), resolvedAtMs: timestamp,
   marketProb: probability.nullable(), marketReadAtMs: timestamp.nullable(), note: z.string().optional(),
+  settlementProvenance: settlementProvenanceSchema.optional(),
 }).strict();
 export const approvedPolicySchema = z.object({
   policyId: identifier, approvalStatus: z.literal('APPROVED'), approvedBy: identifier, approvedAtMs: timestamp,

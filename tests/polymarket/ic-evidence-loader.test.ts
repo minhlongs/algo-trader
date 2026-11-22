@@ -15,6 +15,9 @@ import {
   recordMarketBlindResolution,
   submitMarketBlindForecast,
 } from '../../src/desk/polymarket/market-blind/market-blind-prospective-pipeline';
+import { createOfflineVerifierFixture } from './helpers/settlement-verifier-test-fixture';
+
+const verifierFixture = createOfflineVerifierFixture();
 
 const tempDirs: string[] = [];
 function makeTempDir(): string {
@@ -152,17 +155,34 @@ describe('IC Evidence Loader (POLY-G7.5 Phase 5)', () => {
         category: 'politics', pRaw: 0.72, modelVersion, evidence: 'public filing', committedAtMs,
       });
       attachPostCommitMarketSnapshot(ledger, receipt, { marketProb: 0.5, marketReadAtMs: committedAtMs + 2_000 });
-      recordMarketBlindResolution(ledger, { entryHash: receipt.entryHash, status: 'RESOLVED_YES', resolvedAtMs: committedAtMs + 60_000 });
+      const resolvedAtMs = committedAtMs + 60_000;
+      recordMarketBlindResolution(ledger, {
+        entryHash: receipt.entryHash,
+        status: 'RESOLVED_YES',
+        resolvedAtMs,
+        settlementProvenance: verifierFixture.buildSignedProvenance({
+          marketId,
+          eventId: `event-${index}`,
+          resolvedAtMs,
+          index: index + 1,
+        }),
+      });
     };
     addResolved('q-approved-a', 'market-approved-a', 'approved-model-v1', 'REAL', 0);
     addResolved('q-approved-a-revised', 'market-approved-a', 'approved-model-v1', 'REAL', 1);
     addResolved('q-synthetic', 'market-synthetic', 'approved-model-v1', 'SYNTHETIC', 2);
     addResolved('q-wrong-model', 'market-wrong-model', 'other-model-v1', 'REAL', 3);
 
-    const options = { marketBlindLedgerPath: ledgerPath, marketBlindCheckpointPath: checkpointPath, marketBlindPolicy: policy, marketBlindModelVersion: 'approved-model-v1' };
+    const options = {
+      marketBlindLedgerPath: ledgerPath,
+      marketBlindCheckpointPath: checkpointPath,
+      marketBlindPolicy: policy,
+      marketBlindModelVersion: 'approved-model-v1',
+      settlementVerifierRegistry: verifierFixture.registry,
+    };
     const loaded = loadICEvidenceForScorecard(options);
     const direct = evaluateProspectiveOosReport(ProspectivePipelineLedger.hydrateFromStore(createNodeJsonlAppendStore(ledgerPath, checkpointPath)), {
-      mode: 'empirical', modelVersion: 'approved-model-v1', policy,
+      mode: 'empirical', modelVersion: 'approved-model-v1', policy, settlementVerifierRegistry: verifierFixture.registry,
     });
     expect(direct.empiricalEligible).toBe(true);
     expect(direct.resolvedEligibleCount).toBe(1);
@@ -248,10 +268,19 @@ describe('IC Evidence Loader (POLY-G7.5 Phase 5)', () => {
         marketProb: 0.5,
         marketReadAtMs: baseMs + i * 10_000 + 2_000,
       });
+      const resolvedAtMs = baseMs + i * 10_000 + 60_000;
+      const isYes = i % 2 === 0;
       recordMarketBlindResolution(ledger, {
         entryHash: receipt.entryHash,
-        status: i % 2 === 0 ? 'RESOLVED_YES' : 'RESOLVED_NO',
-        resolvedAtMs: baseMs + i * 10_000 + 60_000,
+        status: isYes ? 'RESOLVED_YES' : 'RESOLVED_NO',
+        resolvedAtMs,
+        settlementProvenance: verifierFixture.buildSignedProvenance({
+          marketId: `market-g75-${i}`,
+          eventId: `event-g75-${i}`,
+          resolvedAtMs,
+          index: 100 + i,
+          payoutNumerators: isYes ? [1, 0] : [0, 1],
+        }),
       });
     }
 
@@ -260,6 +289,7 @@ describe('IC Evidence Loader (POLY-G7.5 Phase 5)', () => {
       marketBlindCheckpointPath: checkpointPath,
       marketBlindPolicy: policy,
       marketBlindModelVersion: 'blind-model-v1',
+      settlementVerifierRegistry: verifierFixture.registry,
     };
     const loaded = loadICEvidenceForScorecard(strictOptions);
     expect(loaded.samples.resolvedOosForecasts).toBe(3);

@@ -21,6 +21,7 @@ import {
   ProspectivePipelineLedger,
   type ApprovedRepeatedForecastPolicy,
   type ProspectiveOosReport,
+  type TrustedSettlementVerifierRegistry,
 } from './market-blind/market-blind-prospective-pipeline';
 
 export interface ICEvidenceLoaderOptions {
@@ -29,6 +30,7 @@ export interface ICEvidenceLoaderOptions {
   readonly marketBlindCheckpointPath?: string;
   readonly marketBlindPolicy?: ApprovedRepeatedForecastPolicy;
   readonly marketBlindModelVersion?: string;
+  readonly settlementVerifierRegistry?: TrustedSettlementVerifierRegistry;
   readonly manifestFilename?: string;
   readonly l2CoveragePolicy?: L2CoveragePolicy;
   readonly mode?: 'sim' | 'pilot';
@@ -53,7 +55,7 @@ export interface ICEvidenceLoadResult {
 }
 
 function inspectMarketBlindLedger(
-  options: Pick<ICEvidenceLoaderOptions, 'marketBlindLedgerPath' | 'marketBlindCheckpointPath' | 'marketBlindPolicy' | 'marketBlindModelVersion'>,
+  options: Pick<ICEvidenceLoaderOptions, 'marketBlindLedgerPath' | 'marketBlindCheckpointPath' | 'marketBlindPolicy' | 'marketBlindModelVersion' | 'settlementVerifierRegistry'>,
   errors: string[],
 ): { present: boolean; chainOk: boolean; report: ProspectiveOosReport | null; resolvedCount: number } {
   const ledgerPath = options.marketBlindLedgerPath;
@@ -71,6 +73,7 @@ function inspectMarketBlindLedger(
       mode: 'empirical',
       modelVersion: options.marketBlindModelVersion,
       policy: options.marketBlindPolicy,
+      settlementVerifierRegistry: options.settlementVerifierRegistry,
     });
     if (!report.chainVerified || report.hindcastDetected) {
       errors.push(

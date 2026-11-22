@@ -2,19 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { MarketBlindJournal } from '../../src/desk/polymarket/market-blind/market-blind-journal';
 import { createInMemoryAppendOnlyStore } from '../../src/desk/polymarket/market-blind/market-blind-ledger-store';
 import { ProspectivePipelineLedger, attachPostCommitMarketSnapshot, evaluateProspectiveOosReport, recordMarketBlindResolution, submitMarketBlindForecast, type ApprovedRepeatedForecastPolicy, type ProspectiveCommitInput } from '../../src/desk/polymarket/market-blind/market-blind-prospective-pipeline';
+import { createOfflineVerifierFixture } from './helpers/settlement-verifier-test-fixture';
 
 // Approval fixtures exercise validation only. They are not real IC approvals or empirical evidence.
+const verifierFixture = createOfflineVerifierFixture();
 const policy: ApprovedRepeatedForecastPolicy = { policyId: 'approval-fixture', approvalStatus: 'APPROVED', approvedBy: 'fixture-reviewer',
   approvedAtMs: 500, approvalEvidenceRef: 'local-fixture-record', modelVersion: 'model-v1', repeatedForecastRule: 'FIRST_COMMIT_PER_RESEARCH_QUESTION' };
-const options = { mode: 'empirical' as const, modelVersion: 'model-v1', policy };
+const options = { mode: 'empirical' as const, modelVersion: 'model-v1', policy, settlementVerifierRegistry: verifierFixture.registry };
+let nextFixtureIndex = 1;
 function commit(ledger: ProspectivePipelineLedger, id: string, overrides: Partial<ProspectiveCommitInput> = {}) {
   return submitMarketBlindForecast(ledger, { questionId: id, researchQuestionId: `research-${id}`, eventId: `event-${id}`, marketId: `market-${id}`,
     forecastId: `forecast-${id}`, forecastHorizonMs: 5000, provenance: { kind: 'REAL', source: 'official-publication', reference: `publication-${id}` },
     modelVersion: 'model-v1', pRaw: 0.6, evidence: 'Official source document.', committedAtMs: 1000, ...overrides });
 }
-function resolve(ledger: ProspectivePipelineLedger, receipt: ReturnType<typeof commit>, resolvedAtMs = 2000): void {
+function resolve(ledger: ProspectivePipelineLedger, receipt: ReturnType<typeof commit>, resolvedAtMs = 2000, index = nextFixtureIndex++): ReturnType<typeof verifierFixture.buildSignedProvenance> {
   attachPostCommitMarketSnapshot(ledger, receipt, { marketProb: 0.5, marketReadAtMs: receipt.committedAtMs + 1, source: 'official-market-feed' });
-  recordMarketBlindResolution(ledger, { entryHash: receipt.entryHash, status: 'RESOLVED_YES', resolvedAtMs });
+  const settlementProvenance = verifierFixture.buildSignedProvenance({
+    marketId: receipt.marketId ?? `market-${receipt.questionId}`,
+    eventId: receipt.eventId,
+    resolvedAtMs,
+    index,
+  });
+  recordMarketBlindResolution(ledger, {
+    entryHash: receipt.entryHash,
+    status: 'RESOLVED_YES',
+    resolvedAtMs,
+    settlementProvenance,
+  });
+  return settlementProvenance;
 }
 
 describe('approval-bound empirical forecast eligibility', () => {
@@ -95,12 +110,13 @@ describe('approval-bound empirical forecast eligibility', () => {
   });
   it('makes exact resolution retries idempotent by entry hash or question but rejects conflicts', () => {
     const ledger = new ProspectivePipelineLedger(undefined, () => 1000), receipt = commit(ledger, 'q1');
-    resolve(ledger, receipt);
-    const before = ledger.recordCount(), input = { questionId: 'q1', status: 'RESOLVED_YES' as const, resolvedAtMs: 2000 };
+    const settlementProvenance = resolve(ledger, receipt);
+    const before = ledger.recordCount();
+    const input = { questionId: 'q1', status: 'RESOLVED_YES' as const, resolvedAtMs: 2000, settlementProvenance };
     expect(recordMarketBlindResolution(ledger, input)).toHaveLength(1);
     expect(recordMarketBlindResolution(ledger, { ...input, entryHash: receipt.entryHash })).toHaveLength(1);
     expect(ledger.recordCount()).toBe(before);
-    expect(() => recordMarketBlindResolution(ledger, { ...input, status: 'RESOLVED_NO' })).toThrow(/Conflicting duplicate/);
+    expect(() => recordMarketBlindResolution(ledger, { ...input, status: 'RESOLVED_NO' })).toThrow(/payoutNumerators|Conflicting duplicate/);
     expect(() => recordMarketBlindResolution(ledger, { ...input, resolvedAtMs: 2500 })).toThrow(/Conflicting duplicate/);
   });
   it('rejects persisted semantic inconsistencies and cannot mutate public map snapshots', () => {
