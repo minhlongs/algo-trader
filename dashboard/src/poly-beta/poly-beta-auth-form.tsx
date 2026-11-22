@@ -15,6 +15,7 @@ const inputClass = 'w-full min-w-0 min-h-11 px-3 py-2 rounded bg-slate-950 borde
 export function PolyBetaAuthForm({ lang, mode, onBusyChange, onAuthenticated }: Props) {
   const t = POLY_BETA_COPY[lang];
   const [email, setEmail] = useState('');
+  const [inviteToken, setInviteToken] = useState('');
   const [password, setPassword] = useState('');
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -38,7 +39,10 @@ export function PolyBetaAuthForm({ lang, mode, onBusyChange, onAuthenticated }: 
         user?: { email: string; tenantId: string };
       }>(`/api/beta/auth/${mode}`, {
         method: 'POST',
-        body: mode === 'signup' ? { email, password, acknowledgeSimulationAndRisk: ack } : { email, password },
+        body:
+          mode === 'signup'
+            ? { email, password, inviteToken: inviteToken.trim(), acknowledgeSimulationAndRisk: ack }
+            : { email, password },
       });
       if ((res.status === 200 || res.status === 201) && res.data.user && res.data.csrfToken) {
         setCsrfToken(res.data.csrfToken);
@@ -72,6 +76,16 @@ export function PolyBetaAuthForm({ lang, mode, onBusyChange, onAuthenticated }: 
           disabled={busy} data-testid="auth-email-input" value={email}
           onChange={(e) => setEmail(e.target.value)} className={inputClass} />
       </div>
+      {mode === 'signup' && (
+        <div className="space-y-1">
+          <label htmlFor="beta-invite-token" className="block text-xs text-slate-300">{t.inviteTokenLabel}</label>
+          <input id="beta-invite-token" name="inviteToken" type="password" autoComplete="off"
+            minLength={32} maxLength={128} required disabled={busy} data-testid="auth-invite-input"
+            aria-describedby="beta-invite-hint" value={inviteToken}
+            onChange={(e) => setInviteToken(e.target.value)} className={inputClass} />
+          <p id="beta-invite-hint" className="text-xs text-slate-400">{t.inviteTokenHint}</p>
+        </div>
+      )}
       <div className="space-y-1">
         <label htmlFor="beta-password" className="block text-xs text-slate-300">{t.loginPasswordLabel}</label>
         <div className="flex min-w-0 items-center gap-2">

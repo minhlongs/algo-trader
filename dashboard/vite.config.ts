@@ -9,8 +9,11 @@ export default defineConfig({
     react(),
     {
       name: 'poly-beta-truthful-html-metadata',
-      transformIndexHtml(html) {
-        return transformDashboardHtmlForMode(html, process.env.VITE_APP_MODE);
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html) {
+          return transformDashboardHtmlForMode(html, process.env.VITE_APP_MODE);
+        },
       },
     },
   ],

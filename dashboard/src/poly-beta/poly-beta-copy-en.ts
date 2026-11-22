@@ -16,6 +16,8 @@ export const POLY_BETA_COPY_EN: Record<PolyBetaCopyKey, string> = {
   authSignupTitle: 'Create Paper Beta Account ($100 Virtual Capital)',
   authLoginTitle: 'Sign In to Paper Beta',
   emailLabel: 'Account Email',
+  inviteTokenLabel: 'One-Time Pilot Invite Token (Founder-issued)',
+  inviteTokenHint: 'Enter the single-use invite token issued privately for your enrolled email.',
   passwordLabel: 'Password (≥12 chars, upper, lower, digit & symbol)',
   loginPasswordLabel: 'Password',
   passwordRequirementHint: 'Minimum 12 characters including uppercase, lowercase, digit, and special character.',

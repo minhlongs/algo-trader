@@ -10,7 +10,7 @@ import {
   timingSafeHexEqual,
   verifyUserPassword,
 } from '../../src/platform/poly-beta/poly-beta-security';
-import { createPolyBetaTestHarness, seedMarketSnapshots } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, seedMarketSnapshots, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -81,7 +81,7 @@ describe('POLY-G5 Public Beta — Branch & Edge-Case Coverage', () => {
       new Request('http://localhost:8787/api/beta/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
-        body: JSON.stringify({ email: 'dev@example.com', password: 'Strong#BetaPassword2026!', acknowledgeSimulationAndRisk: true }),
+        body: JSON.stringify({ email: 'dev@example.com', password: 'Strong#BetaPassword2026!', inviteToken: testInviteTokenForEmail('dev@example.com'), acknowledgeSimulationAndRisk: true }),
       }),
       env,
     );
@@ -90,7 +90,7 @@ describe('POLY-G5 Public Beta — Branch & Edge-Case Coverage', () => {
       new Request('http://localhost:8787/api/beta/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
-        body: JSON.stringify({ email: 'dev@example.com', password: 'Strong#BetaPassword2026!', acknowledgeSimulationAndRisk: true }),
+        body: JSON.stringify({ email: 'dev@example.com', password: 'Strong#BetaPassword2026!', inviteToken: testInviteTokenForEmail('dev@example.com', 'second'), acknowledgeSimulationAndRisk: true }),
       }),
       env,
     );
@@ -188,7 +188,7 @@ describe('POLY-G5 Public Beta — Branch & Edge-Case Coverage', () => {
       new Request('https://poly-beta-api.workers.dev/api/beta/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-        body: JSON.stringify({ email: 'risk@example.com', password: 'Strong#BetaPassword2026!', acknowledgeSimulationAndRisk: true }),
+        body: JSON.stringify({ email: 'risk@example.com', password: 'Strong#BetaPassword2026!', inviteToken: testInviteTokenForEmail('risk@example.com'), acknowledgeSimulationAndRisk: true }),
       }),
       env,
     );

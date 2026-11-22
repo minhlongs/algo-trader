@@ -25,6 +25,7 @@ import {
 import { provisionTenantGenesisLedger } from './poly-beta-genesis';
 import { runAtomicBatch } from './poly-beta-ledger';
 import { isEmailAuthorizedForBetaSignup } from './poly-beta-signup-allowlist';
+import { verifyBetaSignupInviteToken } from './poly-beta-signup-invite';
 
 export { authenticateBetaRequest } from './poly-beta-session-guard';
 
@@ -72,7 +73,7 @@ export async function handleBetaSignup(
     );
   }
 
-  const { email, password } = parsed.data;
+  const { email, password, inviteToken } = parsed.data;
   const allowlistCheck = await isEmailAuthorizedForBetaSignup(email, env);
   if (!allowlistCheck.allowed) {
     return betaJsonResponse(
@@ -81,6 +82,48 @@ export async function handleBetaSignup(
       {
         error: 'Private Paper Beta signup is restricted to explicitly enrolled pilot accounts.',
         code: 'SIGNUP_ALLOWLIST_REQUIRED',
+      },
+      403,
+    );
+  }
+
+  if (!inviteToken) {
+    return betaJsonResponse(
+      request,
+      env,
+      {
+        error: 'A valid single-use Founder invite token is required to activate this pilot account.',
+        code: 'INVITE_TOKEN_REQUIRED',
+      },
+      403,
+    );
+  }
+
+  const inviteCheck = await verifyBetaSignupInviteToken(email, inviteToken, env, nowMs);
+  if (!inviteCheck.ok) {
+    return betaJsonResponse(
+      request,
+      env,
+      {
+        error: 'Invite token is invalid, expired, disabled, or not bound to this email.',
+        code: inviteCheck.code,
+      },
+      403,
+    );
+  }
+
+  const redeemed = await env.POLY_BETA_DB.prepare(
+    `SELECT token_hash FROM beta_invite_redemptions WHERE token_hash = ?`,
+  )
+    .bind(inviteCheck.tokenHash)
+    .first<{ token_hash: string }>();
+  if (redeemed) {
+    return betaJsonResponse(
+      request,
+      env,
+      {
+        error: 'This single-use invite token has already been redeemed.',
+        code: 'INVITE_TOKEN_REDEEMED',
       },
       403,
     );
@@ -109,11 +152,20 @@ export async function handleBetaSignup(
       passwordSalt: salt,
       sessionHash,
       csrfToken,
+      inviteTokenHash: inviteCheck.tokenHash,
       expiresAtMs: nowMs + SESSION_TTL_MS,
       nowMs,
     });
   } catch (err) {
     if (err instanceof Error && /unique|constraint/i.test(err.message)) {
+      if (/beta_invite_redemptions|token_hash/i.test(err.message)) {
+        return betaJsonResponse(
+          request,
+          env,
+          { error: 'This single-use invite token has already been redeemed.', code: 'INVITE_TOKEN_REDEEMED' },
+          403,
+        );
+      }
       return betaJsonResponse(request, env, { error: 'Email already registered', code: 'EMAIL_EXISTS' }, 409);
     }
     throw err;

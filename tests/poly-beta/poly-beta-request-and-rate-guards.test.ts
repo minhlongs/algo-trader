@@ -11,12 +11,14 @@ import { SESSION_COOKIE_NAME } from '../../src/platform/poly-beta/poly-beta-type
 import {
   createMemoryDoStorage,
   createPolyBetaTestHarness,
+  testInviteTokenForEmail,
 } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 const SIGNUP_BODY = JSON.stringify({
   email: 'guard@example.com',
   password: 'GuardPassword!123',
+  inviteToken: testInviteTokenForEmail('guard@example.com'),
   acknowledgeSimulationAndRisk: true,
 });
 

@@ -3,6 +3,7 @@
  * for `poly-beta-api` adversarial isolation and ledger accounting verification.
  */
 
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -21,7 +22,12 @@ export function createSqliteD1(): { db: PolyBetaD1Database; raw: DatabaseSync } 
     resolve(__dirname, '../../migrations/poly-beta-d1/0001-poly-beta-ledger.sql'),
     'utf8',
   );
+  const inviteMigrationSql = readFileSync(
+    resolve(__dirname, '../../migrations/poly-beta-d1/0002-poly-beta-invite-redemptions.sql'),
+    'utf8',
+  );
   sqlite.exec(migrationSql);
+  sqlite.exec(inviteMigrationSql);
 
   const db: PolyBetaD1Database = {
     prepare(query: string) {
@@ -131,7 +137,7 @@ export function seedMarketSnapshots(nowMs = Date.now()): PolyBetaMarketSnapshot[
   ];
 }
 
-const DEFAULT_TEST_SIGNUP_ALLOWLIST = [
+const DEFAULT_TEST_SIGNUP_EMAILS = [
   'atomic-audit@example.com',
   'branch@example.com',
   ...Array.from({ length: 10 }, (_, i) => `branch${i}@example.com`),
@@ -154,10 +160,40 @@ const DEFAULT_TEST_SIGNUP_ALLOWLIST = [
   'toxicity-aware-mm-paper@example.com',
   'neg-risk-bundle-paper@example.com',
   'bayesian-fair-value-paper@example.com',
-].join(',');
+] as const;
+
+const DEFAULT_TEST_SIGNUP_ALLOWLIST = DEFAULT_TEST_SIGNUP_EMAILS.join(',');
+
+export function testInviteTokenForEmail(email: string, salt = 'default'): string {
+  return createHash('sha256')
+    .update(`poly-beta-test-invite:${salt}:${email.trim().toLowerCase()}`)
+    .digest('hex');
+}
+
+export function buildTestInvitesJson(
+  entries: ReadonlyArray<{ rawToken: string; email: string; expiresAtMs?: number; disabled?: boolean }>,
+): string {
+  const defaultExpiry = Date.now() + 24 * 3600 * 1000;
+  return JSON.stringify(
+    entries.map((entry) => ({
+      tokenHash: createHash('sha256').update(entry.rawToken).digest('hex'),
+      email: entry.email.trim().toLowerCase(),
+      expiresAtMs: entry.expiresAtMs ?? defaultExpiry,
+      disabled: entry.disabled ?? false,
+    })),
+  );
+}
+
+const DEFAULT_TEST_SIGNUP_INVITES = buildTestInvitesJson(
+  DEFAULT_TEST_SIGNUP_EMAILS.flatMap((email) => [
+    { rawToken: testInviteTokenForEmail(email, 'default'), email, expiresAtMs: Date.now() + 7 * 24 * 3600 * 1000 },
+    { rawToken: testInviteTokenForEmail(email, 'second'), email, expiresAtMs: Date.now() + 7 * 24 * 3600 * 1000 },
+  ]),
+);
 
 export async function createPolyBetaTestHarness(options?: {
   signupAllowlist?: string | undefined;
+  signupInvites?: string | undefined;
 }) {
   const { db, raw } = createSqliteD1();
   const kv = createMemoryKv();
@@ -173,6 +209,9 @@ export async function createPolyBetaTestHarness(options?: {
     ...(options && 'signupAllowlist' in options
       ? (options.signupAllowlist !== undefined ? { BETA_SIGNUP_ALLOWLIST: options.signupAllowlist } : {})
       : { BETA_SIGNUP_ALLOWLIST: DEFAULT_TEST_SIGNUP_ALLOWLIST }),
+    ...(options && 'signupInvites' in options
+      ? (options.signupInvites !== undefined ? { BETA_SIGNUP_INVITES: options.signupInvites } : {})
+      : { BETA_SIGNUP_INVITES: DEFAULT_TEST_SIGNUP_INVITES }),
     G1_SOAK_LOCK: 'locked',
     G2_POLY_SHADOW_LOCK: 'locked',
     ALLOWED_ORIGINS: 'https://poly-beta-dashboard.pages.dev,http://localhost:5173',

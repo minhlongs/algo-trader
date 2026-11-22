@@ -135,6 +135,7 @@ export interface PolyBetaEnv {
   LIVE_TRADING_ENABLED?: string;
   SIGNUP_GATE_MODE?: string;
   BETA_SIGNUP_ALLOWLIST?: string;
+  BETA_SIGNUP_INVITES?: string;
   G1_SOAK_LOCK?: string;
   G2_POLY_SHADOW_LOCK?: string;
   ALLOWED_ORIGINS?: string;

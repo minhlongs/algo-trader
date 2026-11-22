@@ -13,7 +13,7 @@ import worker from '../../src/platform/poly-beta/poly-beta-worker';
 import { checkRateLimit, consumeDoRateLimitSlot } from '../../src/platform/poly-beta/poly-beta-rate-limiter';
 import { hmacSha256Hex } from '../../src/platform/poly-beta/poly-beta-security';
 import { loadPendingOrderReservations } from '../../src/platform/poly-beta/poly-beta-order-reservations';
-import { createPolyBetaTestHarness } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -100,6 +100,7 @@ describe('POLY-G5 Round-3 Security, Concurrency & Maker-Fee Invariants', () => {
         body: JSON.stringify({
           email: 'signed-client@example.com',
           password: 'Valid#Password2026!',
+          inviteToken: testInviteTokenForEmail('signed-client@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),
@@ -117,6 +118,7 @@ describe('POLY-G5 Round-3 Security, Concurrency & Maker-Fee Invariants', () => {
         body: JSON.stringify({
           email: 'serial-do@example.com',
           password: 'Valid#Password2026!',
+          inviteToken: testInviteTokenForEmail('serial-do@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),

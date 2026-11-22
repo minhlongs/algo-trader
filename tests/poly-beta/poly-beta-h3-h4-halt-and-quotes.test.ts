@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import worker from '../../src/platform/poly-beta/poly-beta-worker';
 import { executeSerializedPaperOrder } from '../../src/platform/poly-beta/poly-beta-execution';
 import { fetchSupportedBetaMarkets } from '../../src/platform/poly-beta/poly-beta-markets';
-import { createPolyBetaTestHarness, seedMarketSnapshots } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, seedMarketSnapshots, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -25,6 +25,7 @@ describe('POLY-G5 — H3 Sticky Drawdown Halt & H4 Authentic Market Quotes', () 
         body: JSON.stringify({
           email: 'h3-halt@example.com',
           password: 'Strong#BetaPassword2026!',
+          inviteToken: testInviteTokenForEmail('h3-halt@example.com'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),
@@ -148,6 +149,7 @@ describe('POLY-G5 — H3 Sticky Drawdown Halt & H4 Authentic Market Quotes', () 
         body: JSON.stringify({
           email: 'h3-halt@example.com',
           password: 'Strong#BetaPassword2026!',
+          inviteToken: testInviteTokenForEmail('h3-halt@example.com', 'second'),
           acknowledgeSimulationAndRisk: true,
         }),
       }),

@@ -14,6 +14,8 @@ export const POLY_BETA_COPY_VI = {
   authSignupTitle: 'Tạo Tài khoản Paper Beta ($100 Vốn Ảo)',
   authLoginTitle: 'Đăng nhập Paper Beta',
   emailLabel: 'Email xác thực',
+  inviteTokenLabel: 'Mã mời dùng một lần (Founder cung cấp riêng)',
+  inviteTokenHint: 'Nhập mã mời bảo mật dùng một lần gắn với email thí điểm của bạn.',
   passwordLabel: 'Mật khẩu (≥12 ký tự, chữ hoa, chữ thường, số & ký tự đặc biệt)',
   loginPasswordLabel: 'Mật khẩu',
   passwordRequirementHint: 'Tối thiểu 12 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.',

@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import worker from '../../src/platform/poly-beta/poly-beta-worker';
 import { fetchSupportedBetaMarkets } from '../../src/platform/poly-beta/poly-beta-markets';
-import { createPolyBetaTestHarness, seedMarketSnapshots } from './poly-beta-test-harness';
+import { createPolyBetaTestHarness, seedMarketSnapshots, testInviteTokenForEmail } from './poly-beta-test-harness';
 
 const ORIGIN = 'https://poly-beta-dashboard.pages.dev';
 
@@ -23,6 +23,7 @@ async function signupUser(env: Awaited<ReturnType<typeof createPolyBetaTestHarne
       body: JSON.stringify({
         email,
         password: 'Strong#BetaPassword2026!',
+        inviteToken: testInviteTokenForEmail(email),
         acknowledgeSimulationAndRisk: true,
       }),
     }),

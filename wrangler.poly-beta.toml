@@ -23,10 +23,12 @@ ALLOWED_ORIGINS = "https://poly-beta-dashboard.pages.dev"
 POLYMARKET_PUBLIC_GAMMA_URL = "https://gamma-api.polymarket.com"
 POLYMARKET_PUBLIC_CLOB_URL = "https://clob.polymarket.com"
 
-# BETA_SIGNUP_ALLOWLIST is intentionally omitted from wrangler.poly-beta.toml.
-# When unset, signup fails closed (403 SIGNUP_ALLOWLIST_REQUIRED).
-# Enroll USER_001 only after explicit Founder approval via:
+# BETA_SIGNUP_ALLOWLIST and BETA_SIGNUP_INVITES are intentionally omitted from
+# wrangler.poly-beta.toml. When unset, signup fails closed (403 SIGNUP_ALLOWLIST_REQUIRED
+# / INVITE_PROOF_UNAVAILABLE). Enroll USER_001 only after explicit Founder approval via:
 #   wrangler secret put BETA_SIGNUP_ALLOWLIST --config wrangler.poly-beta.toml
+#   node scripts/poly-beta-issue-invite.mjs --email <user001> --ttl-hours 24
+#   wrangler secret put BETA_SIGNUP_INVITES --config wrangler.poly-beta.toml
 
 # Local development overrides (`wrangler dev --config wrangler.poly-beta.toml --env dev`)
 # keep localhost origins out of the production `public-beta` SameSite=None cookie surface.
