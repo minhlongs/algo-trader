@@ -20,12 +20,14 @@ import { pathToFileURL } from 'node:url';
 export const TARGET_BINDINGS = Object.freeze({
   'poly-beta-prod': Object.freeze({
     wranglerEnv: '',
+    allowedWorkerNames: new Set(['poly-beta-api']),
     expectedEnvironment: 'public-beta',
     expectedDatabaseName: 'poly-beta-db',
     requireEnvSection: false,
   }),
   'poly-beta-staging': Object.freeze({
     wranglerEnv: 'staging',
+    allowedWorkerNames: new Set(['poly-beta-api', 'poly-beta-api-staging']),
     expectedEnvironment: 'staging',
     expectedDatabaseName: 'poly-beta-db-staging',
     requireEnvSection: true,
@@ -64,37 +66,122 @@ export function parseDisableCliArgs(argv) {
   };
 }
 
-function extractTomlSection(content, sectionHeader) {
-  const lines = content.split(/\r?\n/);
-  const target = sectionHeader.trim();
-  let inSection = false;
-  const body = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('[')) {
-      if (inSection) break;
-      if (trimmed === target) {
-        inSection = true;
-        continue;
-      }
-    } else if (inSection) {
-      body.push(line);
+function stripTomlComment(line) {
+  let inDouble = false;
+  let inSingle = false;
+  let escaped = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (escaped) {
+      escaped = false;
+      continue;
     }
+    if (ch === '\\' && inDouble) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"' && !inSingle) inDouble = !inDouble;
+    else if (ch === "'" && !inDouble) inSingle = !inSingle;
+    else if (ch === '#' && !inDouble && !inSingle) return line.slice(0, i);
   }
-  return inSection ? body.join('\n') : null;
+  return line;
+}
+
+function parseTomlValue(raw) {
+  const v = raw.trim();
+  if (v.startsWith('{')) {
+    throw new Error('Unsupported inline TOML table in wrangler config; refusing to parse ambiguously.');
+  }
+  if (v.startsWith('"') && v.endsWith('"') && v.length >= 2) {
+    return JSON.parse(v);
+  }
+  if (v.startsWith("'") && v.endsWith("'") && v.length >= 2) {
+    return v.slice(1, -1);
+  }
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return v;
+}
+
+function setNestedTomlKey(targetObj, pathParts, value) {
+  let cursor = targetObj;
+  for (let i = 0; i < pathParts.length - 1; i += 1) {
+    const key = pathParts[i];
+    if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+      cursor[key] = {};
+    }
+    cursor = cursor[key];
+  }
+  cursor[pathParts[pathParts.length - 1]] = value;
+}
+
+export function parseWranglerToml(content) {
+  const root = {};
+  let current = root;
+  const lines = content.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = stripTomlComment(rawLine).trim();
+    if (!line) continue;
+
+    if (line.startsWith('[[') && line.endsWith(']]')) {
+      const pathParts = line
+        .slice(2, -2)
+        .split('.')
+        .map((p) => p.trim().replace(/^["']|["']$/g, ''))
+        .filter(Boolean);
+      let cursor = root;
+      for (let i = 0; i < pathParts.length - 1; i += 1) {
+        const key = pathParts[i];
+        if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+          cursor[key] = {};
+        }
+        cursor = cursor[key];
+      }
+      const leaf = pathParts[pathParts.length - 1];
+      if (!Array.isArray(cursor[leaf])) cursor[leaf] = [];
+      const item = {};
+      cursor[leaf].push(item);
+      current = item;
+      continue;
+    }
+
+    if (line.startsWith('[') && line.endsWith(']')) {
+      const pathParts = line
+        .slice(1, -1)
+        .split('.')
+        .map((p) => p.trim().replace(/^["']|["']$/g, ''))
+        .filter(Boolean);
+      let cursor = root;
+      for (const key of pathParts) {
+        if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+          cursor[key] = {};
+        }
+        cursor = cursor[key];
+      }
+      current = cursor;
+      continue;
+    }
+
+    const eqIdx = line.indexOf('=');
+    if (eqIdx === -1) continue;
+    const keyPath = line
+      .slice(0, eqIdx)
+      .split('.')
+      .map((p) => p.trim().replace(/^["']|["']$/g, ''))
+      .filter(Boolean);
+    const valStr = line.slice(eqIdx + 1).trim();
+    if (keyPath.length === 0) continue;
+    setNestedTomlKey(current, keyPath, parseTomlValue(valStr));
+  }
+
+  return root;
 }
 
 export function validateWranglerConfig(configPath, target) {
   const resolvedPath = resolve(configPath);
   const content = readFileSync(resolvedPath, 'utf8');
-
-  const nameMatch = content.match(/^\s*name\s*=\s*"([^"]+)"/m);
-  const workerName = nameMatch ? nameMatch[1].trim() : null;
-  if (workerName !== 'poly-beta-api') {
-    throw new Error(
-      `Refusing to run: wrangler config must target worker "poly-beta-api" (found "${workerName ?? 'missing'}"). Never target algo-trader.`,
-    );
-  }
+  const parsed = parseWranglerToml(content);
 
   const binding = target ? TARGET_BINDINGS[target] : null;
   if (target && !binding) {
@@ -103,17 +190,42 @@ export function validateWranglerConfig(configPath, target) {
     );
   }
 
-  const varsHeader = binding?.requireEnvSection ? `[env.${binding.wranglerEnv}.vars]` : '[vars]';
-  const varsSection = extractTomlSection(content, varsHeader);
-  if (binding?.requireEnvSection && !varsSection) {
+  const topLevelName = typeof parsed.name === 'string' ? parsed.name.trim() : null;
+  if (topLevelName !== 'poly-beta-api') {
     throw new Error(
-      `Refusing to run: target "${target}" requires explicit ${varsHeader} in ${resolvedPath}. Failing closed to prevent hitting production.`,
+      `Refusing to run: wrangler config must target worker "poly-beta-api" (found "${topLevelName ?? 'missing'}"). Never target algo-trader.`,
     );
   }
-  const varsSource = varsSection ?? content;
 
-  const liveMatch = varsSource.match(/^\s*LIVE_TRADING_ENABLED\s*=\s*"([^"]+)"/m);
-  const liveTrading = liveMatch ? liveMatch[1].trim().toLowerCase() : null;
+  const envTable = binding?.requireEnvSection ? parsed.env?.[binding.wranglerEnv] : null;
+  if (binding?.requireEnvSection && (!envTable || typeof envTable !== 'object')) {
+    throw new Error(
+      `Refusing to run: target "${target}" requires explicit [env.${binding.wranglerEnv}] in ${resolvedPath}. Failing closed to prevent hitting production.`,
+    );
+  }
+
+  const envNameOverride =
+    envTable && typeof envTable.name === 'string' ? envTable.name.trim() : null;
+  const effectiveWorkerName = envNameOverride ?? topLevelName;
+  const allowedNames = binding?.allowedWorkerNames ?? new Set(['poly-beta-api']);
+  if (!allowedNames.has(effectiveWorkerName)) {
+    throw new Error(
+      `Refusing to run: effective worker name "${effectiveWorkerName}" is not allowed for target "${target ?? 'default'}".`,
+    );
+  }
+
+  const varsHeader = binding?.requireEnvSection ? `[env.${binding.wranglerEnv}.vars]` : '[vars]';
+  const varsObj = binding?.requireEnvSection ? envTable?.vars : parsed.vars;
+  if (!varsObj || typeof varsObj !== 'object') {
+    throw new Error(
+      `Refusing to run: missing required ${varsHeader} section in ${resolvedPath}.`,
+    );
+  }
+
+  const liveTrading =
+    varsObj.LIVE_TRADING_ENABLED !== undefined
+      ? String(varsObj.LIVE_TRADING_ENABLED).trim().toLowerCase()
+      : null;
   if (liveTrading !== 'false') {
     throw new Error(
       `Refusing to run: LIVE_TRADING_ENABLED must be "false" in ${varsHeader} (found "${liveTrading ?? 'missing'}").`,
@@ -121,8 +233,8 @@ export function validateWranglerConfig(configPath, target) {
   }
 
   if (binding) {
-    const envMatch = varsSource.match(/^\s*ENVIRONMENT\s*=\s*"([^"]+)"/m);
-    const actualEnv = envMatch ? envMatch[1].trim() : null;
+    const actualEnv =
+      typeof varsObj.ENVIRONMENT === 'string' ? varsObj.ENVIRONMENT.trim() : null;
     if (actualEnv !== binding.expectedEnvironment) {
       throw new Error(
         `Refusing to run: target "${target}" requires ENVIRONMENT = "${binding.expectedEnvironment}" in ${varsHeader} (found "${actualEnv ?? 'missing'}").`,
@@ -133,27 +245,37 @@ export function validateWranglerConfig(configPath, target) {
   const dbHeader = binding?.requireEnvSection
     ? `[[env.${binding.wranglerEnv}.d1_databases]]`
     : '[[d1_databases]]';
-  const dbSection = extractTomlSection(content, dbHeader);
-  if (binding?.requireEnvSection && !dbSection) {
+  const d1List = binding?.requireEnvSection ? envTable?.d1_databases : parsed.d1_databases;
+  if (!Array.isArray(d1List) || d1List.length === 0) {
     throw new Error(
-      `Refusing to run: target "${target}" requires explicit ${dbHeader} in ${resolvedPath}. Failing closed to prevent hitting production D1.`,
+      `Refusing to run: missing required ${dbHeader} section in ${resolvedPath}.`,
     );
   }
-  const dbSource = dbSection ?? content;
-  const dbMatch = dbSource.match(/^\s*database_name\s*=\s*"([^"]+)"/m);
-  const databaseName = dbMatch ? dbMatch[1].trim() : 'poly-beta-db';
-  if (databaseName === 'algo-trader-db') {
+
+  const dbNames = d1List
+    .map((entry) => (typeof entry?.database_name === 'string' ? entry.database_name.trim() : ''))
+    .filter(Boolean);
+  if (dbNames.length === 0) {
+    throw new Error(
+      `Refusing to run: ${dbHeader} must specify database_name in ${resolvedPath}.`,
+    );
+  }
+  if (dbNames.includes('algo-trader-db')) {
     throw new Error('Refusing to run: database_name must not be production algo-trader-db.');
   }
-  if (binding && databaseName !== binding.expectedDatabaseName) {
+
+  const databaseName = binding
+    ? dbNames.find((n) => n === binding.expectedDatabaseName) ?? null
+    : dbNames[0];
+  if (!databaseName || (binding && databaseName !== binding.expectedDatabaseName)) {
     throw new Error(
-      `Refusing to run: target "${target}" requires database_name = "${binding.expectedDatabaseName}" in ${dbHeader} (found "${databaseName}").`,
+      `Refusing to run: target "${target}" requires database_name = "${binding?.expectedDatabaseName}" in ${dbHeader} (found "${dbNames.join(', ')}").`,
     );
   }
 
   return {
     configPath: resolvedPath,
-    workerName,
+    workerName: effectiveWorkerName,
     wranglerEnv: binding ? binding.wranglerEnv : '',
     liveTradingEnabled: false,
     databaseName,

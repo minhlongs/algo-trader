@@ -59,7 +59,50 @@ describe('poly-beta-disable', () => {
         mode: 'disable-signup',
         wranglerConfig: POLY_BETA_WRANGLER,
       }),
-    ).toThrow(/requires explicit \[env\.staging\.vars\]/);
+    ).toThrow(/requires explicit \[env\.staging\]/);
+
+    // Reject [env.staging] name override targeting another worker
+    const hijackedStaging = join(tempDir, 'wrangler.hijacked-staging.toml');
+    writeFileSync(
+      hijackedStaging,
+      [
+        'name = "poly-beta-api"',
+        '[vars]',
+        'ENVIRONMENT = "public-beta"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[env.staging]',
+        'name = "algo-trader"',
+        '[env.staging.vars]',
+        'ENVIRONMENT = "staging"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[[env.staging.d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        'database_name = "poly-beta-db-staging"',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(() =>
+      buildDisablePlan({
+        target: 'poly-beta-staging',
+        mode: 'disable-signup',
+        wranglerConfig: hijackedStaging,
+      }),
+    ).toThrow(/effective worker name "algo-trader" is not allowed/);
+
+    // Reject missing [[d1_databases]] instead of falling back to poly-beta-db
+    const noD1Config = join(tempDir, 'wrangler.nod1.toml');
+    writeFileSync(
+      noD1Config,
+      'name = "poly-beta-api"\n[vars]\nENVIRONMENT = "public-beta"\nLIVE_TRADING_ENABLED = "false"\n',
+      'utf8',
+    );
+    expect(() =>
+      buildDisablePlan({
+        target: 'poly-beta-prod',
+        mode: 'disable-signup',
+        wranglerConfig: noD1Config,
+      }),
+    ).toThrow(/missing required \[\[d1_databases\]\]/);
 
     const stagingConfig = join(tempDir, 'wrangler.staging.toml');
     writeFileSync(
