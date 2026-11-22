@@ -381,4 +381,65 @@ describe('poly-beta-disable', () => {
     expect(parsed.dryRun).toBe(true);
     expect(parsed.execute).toBe(false);
   });
+
+  it('rejects unsupported TOML constructs, table conflicts, malformed lines, and invalid target bindings fail-closed', () => {
+    const checkReject = (filename: string, toml: string, pattern: RegExp, target: string | undefined = 'poly-beta-prod') => {
+      const p = join(tempDir, filename);
+      writeFileSync(p, toml, 'utf8');
+      expect(() => validateWranglerConfig(p, target)).toThrow(pattern);
+    };
+
+    checkReject('multiline.toml', 'name = """poly-beta-api"""\n', /Unsupported multiline/);
+    checkReject('inline.toml', 'name = "poly-beta-api"\nvars = { LIVE_TRADING_ENABLED = "false" }\n', /Unsupported inline/);
+    checkReject('unterminated.toml', 'name = "poly-beta-api"\n["unterminated]\na = "b"\n', /Unterminated quoted/);
+    checkReject('malformed-line.toml', 'name = "poly-beta-api"\nnot_a_valid_line\n', /Malformed TOML line/);
+    checkReject('ambiguous-val.toml', 'name = poly-beta-api\n', /Unsupported or ambiguous TOML value/);
+    checkReject('dup-table.toml', 'name = "poly-beta-api"\n[vars]\nA = "1"\n[vars]\nB = "2"\n', /Duplicate TOML table/);
+    checkReject('table-conflict.toml', 'name = "poly-beta-api"\nvars = "bad"\n[vars]\nA = "1"\n', /TOML table conflict/);
+    checkReject('array-conflict.toml', 'name = "poly-beta-api"\nd1_databases = "bad"\n[[d1_databases]]\ndatabase_name = "poly-beta-db"\n', /array-of-tables conflict/);
+    checkReject('nested-key-conflict.toml', 'name = "poly-beta-api"\nvars = "bad"\nvars.LIVE_TRADING_ENABLED = "false"\n', /TOML key conflict/);
+    checkReject('empty-seg.toml', 'name = "poly-beta-api"\n[env..staging]\n', /empty TOML key segment/);
+    checkReject('bad-bare-key.toml', 'name = "poly-beta-api"\n[bad key]\n', /Unsupported or malformed TOML key/);
+    checkReject('bad-dq-key.toml', 'name = "poly-beta-api"\n"a""b" = "1"\n', /Malformed double-quoted/);
+    checkReject('bad-sq-key.toml', "name = 'poly-beta-api'\n'a''b' = '1'\n", /Malformed single-quoted/);
+    checkReject('missing-vars.toml', 'name = "poly-beta-api"\n', /missing required \[vars\]/);
+    checkReject(
+      'wrong-env.toml',
+      'name = "poly-beta-api"\n[vars]\nENVIRONMENT = "staging"\nLIVE_TRADING_ENABLED = "false"\n',
+      /requires ENVIRONMENT = "public-beta"/,
+    );
+    checkReject(
+      'algo-db.toml',
+      'name = "poly-beta-api"\n[vars]\nENVIRONMENT = "public-beta"\nLIVE_TRADING_ENABLED = "false"\n[[d1_databases]]\ndatabase_name = "algo-trader-db"\n',
+      /must not be production algo-trader-db/,
+    );
+    checkReject(
+      'empty-dbname.toml',
+      'name = "poly-beta-api"\n[vars]\nENVIRONMENT = "public-beta"\nLIVE_TRADING_ENABLED = "false"\n[[d1_databases]]\nbinding = "POLY_BETA_DB"\n',
+      /must specify database_name/,
+    );
+    checkReject('bad-target.toml', 'name = "poly-beta-api"\n', /Invalid --target/, 'unknown-target');
+
+    // Valid config using single-quoted strings, booleans, numbers, arrays, and inline comments
+    const richValid = join(tempDir, 'rich-valid.toml');
+    writeFileSync(
+      richValid,
+      [
+        "name = 'poly-beta-api' # prod beta worker",
+        'routes = [] # isolated',
+        'timeout = 30',
+        'enabled = true',
+        '[vars]',
+        "ENVIRONMENT = 'public-beta'",
+        'LIVE_TRADING_ENABLED = false # boolean false also accepted',
+        '[[d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        "database_name = 'poly-beta-db'",
+      ].join('\n'),
+      'utf8',
+    );
+    const validated = validateWranglerConfig(richValid, 'poly-beta-prod');
+    expect(validated.workerName).toBe('poly-beta-api');
+    expect(validated.databaseName).toBe('poly-beta-db');
+  });
 });
