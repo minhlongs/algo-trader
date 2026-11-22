@@ -35,7 +35,23 @@ describe('local market-blind logger CLI', () => {
     expect(existsSync(`${f.ledger}.checkpoint.json`)).toBe(false);
     const price = f.run('attach-price', '--entry-hash', receipt.entryHash, '--market-prob', '0.5', '--read-at-ms', '1100', '--source', 'official-market-feed');
     expect(price.status, price.stderr).toBe(0);
-    const resolution = f.run('resolve', '--entry-hash', receipt.entryHash, '--status', 'RESOLVED_YES', '--resolved-at-ms', String(Date.now() + 60000));
+    const resolvedAtMs = Date.now() + 60000;
+    const provenancePath = join(f.root, 'settlement-provenance.json');
+    writeFileSync(provenancePath, JSON.stringify({
+      source: 'CTF_ONCHAIN',
+      finalityStatus: 'FINALIZED',
+      marketId: 'market-q1',
+      eventId: 'event-q1',
+      conditionId: `0x${'a'.repeat(64)}`,
+      txHash: `0x${'b'.repeat(64)}`,
+      blockNumber: 65_000_001,
+      confirmations: 128,
+      payoutNumerators: [1, 0],
+      observedAtMs: resolvedAtMs + 1000,
+      payloadHash: 'c'.repeat(64),
+      reference: 'polygon-ctf-q1',
+    }));
+    const resolution = f.run('resolve', '--entry-hash', receipt.entryHash, '--status', 'RESOLVED_YES', '--resolved-at-ms', String(resolvedAtMs), '--settlement-provenance', provenancePath);
     expect(resolution.status, resolution.stderr).toBe(0);
     const noPolicy = f.run('status', '--mode', 'empirical', '--model-version', 'model-v1');
     expect(JSON.parse(noPolicy.stdout)).toMatchObject({ resolvedEligibleCount: 0, empiricalEligible: false });

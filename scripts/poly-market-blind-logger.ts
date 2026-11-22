@@ -14,7 +14,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { approvedPolicySchema } from '../src/desk/polymarket/market-blind/market-blind-pipeline-contract';
+import { approvedPolicySchema, settlementProvenanceSchema } from '../src/desk/polymarket/market-blind/market-blind-pipeline-contract';
 import {
   ProspectivePipelineLedger,
   attachPostCommitMarketSnapshot,
@@ -44,7 +44,7 @@ function parseCli(argv: readonly string[]): ParsedCli {
         throw new Error(`Missing value for flag ${token}`);
       }
       const name = token.slice(2);
-      const known = new Set(['ledger', 'checkpoint', 'question-id', 'raw-prob', 'evidence', 'model-version', 'prompt-version', 'category', 'prompt', 'committed-at-ms', 'forecast-id', 'research-question-id', 'event-id', 'market-id', 'forecast-horizon-ms', 'provenance-kind', 'provenance-source', 'provenance-reference', 'entry-hash', 'market-prob', 'read-at-ms', 'source', 'status', 'resolved-at-ms', 'note', 'mode', 'policy']);
+      const known = new Set(['ledger', 'checkpoint', 'question-id', 'raw-prob', 'evidence', 'model-version', 'prompt-version', 'category', 'prompt', 'committed-at-ms', 'forecast-id', 'research-question-id', 'event-id', 'market-id', 'forecast-horizon-ms', 'provenance-kind', 'provenance-source', 'provenance-reference', 'entry-hash', 'market-prob', 'read-at-ms', 'source', 'status', 'resolved-at-ms', 'note', 'settlement-provenance', 'mode', 'policy']);
       if (!known.has(name) || flags.has(name)) throw new Error(`Unknown or duplicate flag ${token}`);
       flags.set(name, value);
       i += 1;
@@ -128,6 +128,10 @@ function main(): void {
     if (!VALID_STATUSES.has(rawStatus)) {
       throw new Error(`Invalid --status: ${rawStatus}`);
     }
+    const provenancePath = flags.get('settlement-provenance');
+    const settlementProvenance = provenancePath
+      ? settlementProvenanceSchema.parse(JSON.parse(readFileSync(resolve(process.cwd(), provenancePath), 'utf8')) as unknown)
+      : undefined;
     const records = recordMarketBlindResolution(ledger, {
       questionId: flags.get('question-id'),
       entryHash: flags.get('entry-hash'),
@@ -136,6 +140,7 @@ function main(): void {
       marketProb: parseNumberFlag(flags, 'market-prob'),
       marketReadAtMs: parseNumberFlag(flags, 'read-at-ms'),
       note: flags.get('note'),
+      settlementProvenance,
     });
     process.stdout.write(`${JSON.stringify({ ledgerPath, resolutions: records }, null, 2)}\n`);
     return;

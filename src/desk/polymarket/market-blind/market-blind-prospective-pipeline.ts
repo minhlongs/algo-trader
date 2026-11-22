@@ -6,6 +6,7 @@ import { assertMarketBlindClean, sanitizeMarketBlindContext } from './market-bli
 import { MarketBlindError, type MarketBlindDocumentInput } from './market-blind-types';
 import { commitPayloadSchema, storedCommitSchema, snapshotSchema, resolutionSchema, type CommitPayload, type ProspectiveCommitInput, type ProspectiveCommitReceipt, type PostCommitMarketSnapshotInput, type PostCommitMarketSnapshotRecord, type MarketBlindResolutionInput, type MarketBlindResolutionAuditRecord } from './market-blind-pipeline-contract';
 export type * from './market-blind-pipeline-contract';
+export { MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS, settlementProvenanceSchema } from './market-blind-pipeline-contract';
 export { evaluateProspectiveOosReport } from './market-blind-oos-report';
 const invalid = (message: string): never => { throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', message); };
 const same = (a: object, b: object): boolean => JSON.stringify(a) === JSON.stringify(b);
@@ -104,7 +105,22 @@ export class ProspectivePipelineLedger {
     if (expected !== null && (r.marketProb === null || r.marketReadAtMs === null)) invalid('Post-commit market snapshot required');
     const s = this.prices.get(c.entryHash);
     if (s && (r.marketProb !== s.marketProb || r.marketReadAtMs !== s.marketReadAtMs)) invalid('Resolution conflicts with committed market snapshot');
-    return r;
+    const p = r.settlementProvenance;
+    if (p) {
+      if (c.marketId && p.marketId !== c.marketId) invalid('Settlement provenance marketId mismatch');
+      if (c.eventId && p.eventId && p.eventId !== c.eventId) invalid('Settlement provenance eventId mismatch');
+      if (p.observedAtMs < r.resolvedAtMs) invalid('Settlement provenance observedAtMs cannot precede resolvedAtMs');
+      if (p.finalityStatus === 'CORRECTED' && !p.correctionReason) invalid('Corrected settlement provenance requires correctionReason');
+      if (p.payoutNumerators) {
+        const [yesNum, noNum] = p.payoutNumerators;
+        if (expected === 1 && !(yesNum > 0 && noNum === 0)) invalid('Settlement payoutNumerators do not match RESOLVED_YES');
+        if (expected === 0 && !(noNum > 0 && yesNum === 0)) invalid('Settlement payoutNumerators do not match RESOLVED_NO');
+      }
+      if (p.source === 'CTF_ONCHAIN' && (!p.conditionId || !p.txHash || p.blockNumber === undefined || p.confirmations === undefined)) {
+        invalid('CTF_ONCHAIN settlement provenance requires conditionId, txHash, blockNumber and confirmations');
+      }
+    }
+    return p ? { ...r, settlementProvenance: Object.freeze({ ...p, ...(p.payoutNumerators ? { payoutNumerators: Object.freeze([...p.payoutNumerators] as [number, number]) } : {}) }) } : r;
   }
   private applyInnerResolution(inner: MarketBlindProspectiveLedger, r: MarketBlindResolutionAuditRecord): void {
     if (r.outcome === null || r.marketProb === null || r.marketReadAtMs === null) return;
@@ -139,6 +155,7 @@ export function recordMarketBlindResolution(ledger: ProspectivePipelineLedger, i
     return ledger.resolve({ entryHash: c.entryHash, questionId: c.questionId, status: input.status,
       outcome: input.status === 'RESOLVED_YES' ? 1 : input.status === 'RESOLVED_NO' ? 0 : null, resolvedAtMs,
       marketProb: input.marketProb ?? s?.marketProb ?? null, marketReadAtMs: input.marketReadAtMs ?? s?.marketReadAtMs ?? null,
-      ...(input.note !== undefined ? { note: input.note } : {}) });
+      ...(input.note !== undefined ? { note: input.note } : {}),
+      ...(input.settlementProvenance !== undefined ? { settlementProvenance: input.settlementProvenance } : {}) });
   });
 }

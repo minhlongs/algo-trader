@@ -14,7 +14,25 @@ function commit(ledger: ProspectivePipelineLedger, id: string, overrides: Partia
 }
 function resolve(ledger: ProspectivePipelineLedger, receipt: ReturnType<typeof commit>, resolvedAtMs = 2000): void {
   attachPostCommitMarketSnapshot(ledger, receipt, { marketProb: 0.5, marketReadAtMs: receipt.committedAtMs + 1, source: 'official-market-feed' });
-  recordMarketBlindResolution(ledger, { entryHash: receipt.entryHash, status: 'RESOLVED_YES', resolvedAtMs });
+  recordMarketBlindResolution(ledger, {
+    entryHash: receipt.entryHash,
+    status: 'RESOLVED_YES',
+    resolvedAtMs,
+    settlementProvenance: {
+      source: 'CTF_ONCHAIN',
+      finalityStatus: 'FINALIZED',
+      marketId: receipt.marketId ?? `market-${receipt.questionId}`,
+      ...(receipt.eventId ? { eventId: receipt.eventId } : {}),
+      conditionId: `0x${'a'.repeat(64)}`,
+      txHash: `0x${'b'.repeat(64)}`,
+      blockNumber: 65_000_001,
+      confirmations: 128,
+      payoutNumerators: [1, 0],
+      observedAtMs: resolvedAtMs + 500,
+      payloadHash: 'c'.repeat(64),
+      reference: `polygon-ctf-${receipt.questionId}`,
+    },
+  });
 }
 
 describe('approval-bound empirical forecast eligibility', () => {
@@ -96,11 +114,26 @@ describe('approval-bound empirical forecast eligibility', () => {
   it('makes exact resolution retries idempotent by entry hash or question but rejects conflicts', () => {
     const ledger = new ProspectivePipelineLedger(undefined, () => 1000), receipt = commit(ledger, 'q1');
     resolve(ledger, receipt);
-    const before = ledger.recordCount(), input = { questionId: 'q1', status: 'RESOLVED_YES' as const, resolvedAtMs: 2000 };
+    const before = ledger.recordCount();
+    const settlementProvenance = {
+      source: 'CTF_ONCHAIN' as const,
+      finalityStatus: 'FINALIZED' as const,
+      marketId: 'market-q1',
+      eventId: 'event-q1',
+      conditionId: `0x${'a'.repeat(64)}`,
+      txHash: `0x${'b'.repeat(64)}`,
+      blockNumber: 65_000_001,
+      confirmations: 128,
+      payoutNumerators: [1, 0] as [number, number],
+      observedAtMs: 2500,
+      payloadHash: 'c'.repeat(64),
+      reference: 'polygon-ctf-q1',
+    };
+    const input = { questionId: 'q1', status: 'RESOLVED_YES' as const, resolvedAtMs: 2000, settlementProvenance };
     expect(recordMarketBlindResolution(ledger, input)).toHaveLength(1);
     expect(recordMarketBlindResolution(ledger, { ...input, entryHash: receipt.entryHash })).toHaveLength(1);
     expect(ledger.recordCount()).toBe(before);
-    expect(() => recordMarketBlindResolution(ledger, { ...input, status: 'RESOLVED_NO' })).toThrow(/Conflicting duplicate/);
+    expect(() => recordMarketBlindResolution(ledger, { ...input, status: 'RESOLVED_NO' })).toThrow(/payoutNumerators|Conflicting duplicate/);
     expect(() => recordMarketBlindResolution(ledger, { ...input, resolvedAtMs: 2500 })).toThrow(/Conflicting duplicate/);
   });
   it('rejects persisted semantic inconsistencies and cannot mutate public map snapshots', () => {
