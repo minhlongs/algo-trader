@@ -26,7 +26,10 @@ export function PolyBetaControlsHealth({
 }: Props) {
   const t = POLY_BETA_COPY[lang];
   const guards = getControlAvailability(view, selectedMarket, orderShares, busy);
-  const strategy = view.strategies.find((s) => s.id === selectedStrategy);
+  const approvedStrategies = view.strategies.filter((s) => s.id === 'toxicity-aware-mm-paper');
+  const strategy = approvedStrategies.find((s) => s.id === selectedStrategy) ?? approvedStrategies[0];
+  const provenance = view.health.marketDataProvenance;
+  const stalenessSec = Math.round((provenance?.stalenessLimitMs ?? 30_000) / 1000);
   const minShares = Math.max(5, guards.activeMarket?.minOrderShares ?? 5);
   const canTrade = guards.canManualTrade && Boolean(strategy);
   const sellableShares = (outcome: 'YES' | 'NO') => getSellableShares(view, selectedMarket, outcome);
@@ -49,9 +52,9 @@ export function PolyBetaControlsHealth({
         </div>
         <div className="space-y-1">
           <label htmlFor="beta-strategy" className="block text-xs text-slate-300">{t.strategySelectLabel}</label>
-          <select id="beta-strategy" data-testid="strategy-select" value={selectedStrategy}
-            disabled={busy || view.strategies.length === 0} onChange={(e) => onSelectStrategy(e.target.value)} className={field}>
-            {view.strategies.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <select id="beta-strategy" data-testid="strategy-select" value={strategy?.id ?? 'toxicity-aware-mm-paper'}
+            disabled={busy || approvedStrategies.length === 0} onChange={(e) => onSelectStrategy(e.target.value)} className={field}>
+            {approvedStrategies.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
         {strategy && (
@@ -116,6 +119,17 @@ export function PolyBetaControlsHealth({
           {t.haltPrefix}: {view.engine.haltReason}
         </div>}
         {view.health.staleReason && <p className="text-amber-200 break-all">{view.health.staleReason}</p>}
+        <div data-testid="market-data-provenance" className="pt-2 border-t border-slate-800 space-y-1">
+          <p className="font-semibold text-slate-300">{t.provenanceTitle}</p>
+          <p className="font-mono text-slate-400 break-words">
+            {provenance
+              ? `${provenance.gammaApi} + ${provenance.clobApi} (${provenance.mode})`
+              : t.provenanceSourcesFallback}
+          </p>
+          <p className="text-slate-400 font-mono tabular-nums">
+            {t.provenanceStalenessLabel}: {stalenessSec}s
+          </p>
+        </div>
         <p className="text-slate-400 pt-2 border-t border-slate-800">{t.simLimitationsBody}</p>
       </div>
     </section>

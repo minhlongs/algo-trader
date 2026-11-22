@@ -29,6 +29,12 @@ export function buildPortfolio(overrides: Partial<BetaPortfolioView> = {}): Beta
     health: {
       marketFeedHealthy: true, staleReason: null, ghostGuardMode: 'OFFLINE_DRILL_VERIFIED_NO_LIVE_CHAIN',
       cryptoFiveMinuteGuard: 'ENFORCED_BLOCKED', liveExecutionLock: 'LOCKED_FALSE',
+      marketDataProvenance: {
+        gammaApi: 'https://gamma-api.polymarket.com',
+        clobApi: 'https://clob.polymarket.com/books',
+        stalenessLimitMs: 30_000,
+        mode: 'READ_ONLY_PUBLIC',
+      },
     },
     strategies: [{
       id: 'toxicity-aware-mm-paper', name: 'Harness Taker', mode: 'PAPER_ONLY',

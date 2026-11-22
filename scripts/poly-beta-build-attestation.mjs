@@ -21,17 +21,26 @@ const TRACKED_PATHS = [
   'wrangler.poly-beta-pages.toml',
   'migrations/poly-beta-d1/0001-poly-beta-ledger.sql',
   'migrations/poly-beta-d1/0002-poly-beta-invite-redemptions.sql',
+  'migrations/poly-beta-d1/0003-poly-beta-feedback.sql',
+  'src/platform/poly-beta/poly-beta-account.ts',
   'src/platform/poly-beta/poly-beta-auth.ts',
+  'src/platform/poly-beta/poly-beta-dashboard-view.ts',
+  'src/platform/poly-beta/poly-beta-execution.ts',
+  'src/platform/poly-beta/poly-beta-feedback.ts',
   'src/platform/poly-beta/poly-beta-genesis.ts',
   'src/platform/poly-beta/poly-beta-schemas.ts',
   'src/platform/poly-beta/poly-beta-signup-allowlist.ts',
   'src/platform/poly-beta/poly-beta-signup-invite.ts',
   'src/platform/poly-beta/poly-beta-types.ts',
   'src/platform/poly-beta/poly-beta-worker.ts',
+  'src/platform/poly-beta/tenant-paper-engine-actions.ts',
+  'src/platform/poly-beta/tenant-paper-engine-do.ts',
   'dashboard/functions/api/beta/[[path]].ts',
   'dashboard/poly-beta-html-metadata.ts',
   'dashboard/vite.config.ts',
   'dashboard/src/poly-beta/poly-beta-auth-form.tsx',
+  'dashboard/src/poly-beta/poly-beta-controls-health.tsx',
+  'dashboard/src/poly-beta/poly-beta-feedback-panel.tsx',
 ];
 
 function sha256File(absPath) {
@@ -122,6 +131,17 @@ for (const rel of TRACKED_PATHS) {
   fileDigests[rel] = existsSync(abs) ? sha256File(abs) : null;
 }
 
+const migrationsDir = resolve(ROOT, 'migrations/poly-beta-d1');
+const d1MigrationSet = existsSync(migrationsDir)
+  ? readdirSync(migrationsDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+      .map((filename) => ({
+        filename,
+        sha256: sha256File(join(migrationsDir, filename)),
+      }))
+  : [];
+
 const wranglerToml = readFileSync(resolve(ROOT, 'wrangler.poly-beta.toml'), 'utf8');
 const bindings = parseWranglerSafetyInvariants(wranglerToml);
 
@@ -143,11 +163,20 @@ const attestation = {
     workerDryRun: 'npx wrangler deploy --config wrangler.poly-beta.toml --dry-run --outdir <tmp>',
     dashboardPolyBeta: 'VITE_APP_MODE=poly-beta npx --prefix dashboard vite build --outDir <tmp>',
   },
+  d1MigrationSet,
   candidateBuildArtifacts: {
     workerBundleSha256: bundlePath && existsSync(bundlePath) ? sha256File(bundlePath) : null,
     dashboardBuild: sha256Directory(dashboardDir),
   },
   deployedArtifactProvenance: 'UNKNOWN',
+  approvalStatus: {
+    sourceMerge: 'AWAITING_FOUNDER_MERGE_APPROVAL',
+    d1Migration: 'HOLD',
+    workerDeploy: 'HOLD',
+    pagesDeploy: 'HOLD',
+    secretEnrollment: 'HOLD',
+    user001Invite: 'HOLD',
+  },
   fileDigests,
   effectiveBindings: bindings,
   deploymentExecuted: false,

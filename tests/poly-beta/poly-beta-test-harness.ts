@@ -26,8 +26,13 @@ export function createSqliteD1(): { db: PolyBetaD1Database; raw: DatabaseSync } 
     resolve(__dirname, '../../migrations/poly-beta-d1/0002-poly-beta-invite-redemptions.sql'),
     'utf8',
   );
+  const feedbackMigrationSql = readFileSync(
+    resolve(__dirname, '../../migrations/poly-beta-d1/0003-poly-beta-feedback.sql'),
+    'utf8',
+  );
   sqlite.exec(migrationSql);
   sqlite.exec(inviteMigrationSql);
+  sqlite.exec(feedbackMigrationSql);
 
   const db: PolyBetaD1Database = {
     prepare(query: string) {

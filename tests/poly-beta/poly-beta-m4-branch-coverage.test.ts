@@ -208,7 +208,7 @@ describe('POLY-G5 M4 — Per-File >=95% Stmt/Line/Func & >=85% Branch Coverage',
       ]),
     );
     await env.POLY_BETA_DB.prepare(
-      `UPDATE beta_portfolios SET selected_market_id = 'mkt-other', selected_strategy_id = '' WHERE tenant_id = ?`,
+      `UPDATE beta_portfolios SET selected_market_id = 'mkt-other', selected_strategy_id = 'toxicity-aware-mm-paper' WHERE tenant_id = ?`,
     ).bind(tenantId).run();
 
     const memStore = new Map<string, unknown>();

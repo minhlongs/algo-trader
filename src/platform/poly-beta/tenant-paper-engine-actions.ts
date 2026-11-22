@@ -3,7 +3,7 @@
  */
 
 import {
-  type ApprovedPaperStrategyId,
+  isApprovedPaperStrategyId,
   type EngineLifecycleState,
   type PolyBetaEnv,
 } from './poly-beta-types';
@@ -38,6 +38,23 @@ export async function runEngineStrategyStep(
     .first<PortfolioRow>();
   if (!pf || pf.engine_state === 'HALTED') return false;
 
+  if (!isApprovedPaperStrategyId(pf.selected_strategy_id)) {
+    await runAtomicBatch(env.POLY_BETA_DB, [
+      env.POLY_BETA_DB.prepare(
+        `UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state != 'HALTED'`,
+      ).bind(nowMs, tenantId),
+      buildExecutionLogStatement(
+        env.POLY_BETA_DB,
+        tenantId,
+        'RISK_BLOCK',
+        'UNSUPPORTED_STRATEGY_BLOCKED',
+        `Unsupported persisted strategy: ${String(pf.selected_strategy_id)}`,
+        nowMs,
+      ),
+    ]);
+    return false;
+  }
+
   const feed = await fetchSupportedBetaMarkets(env, { nowMs });
   if (!feed.feedHealthy || feed.markets.length === 0) {
     await runAtomicBatch(env.POLY_BETA_DB, [
@@ -67,18 +84,10 @@ export async function runEngineStrategyStep(
   const stepSeq = (await storage.get<number>('stepSeq')) ?? 0;
   await storage.put('stepSeq', stepSeq + 1);
 
-  const strategyId = (pf.selected_strategy_id as ApprovedPaperStrategyId) || 'toxicity-aware-mm-paper';
-  // Legacy IDs now identify execution harness variants, not signal models.
-  const limitPrice = strategyId === 'neg-risk-bundle-paper'
-    ? target.bestBid
-    : strategyId === 'bayesian-fair-value-paper'
-      ? Math.max(target.tickSize, target.bestBid - target.tickSize)
-      : undefined;
   const result = await executeSerializedPaperOrder(env.POLY_BETA_DB, {
     tenantId,
     idempotencyKey: `auto-step-${stepSeq + 1}`,
-    strategyId,
-    ...(limitPrice !== undefined ? { limitPrice } : {}),
+    strategyId: pf.selected_strategy_id,
     market: target,
     outcome: 'YES',
     side: 'BUY',

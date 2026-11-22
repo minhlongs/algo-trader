@@ -1,0 +1,256 @@
+#!/usr/bin/env node
+/**
+ * Guarded 1-Command Disable Procedure for `poly-beta-api` ONLY.
+ *
+ * Safety invariants:
+ *   - Refuses to run unless `--target` is `poly-beta-staging` or `poly-beta-prod`.
+ *   - Hard-checks `wrangler.poly-beta.toml` to verify `name = "poly-beta-api"`
+ *     and `LIVE_TRADING_ENABLED = "false"`; refuses `algo-trader` or live configs.
+ *   - Defaults to dry-run preview mode. NEVER executes wrangler unless BOTH
+ *     `--execute` AND `--confirm-disable <target>` (matching `--target`) are supplied.
+ *   - All actions are idempotent and preserve `beta_feedback` and `beta_invite_redemptions`.
+ *   - Appends secret-free JSON-lines audit records when `--audit-log <path>` is provided.
+ */
+
+import { execFileSync } from 'node:child_process';
+import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+export const VALID_TARGETS = new Set(['poly-beta-staging', 'poly-beta-prod']);
+export const VALID_MODES = new Set(['disable-signup', 'maintenance', 'full-disable']);
+export const PRESERVED_TABLES = Object.freeze(['beta_feedback', 'beta_invite_redemptions']);
+
+export function parseDisableCliArgs(argv) {
+  const args = Array.isArray(argv) ? argv : [];
+  const getFlag = (flag) => {
+    const idx = args.indexOf(flag);
+    return idx >= 0 && idx + 1 < args.length ? args[idx + 1] : undefined;
+  };
+  const hasFlag = (flag) => args.includes(flag);
+
+  const target = getFlag('--target');
+  const mode = getFlag('--mode') ?? 'disable-signup';
+  const confirmDisable = getFlag('--confirm-disable');
+  const execute = hasFlag('--execute');
+  const dryRun = hasFlag('--dry-run') || !execute;
+  const auditLog = getFlag('--audit-log');
+  const wranglerConfig = getFlag('--wrangler-config') ?? 'wrangler.poly-beta.toml';
+  const operator = getFlag('--operator') ?? process.env.USER ?? 'unknown';
+
+  return {
+    target,
+    mode,
+    confirmDisable,
+    execute,
+    dryRun,
+    auditLog,
+    wranglerConfig,
+    operator,
+  };
+}
+
+export function validateWranglerConfig(configPath) {
+  const resolvedPath = resolve(configPath);
+  const content = readFileSync(resolvedPath, 'utf8');
+
+  const nameMatch = content.match(/^\s*name\s*=\s*"([^"]+)"/m);
+  const workerName = nameMatch ? nameMatch[1].trim() : null;
+  if (workerName !== 'poly-beta-api') {
+    throw new Error(
+      `Refusing to run: wrangler config must target worker "poly-beta-api" (found "${workerName ?? 'missing'}"). Never target algo-trader.`,
+    );
+  }
+
+  const liveMatch = content.match(/^\s*LIVE_TRADING_ENABLED\s*=\s*"([^"]+)"/m);
+  const liveTrading = liveMatch ? liveMatch[1].trim().toLowerCase() : null;
+  if (liveTrading !== 'false') {
+    throw new Error(
+      `Refusing to run: LIVE_TRADING_ENABLED must be "false" (found "${liveTrading ?? 'missing'}").`,
+    );
+  }
+
+  const dbMatch = content.match(/^\s*database_name\s*=\s*"([^"]+)"/m);
+  const databaseName = dbMatch ? dbMatch[1].trim() : 'poly-beta-db';
+  if (databaseName === 'algo-trader-db') {
+    throw new Error('Refusing to run: database_name must not be production algo-trader-db.');
+  }
+
+  return {
+    configPath: resolvedPath,
+    workerName,
+    liveTradingEnabled: false,
+    databaseName,
+  };
+}
+
+export function buildDisablePlan(options) {
+  const target = options?.target;
+  if (!target || !VALID_TARGETS.has(target)) {
+    throw new Error(
+      `Invalid --target "${target ?? ''}". Must be one of: ${Array.from(VALID_TARGETS).join(', ')}.`,
+    );
+  }
+
+  const mode = options?.mode ?? 'disable-signup';
+  if (!VALID_MODES.has(mode)) {
+    throw new Error(
+      `Invalid --mode "${mode}". Must be one of: ${Array.from(VALID_MODES).join(', ')}.`,
+    );
+  }
+
+  const configPath = options?.wranglerConfig ?? 'wrangler.poly-beta.toml';
+  const validated = validateWranglerConfig(configPath);
+
+  const actions = [
+    {
+      id: 'clear-signup-allowlist',
+      kind: 'wrangler-secret',
+      secretName: 'BETA_SIGNUP_ALLOWLIST',
+      inputValue: '',
+      idempotent: true,
+      command: [
+        'wrangler',
+        'secret',
+        'put',
+        'BETA_SIGNUP_ALLOWLIST',
+        '--config',
+        validated.configPath,
+      ],
+    },
+    {
+      id: 'clear-signup-invites',
+      kind: 'wrangler-secret',
+      secretName: 'BETA_SIGNUP_INVITES',
+      inputValue: '[]',
+      idempotent: true,
+      command: [
+        'wrangler',
+        'secret',
+        'put',
+        'BETA_SIGNUP_INVITES',
+        '--config',
+        validated.configPath,
+      ],
+    },
+  ];
+
+  if (mode === 'maintenance' || mode === 'full-disable') {
+    actions.push({
+      id: 'enable-maintenance-mode',
+      kind: 'wrangler-secret',
+      secretName: 'MAINTENANCE_MODE',
+      inputValue: 'true',
+      idempotent: true,
+      command: [
+        'wrangler',
+        'secret',
+        'put',
+        'MAINTENANCE_MODE',
+        '--config',
+        validated.configPath,
+      ],
+    });
+  }
+
+  if (mode === 'full-disable') {
+    actions.push({
+      id: 'revoke-beta-sessions',
+      kind: 'd1-execute',
+      sql: 'DELETE FROM beta_sessions;',
+      idempotent: true,
+      command: [
+        'wrangler',
+        'd1',
+        'execute',
+        validated.databaseName,
+        '--config',
+        validated.configPath,
+        '--remote',
+        '--command',
+        'DELETE FROM beta_sessions;',
+      ],
+    });
+  }
+
+  const executeRequested = Boolean(options?.execute) && !options?.dryRun;
+
+  return {
+    schemaVersion: 'poly-beta-disable-plan/v1',
+    target,
+    mode,
+    dryRun: !executeRequested,
+    workerName: validated.workerName,
+    databaseName: validated.databaseName,
+    wranglerConfig: validated.configPath,
+    preservedTables: [...PRESERVED_TABLES],
+    actions,
+  };
+}
+
+function defaultActionRunner(action) {
+  execFileSync('npx', action.command, {
+    input: action.inputValue !== undefined ? `${action.inputValue}\n` : undefined,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+export function executeDisableProcedure(options, runner = defaultActionRunner) {
+  const plan = buildDisablePlan(options);
+
+  if (!plan.dryRun) {
+    if (!options.confirmDisable || options.confirmDisable !== plan.target) {
+      throw new Error(
+        `Confirmation required: pass --confirm-disable ${plan.target} alongside --execute to run non-dry-run disable.`,
+      );
+    }
+    for (const action of plan.actions) {
+      runner(action);
+    }
+  }
+
+  const auditRecord = {
+    timestampUtc: new Date().toISOString(),
+    target: plan.target,
+    mode: plan.mode,
+    operator: String(options?.operator ?? 'unknown'),
+    dryRun: plan.dryRun,
+    executed: !plan.dryRun,
+    workerName: plan.workerName,
+    preservedTables: plan.preservedTables,
+    actions: plan.actions.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      target: a.secretName ?? a.sql,
+      idempotent: a.idempotent,
+    })),
+  };
+
+  if (options?.auditLog) {
+    const resolvedAuditPath = resolve(options.auditLog);
+    mkdirSync(dirname(resolvedAuditPath), { recursive: true });
+    appendFileSync(resolvedAuditPath, `${JSON.stringify(auditRecord)}\n`, 'utf8');
+  }
+
+  return {
+    plan,
+    executed: !plan.dryRun,
+    auditRecord,
+  };
+}
+
+function main() {
+  const options = parseDisableCliArgs(process.argv.slice(2));
+  const result = executeDisableProcedure(options);
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    main();
+  } catch (err) {
+    process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  }
+}

@@ -8,6 +8,7 @@
 import {
   APPROVED_PAPER_STRATEGIES,
   INITIAL_VIRTUAL_CAPITAL_MICRO,
+  MARKET_STALENESS_LIMIT_MS,
   MAX_CUMULATIVE_DRAWDOWN_BPS,
   MAX_PORTFOLIO_EXPOSURE_MICRO,
   MAX_SINGLE_ORDER_MICRO,
@@ -77,6 +78,12 @@ export async function buildAuthoritativeDashboardView(
       ghostGuardMode: 'OFFLINE_DRILL_VERIFIED_NO_LIVE_CHAIN',
       cryptoFiveMinuteGuard: 'ENFORCED_BLOCKED',
       liveExecutionLock: 'LOCKED_FALSE',
+      marketDataProvenance: {
+        gammaApi: 'https://gamma-api.polymarket.com',
+        clobApi: 'https://clob.polymarket.com',
+        stalenessLimitMs: MARKET_STALENESS_LIMIT_MS,
+        mode: 'READ_ONLY_PUBLIC_PAPER_FEED' as const,
+      },
     },
     strategies: APPROVED_PAPER_STRATEGIES,
     openPositions: state.openPositions.map((p) => ({

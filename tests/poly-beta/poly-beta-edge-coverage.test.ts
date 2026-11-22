@@ -220,7 +220,7 @@ describe('POLY-G5 Public Beta — Branch & Edge-Case Coverage', () => {
     const hdrs = { 'Content-Type': 'application/json', Origin: ORIGIN, Cookie: cookie, 'X-CSRF-Token': csrfToken };
     await worker.fetch(new Request('https://poly-beta-api.workers.dev/api/beta/strategy/control', { method: 'POST', headers: hdrs, body: JSON.stringify({ action: 'START' }) }), env);
     const buyNo = await executeSerializedPaperOrder(env.POLY_BETA_DB, {
-      tenantId: user.tenantId, idempotencyKey: 'buy-no-1', strategyId: 'neg-risk-bundle-paper',
+      tenantId: user.tenantId, idempotencyKey: 'buy-no-1', strategyId: 'toxicity-aware-mm-paper',
       market: snap, outcome: 'NO', side: 'BUY', sizeShares: 5, nowMs: Date.now(),
     });
     expect(buyNo.ok).toBe(true);
