@@ -10,8 +10,10 @@ import {
   evaluateProspectiveOosReport,
   recordMarketBlindResolution,
   settlementProvenanceSchema,
+  signSettlementVerificationReceipt,
   submitMarketBlindForecast,
   verifyOnChainSettlement,
+  verifySettlementVerificationReceipt,
   type ApprovedRepeatedForecastPolicy,
   type SettlementProvenance,
   type SettlementVerificationRequest,
@@ -434,5 +436,100 @@ describe('trusted settlement verification boundary (offline chain verifier + sig
     expect(report.voidedCount).toBe(1);
     expect(report.umaDisputedCount).toBe(1);
     expect(report.skillGate.wSkill).toBe(0);
+  });
+
+  it('exercises all fail-closed branches of classifySettlementVerificationStage, receipt crypto, and chain verifier', async () => {
+    const ledger = new ProspectivePipelineLedger(createInMemoryAppendOnlyStore(), () => 1000);
+    const commit = commitAndAttach(ledger, 'edge');
+    const validProv = verifier.buildSignedProvenance({ marketId: 'market-edge', eventId: 'event-market-edge', resolvedAtMs: 2000, index: 120 });
+    const baseRes = recordMarketBlindResolution(ledger, { entryHash: commit.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000, settlementProvenance: validProv })[0]!;
+    const baseReceipt = validProv.verificationReceipt!;
+    const reSign = (overrides: Partial<typeof baseReceipt>) => {
+      const { canonicalPayloadDigest: _d, signatureAlgorithm: _a, signature: _s, ...body } = baseReceipt;
+      return signSettlementVerificationReceipt({ ...body, ...overrides }, verifier.privateKeyPem);
+    };
+
+    // Stage classifier defensive branches
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, source: 'INVALID' as never } }, verifier.registry).stage).toBe('SETTLEMENT_CLAIMED');
+    expect(classifySettlementVerificationStage({ ...commit, marketId: 'other-market' }, baseRes, verifier.registry).reason).toBe('MARKET_ID_MISMATCH');
+    expect(classifySettlementVerificationStage({ ...commit, eventId: 'other-event' }, baseRes, verifier.registry).reason).toBe('EVENT_ID_MISMATCH');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, conditionId: undefined } }, verifier.registry).reason).toBe('INCOMPLETE_ONCHAIN_COORDINATES');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, observedAtMs: 1500 } }, verifier.registry).reason).toBe('OBSERVED_BEFORE_RESOLVED');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, reference: 'synthetic-ref' } }, verifier.registry).reason).toBe('SYNTHETIC_SETTLEMENT_REFERENCE');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ chainId: 1 }) } }, verifier.registry).reason).toBe('WRONG_CHAIN_ID:1');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ contractAddress: '0x1111111111111111111111111111111111111111' }) } }, verifier.registry).reason).toBe('UNAUTHORIZED_SETTLEMENT_CONTRACT');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ eventSignature: 'OrderFilled()' }) } }, verifier.registry).reason).toBe('WRONG_EVENT_SIGNATURE');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ marketId: 'other-market' }) } }, verifier.registry).reason).toBe('RECEIPT_MARKET_MISMATCH');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ eventId: 'other-event' }) } }, verifier.registry).reason).toBe('RECEIPT_EVENT_MISMATCH');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ blockNumber: baseReceipt.blockNumber + 1 }) } }, verifier.registry).reason).toBe('RECEIPT_COORDINATE_MISMATCH');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ blockTimestampMs: 900 }) } }, verifier.registry).reason).toBe('RECEIPT_TIMESTAMP_INCONSISTENT');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ payoutNumerators: [0, 1] }) } }, verifier.registry).reason).toBe('RECEIPT_PAYOUT_MISMATCH');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, finalityStatus: 'PROPOSED' } }, verifier.registry).reason).toBe('NON_FINAL_PROVENANCE:PROPOSED');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ finalityStatus: 'CORRECTED' }) } }, verifier.registry).reason).toBe('FINALITY_STATUS_MISMATCH');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, finalityStatus: 'CORRECTED', correctionReason: 'fix', verificationReceipt: reSign({ finalityStatus: 'CORRECTED', correctionReason: 'fix' }) } }, verifier.registry).reason).toBe('CORRECTED_WITHOUT_VERIFIED_FOLLOWUP');
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: { ...validProv, verificationReceipt: reSign({ verifiedConfirmations: 10 }) } }, verifier.registry).reason).toBe('INSUFFICIENT_VERIFIED_CONFIRMATIONS');
+    const synthVerifier = createOfflineVerifierFixture('synthetic-verifier-v1');
+    const synthProv = synthVerifier.buildSignedProvenance({ marketId: 'market-edge', eventId: 'event-market-edge', resolvedAtMs: 2000, index: 121 });
+    expect(classifySettlementVerificationStage(commit, { ...baseRes, settlementProvenance: synthProv }, synthVerifier.registry).stage).toBe('SETTLEMENT_FINALIZED');
+
+    // Receipt crypto defensive branches
+    expect(verifySettlementVerificationReceipt({ ...baseReceipt, version: 2 as never }, verifier.registry).reason).toBe('RECEIPT_SCHEMA_INVALID');
+    expect(verifySettlementVerificationReceipt(baseReceipt, { authorities: [{ ...verifier.registry.authorities[0]!, verifierId: 'other-id' }] }).reason).toBe('UNKNOWN_VERIFIER_AUTHORITY');
+    expect(verifySettlementVerificationReceipt(baseReceipt, { authorities: [verifier.registry.authorities[0]!, verifier.registry.authorities[0]!] }).reason).toBe('AMBIGUOUS_VERIFIER_AUTHORITY');
+    expect(verifySettlementVerificationReceipt({ ...baseReceipt, signature: 'AAAAAAAAAAAAAAAAAAAAAA==' }, verifier.registry).reason).toBe('INVALID_RECEIPT_SIGNATURE');
+    expect(verifySettlementVerificationReceipt(baseReceipt, { authorities: [{ ...verifier.registry.authorities[0]!, publicKeyPem: '-----BEGIN PUBLIC KEY-----\ninvalid\n-----END PUBLIC KEY-----' }] }).reason).toBe('INVALID_RECEIPT_SIGNATURE');
+
+    // Chain verifier & log decoder defensive branches
+    const conditionId = `0x${'a1'.repeat(32)}`;
+    const questionId = `0x${'b1'.repeat(32)}`;
+    const oracle = '0x2222222222222222222222222222222222222222';
+    const txHash = `0x${'c1'.repeat(32)}`;
+    const blockHash = `0x${'d1'.repeat(32)}`;
+    const baseState = (): MockChainState => ({
+      chainId: POLYGON_POS_CHAIN_ID,
+      latestBlock: { number: 70000100, hash: `0x${'e1'.repeat(32)}`, timestampMs: 2500 },
+      blocksByNumber: new Map([[70000000, { number: 70000000, hash: blockHash, timestampMs: 2000 }]]),
+      receiptsByTxHash: new Map([[txHash, {
+        txHash, status: 1, blockNumber: 70000000, blockHash,
+        logs: [encodeConditionResolutionLog({ contractAddress: CANONICAL_POLYGON_CTF_CONTRACT, logIndex: 4, conditionId, oracleAddress: oracle, ctfQuestionId: questionId, payoutNumerators: [1, 0] })],
+      }]]),
+      marketMappings: new Map([['market-edge', { marketId: 'market-edge', eventId: 'event-market-edge', conditionId, ctfQuestionId: questionId, expectedOracleAddress: oracle }]]),
+      umaDisputes: new Map([[conditionId, { state: 'SETTLED' }]]),
+    });
+    const req: SettlementVerificationRequest = {
+      marketId: 'market-edge', eventId: 'event-market-edge', txHash, logIndex: 4,
+      expectedConditionId: conditionId, expectedBlockHash: blockHash, committedAtMs: 1000, resolvedAtMs: 2000, expectedPayoutNumerators: [1, 0],
+    };
+
+    const cases: Array<[string, (s: MockChainState) => void, Partial<SettlementVerificationRequest>?]> = [
+      ['TX_HASH_MISMATCH', (s) => { s.receiptsByTxHash.set(txHash, { ...s.receiptsByTxHash.get(txHash)!, txHash: `0x${'ff'.repeat(32)}` }); }],
+      ['CANONICAL_BLOCK_NOT_FOUND', (s) => { s.blocksByNumber.clear(); }],
+      ['CHAIN_HEAD_BEHIND_RECEIPT', (s) => { s.latestBlock = { number: 69999999, hash: blockHash, timestampMs: 2500 }; }],
+      ['INCONSISTENT_BLOCK_TIMESTAMP', (s) => { s.blocksByNumber.set(70000000, { number: 70000000, hash: blockHash, timestampMs: 0 }); }],
+      ['BLOCK_TIMESTAMP_PRECEDES_COMMIT', () => {}, { committedAtMs: 2500 }],
+      ['RESOLVED_TIMESTAMP_MISMATCH', () => {}, { resolvedAtMs: 99_999_999 }],
+      ['NON_BINARY_OUTCOME_SLOTS', (s) => {
+        s.receiptsByTxHash.set(txHash, { ...s.receiptsByTxHash.get(txHash)!, logs: [encodeConditionResolutionLog({ contractAddress: CANONICAL_POLYGON_CTF_CONTRACT, logIndex: 4, conditionId, oracleAddress: oracle, ctfQuestionId: questionId, payoutNumerators: [1, 0, 0] })] });
+      }],
+      ['AMBIGUOUS_OR_INVALID_PAYOUT_VECTOR', (s) => {
+        s.receiptsByTxHash.set(txHash, { ...s.receiptsByTxHash.get(txHash)!, logs: [encodeConditionResolutionLog({ contractAddress: CANONICAL_POLYGON_CTF_CONTRACT, logIndex: 4, conditionId, oracleAddress: oracle, ctfQuestionId: questionId, payoutNumerators: [1, 1] })] });
+      }],
+      ['CONDITION_RESOLUTION_ABI_DECODE_FAILED', (s) => {
+        const prev = s.receiptsByTxHash.get(txHash)!;
+        s.receiptsByTxHash.set(txHash, { ...prev, logs: [{ ...prev.logs[0]!, data: '0xdeadbeef' }] });
+      }],
+      ['MARKET_MAPPING_NOT_FOUND', (s) => { s.marketMappings.clear(); }],
+      ['EVENT_ID_MAPPING_MISMATCH', () => {}, { eventId: 'wrong-event' }],
+      ['MARKET_QUESTION_MAPPING_MISMATCH', (s) => { s.marketMappings.set('market-edge', { ...s.marketMappings.get('market-edge')!, ctfQuestionId: `0x${'99'.repeat(32)}` }); }],
+      ['ORACLE_ADDRESS_MISMATCH', (s) => { s.marketMappings.set('market-edge', { ...s.marketMappings.get('market-edge')!, expectedOracleAddress: '0x3333333333333333333333333333333333333333' }); }],
+      ['UNKNOWN_UMA_DISPUTE_STATE', (s) => { s.umaDisputes.set(conditionId, { state: 'UNEXPECTED' as never }); }],
+    ];
+    for (const [expectedReason, mutate, reqOverride] of cases) {
+      const s = baseState();
+      mutate(s);
+      const res = await verifyOnChainSettlement({ ...req, ...reqOverride }, createMockChainProvider(s), verifier.signer, { nowMs: () => 2500 });
+      expect(res.ok).toBe(false);
+      if (!res.ok) expect(res.reason).toBe(expectedReason);
+    }
   });
 });
