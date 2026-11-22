@@ -15,7 +15,7 @@
  */
 
 import { sha256Hex } from './poly-beta-security';
-import { normalizeAllowlistEmail } from './poly-beta-signup-allowlist';
+import { isEmailAuthorizedForBetaSignup, normalizeAllowlistEmail } from './poly-beta-signup-allowlist';
 import type { PolyBetaEnv } from './poly-beta-types';
 
 const HEX_64_RE = /^[a-f0-9]{64}$/;
@@ -107,8 +107,10 @@ export async function verifyBetaSignupInviteToken(
   }
 
   let matched: BetaSignupInviteRecord | null = null;
+  let anyDisabled = false;
   for (const rec of invites) {
     if (timingSafeEqualHex(candidateHash, rec.tokenHash)) {
+      if (rec.disabled) anyDisabled = true;
       matched = rec;
     }
   }
@@ -116,7 +118,7 @@ export async function verifyBetaSignupInviteToken(
   if (!matched) {
     return { ok: false, code: 'INVITE_TOKEN_INVALID' };
   }
-  if (matched.disabled) {
+  if (anyDisabled || matched.disabled) {
     return { ok: false, code: 'INVITE_TOKEN_DISABLED' };
   }
   if (nowMs >= matched.expiresAtMs) {
@@ -132,4 +134,56 @@ export async function verifyBetaSignupInviteToken(
     email: matched.email,
     expiresAtMs: matched.expiresAtMs,
   };
+}
+
+export type SignupEnrollmentGateResult =
+  | { readonly ok: true; readonly tokenHash: string }
+  | { readonly ok: false; readonly status: 403; readonly code: string; readonly error: string };
+
+export async function authorizeSignupEnrollmentAndInvite(
+  email: string,
+  inviteToken: string | undefined,
+  env: PolyBetaEnv,
+  nowMs: number,
+): Promise<SignupEnrollmentGateResult> {
+  const allowlistCheck = await isEmailAuthorizedForBetaSignup(email, env);
+  if (!allowlistCheck.allowed) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'SIGNUP_ALLOWLIST_REQUIRED',
+      error: 'Private Paper Beta signup is restricted to explicitly enrolled pilot accounts.',
+    };
+  }
+  if (!inviteToken) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'INVITE_TOKEN_REQUIRED',
+      error: 'A valid single-use Founder invite token is required to activate this pilot account.',
+    };
+  }
+  const inviteCheck = await verifyBetaSignupInviteToken(email, inviteToken, env, nowMs);
+  if (!inviteCheck.ok) {
+    return {
+      ok: false,
+      status: 403,
+      code: inviteCheck.code,
+      error: 'Invite token is invalid, expired, disabled, or not bound to this email.',
+    };
+  }
+  const redeemed = await env.POLY_BETA_DB.prepare(
+    `SELECT token_hash FROM beta_invite_redemptions WHERE token_hash = ?`,
+  )
+    .bind(inviteCheck.tokenHash)
+    .first<{ token_hash: string }>();
+  if (redeemed) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'INVITE_TOKEN_REDEEMED',
+      error: 'This single-use invite token has already been redeemed.',
+    };
+  }
+  return { ok: true, tokenHash: inviteCheck.tokenHash };
 }

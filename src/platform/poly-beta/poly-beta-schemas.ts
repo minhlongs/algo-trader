@@ -86,14 +86,14 @@ const FORBIDDEN_CALLER_SCOPE_KEYS = [
   'mnemonic',
 ] as const;
 
-const FORBIDDEN_URL_SECRET_KEYS = ['inviteToken', 'invite_token', 'token'] as const;
+const FORBIDDEN_URL_SECRET_KEYS = new Set(['invitetoken', 'invite_token', 'token']);
 
 export function detectForbiddenCallerAuthorityOverride(
   url: URL,
   rawBody: unknown,
 ): string | null {
-  for (const key of FORBIDDEN_URL_SECRET_KEYS) {
-    if (url.searchParams.has(key)) {
+  for (const key of url.searchParams.keys()) {
+    if (FORBIDDEN_URL_SECRET_KEYS.has(key.toLowerCase())) {
       return `Invite tokens must never be supplied in URL query parameters ("${key}")`;
     }
   }

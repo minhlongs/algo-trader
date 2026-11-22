@@ -84,6 +84,7 @@ function parseWranglerSafetyInvariants(tomlText) {
   const hasLiveOrderSecret = /(PRIVATE_KEY|CLOB_API_KEY|POLYMARKET_API_SECRET|WALLET_SEED)/i.test(stripped);
   const referencesProdDb = /f29559f2|6c7199c0/.test(stripped);
   const hasPlaintextSecretsInToml = /(BETA_SIGNUP_ALLOWLIST|BETA_SIGNUP_INVITES)\s*=/m.test(stripped);
+  const hasAnyLiveTradingTrue = /^LIVE_TRADING_ENABLED\s*=\s*"true"/im.test(stripped);
 
   return {
     workerName: getVar('name'),
@@ -105,6 +106,7 @@ function parseWranglerSafetyInvariants(tomlText) {
       !hasLiveOrderSecret &&
       !referencesProdDb &&
       !hasPlaintextSecretsInToml &&
+      !hasAnyLiveTradingTrue &&
       getVar('LIVE_TRADING_ENABLED') === 'false',
   };
 }
