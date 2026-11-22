@@ -182,6 +182,73 @@ describe('poly-beta-disable', () => {
       'utf8',
     );
     expect(() => validateWranglerConfig(dupKeyConfig, 'poly-beta-prod')).toThrow(/Duplicate TOML key/);
+
+    // Reject Unicode-escaped double-quoted keys (prevents TOML parser differential on [env.staging].name)
+    const escapedKeyConfig = join(tempDir, 'wrangler.escaped-key.toml');
+    writeFileSync(
+      escapedKeyConfig,
+      [
+        'name = "poly-beta-api"',
+        '[env.staging]',
+        '"\\u006eame" = "algo-trader"',
+        '[env.staging.vars]',
+        'ENVIRONMENT = "staging"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[[env.staging.d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        'database_name = "poly-beta-db-staging"',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(() => validateWranglerConfig(escapedKeyConfig, 'poly-beta-staging')).toThrow(/escaped TOML key/);
+
+    // Reject non-string [env.staging].name
+    const nonStringNameConfig = join(tempDir, 'wrangler.nonstring-name.toml');
+    writeFileSync(
+      nonStringNameConfig,
+      [
+        'name = "poly-beta-api"',
+        '[env.staging]',
+        'name = 123',
+        '[env.staging.vars]',
+        'ENVIRONMENT = "staging"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[[env.staging.d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        'database_name = "poly-beta-db-staging"',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(() => validateWranglerConfig(nonStringNameConfig, 'poly-beta-staging')).toThrow(/must be a string/);
+
+    // Reject malformed single-quoted string with embedded quotes
+    const badSingleQuote = join(tempDir, 'wrangler.bad-sq.toml');
+    writeFileSync(
+      badSingleQuote,
+      "name = 'poly-beta-api' extra 'junk'\n",
+      'utf8',
+    );
+    expect(() => validateWranglerConfig(badSingleQuote, 'poly-beta-prod')).toThrow(/Malformed single-quoted/);
+
+    // Reject extra unverified [[d1_databases]] binding alongside expected DB
+    const extraDbConfig = join(tempDir, 'wrangler.extra-db.toml');
+    writeFileSync(
+      extraDbConfig,
+      [
+        'name = "poly-beta-api"',
+        '[vars]',
+        'ENVIRONMENT = "public-beta"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[[d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        'database_name = "poly-beta-db"',
+        '[[d1_databases]]',
+        'binding = "OTHER_DB"',
+        'database_name = "other-prod-db"',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(() => validateWranglerConfig(extraDbConfig, 'poly-beta-prod')).toThrow(/allows only database_name/);
   });
 
   it('rejects unknown targets and invalid modes', () => {

@@ -95,35 +95,58 @@ function assertSafeKeySegment(key) {
   }
 }
 
+function parseTomlKeySegment(rawSegment) {
+  const seg = rawSegment.trim();
+  if (!seg) {
+    throw new Error('Refusing to parse empty TOML key segment.');
+  }
+  let decoded;
+  if (seg.startsWith('"') && seg.endsWith('"') && seg.length >= 2) {
+    if (seg.includes('\\')) {
+      throw new Error(`Refusing to parse escaped TOML key segment "${seg}" to prevent parser differential.`);
+    }
+    const inner = seg.slice(1, -1);
+    if (inner.includes('"')) {
+      throw new Error(`Malformed double-quoted TOML key segment "${seg}".`);
+    }
+    decoded = inner;
+  } else if (seg.startsWith("'") && seg.endsWith("'") && seg.length >= 2) {
+    const inner = seg.slice(1, -1);
+    if (inner.includes("'")) {
+      throw new Error(`Malformed single-quoted TOML key segment "${seg}".`);
+    }
+    decoded = inner;
+  } else if (/^[A-Za-z0-9_-]+$/.test(seg)) {
+    decoded = seg;
+  } else {
+    throw new Error(`Unsupported or malformed TOML key segment "${seg}".`);
+  }
+  assertSafeKeySegment(decoded);
+  return decoded;
+}
+
 function splitTomlPath(rawPath) {
   const parts = [];
   let buf = '';
   let inDouble = false;
   let inSingle = false;
-  let escaped = false;
   for (let i = 0; i < rawPath.length; i += 1) {
     const ch = rawPath[i];
-    if (escaped) {
-      buf += ch;
-      escaped = false;
-      continue;
-    }
     if (ch === '\\' && inDouble) {
-      escaped = true;
-      continue;
+      throw new Error(`Refusing to parse escaped TOML key in "${rawPath}" to prevent parser differential.`);
     }
     if (ch === '"' && !inSingle) {
       inDouble = !inDouble;
+      buf += ch;
       continue;
     }
     if (ch === "'" && !inDouble) {
       inSingle = !inSingle;
+      buf += ch;
       continue;
     }
     if (ch === '.' && !inDouble && !inSingle) {
-      const seg = buf.trim();
-      assertSafeKeySegment(seg);
-      parts.push(seg);
+      parts.push(parseTomlKeySegment(buf));
       buf = '';
       continue;
     }
@@ -132,9 +155,7 @@ function splitTomlPath(rawPath) {
   if (inDouble || inSingle) {
     throw new Error(`Unterminated quoted TOML key in "${rawPath}".`);
   }
-  const last = buf.trim();
-  assertSafeKeySegment(last);
-  parts.push(last);
+  parts.push(parseTomlKeySegment(buf));
   return parts;
 }
 
@@ -153,7 +174,11 @@ function parseTomlValue(raw) {
     return JSON.parse(v);
   }
   if (v.startsWith("'") && v.endsWith("'") && v.length >= 2) {
-    return v.slice(1, -1);
+    const inner = v.slice(1, -1);
+    if (inner.includes("'")) {
+      throw new Error(`Malformed single-quoted TOML string "${v}" in wrangler config.`);
+    }
+    return inner;
   }
   if (v === 'true') return true;
   if (v === 'false') return false;
@@ -273,6 +298,11 @@ export function validateWranglerConfig(configPath, target) {
     );
   }
 
+  if (envTable && envTable.name !== undefined && typeof envTable.name !== 'string') {
+    throw new Error(
+      `Refusing to run: [env.${binding.wranglerEnv}].name must be a string in ${resolvedPath}.`,
+    );
+  }
   const envNameOverride =
     envTable && typeof envTable.name === 'string' ? envTable.name.trim() : null;
   const effectiveWorkerName =
@@ -332,6 +362,15 @@ export function validateWranglerConfig(configPath, target) {
   }
   if (dbNames.includes('algo-trader-db')) {
     throw new Error('Refusing to run: database_name must not be production algo-trader-db.');
+  }
+
+  if (binding) {
+    const unexpectedDbs = dbNames.filter((n) => n !== binding.expectedDatabaseName);
+    if (unexpectedDbs.length > 0) {
+      throw new Error(
+        `Refusing to run: target "${target}" allows only database_name = "${binding.expectedDatabaseName}" in ${dbHeader} (found unexpected "${unexpectedDbs.join(', ')}").`,
+      );
+    }
   }
 
   const databaseName = binding

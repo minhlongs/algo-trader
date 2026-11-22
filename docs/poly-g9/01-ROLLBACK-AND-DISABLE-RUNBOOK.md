@@ -94,25 +94,42 @@ Because an invite token is a bearer credential until redeemed:
 
 ## 6. One-Command Disable Procedure
 
-Use `scripts/poly-beta-disable.mjs` (targets `poly-beta-api` / `poly-beta-db` ONLY; zero impact on `algo-trader` production Worker):
+Use `scripts/poly-beta-disable.mjs` (targets `poly-beta-api` / `poly-beta-db` ONLY via strict Wrangler TOML validation and explicit `--env`; zero impact on `algo-trader` production Worker):
 
 ```bash
-# Dry run first (verifies target isolation and planned actions without mutating remote state)
+# Dry run first (default; verifies target isolation and planned actions without mutating remote state)
 node scripts/poly-beta-disable.mjs \
-  --target poly-beta-api \
+  --target poly-beta-prod \
   --mode maintenance \
   --dry-run \
   --audit-log /tmp/poly-beta-disable-audit.jsonl
 
-# Execute disable (requires explicit --confirm-disable flag)
+# Execute disable (requires BOTH --execute AND --confirm-disable <target> matching --target)
 node scripts/poly-beta-disable.mjs \
-  --target poly-beta-api \
+  --target poly-beta-prod \
   --mode maintenance \
-  --confirm-disable \
+  --execute \
+  --confirm-disable poly-beta-prod \
   --audit-log /tmp/poly-beta-disable-audit.jsonl
 ```
 
-Supported `--mode` values: `signup-closed`, `maintenance`, `revoke-sessions`, `full-disable`. Confirm the audit log records target=`poly-beta-api`, UTC timestamp, and zero references to `algo-trader`.
+Supported `--target` values: `poly-beta-prod` (binds `--env ""`, expects worker `poly-beta-api` and DB `poly-beta-db`) and `poly-beta-staging` (binds `--env staging`, requires explicit `[env.staging]` with worker `poly-beta-api-staging` and DB `poly-beta-db-staging`).
+Supported `--mode` values: `disable-signup`, `maintenance`, `full-disable`. Confirm the audit log records `workerName: "poly-beta-api"`, UTC timestamp, preserved tables (`beta_feedback`, `beta_invite_redemptions`), and zero references to `algo-trader`.
+
+### 6.1 Emergency Manual Fallback (Malformed Config Fail-Closed)
+
+`scripts/poly-beta-disable.mjs` intentionally fails closed on unsupported or malformed TOML (duplicate keys/tables, escaped keys, inline tables, multiline strings, or mismatched worker/database bindings). If a broken `wrangler.poly-beta.toml` blocks the script during an active incident:
+
+1. Inspect `wrangler.poly-beta.toml` to verify `name = "poly-beta-api"` and `database_name = "poly-beta-db"` (never `wrangler.toml` / `algo-trader`).
+2. Run the equivalent idempotent Wrangler commands directly with explicit `--config wrangler.poly-beta.toml --env ""`:
+   ```bash
+   printf '\n' | npx wrangler secret put BETA_SIGNUP_ALLOWLIST --config wrangler.poly-beta.toml --env ""
+   printf '[]\n' | npx wrangler secret put BETA_SIGNUP_INVITES --config wrangler.poly-beta.toml --env ""
+   printf 'true\n' | npx wrangler secret put MAINTENANCE_MODE --config wrangler.poly-beta.toml --env ""
+   # Optional session revocation (preserves beta_feedback and beta_invite_redemptions):
+   npx wrangler d1 execute poly-beta-db --config wrangler.poly-beta.toml --env "" --remote --command "DELETE FROM beta_sessions;"
+   ```
+3. Verify `GET https://poly-beta-api.<account>.workers.dev/api/health` returns `200` while authenticated `/api/beta/*` routes return `503 MAINTENANCE_MODE`, and verify `https://api.cashclaw.cc` is untouched.
 
 ---
 
