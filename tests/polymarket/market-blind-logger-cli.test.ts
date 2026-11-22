@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createOfflineVerifierFixture } from './helpers/settlement-verifier-test-fixture';
+const verifierFixture = createOfflineVerifierFixture();
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
 const loggerScript = fileURLToPath(new URL('../../scripts/poly-market-blind-logger.ts', import.meta.url));
 const roots: string[] = [];
@@ -37,20 +39,13 @@ describe('local market-blind logger CLI', () => {
     expect(price.status, price.stderr).toBe(0);
     const resolvedAtMs = Date.now() + 60000;
     const provenancePath = join(f.root, 'settlement-provenance.json');
-    writeFileSync(provenancePath, JSON.stringify({
-      source: 'CTF_ONCHAIN',
-      finalityStatus: 'FINALIZED',
+    const signedProvenance = verifierFixture.buildSignedProvenance({
       marketId: 'market-q1',
       eventId: 'event-q1',
-      conditionId: `0x${'a'.repeat(64)}`,
-      txHash: `0x${'b'.repeat(64)}`,
-      blockNumber: 65_000_001,
-      confirmations: 128,
-      payoutNumerators: [1, 0],
-      observedAtMs: resolvedAtMs + 1000,
-      payloadHash: 'c'.repeat(64),
-      reference: 'polygon-ctf-q1',
-    }));
+      resolvedAtMs,
+      index: 1,
+    });
+    writeFileSync(provenancePath, JSON.stringify(signedProvenance));
     const resolution = f.run('resolve', '--entry-hash', receipt.entryHash, '--status', 'RESOLVED_YES', '--resolved-at-ms', String(resolvedAtMs), '--settlement-provenance', provenancePath);
     expect(resolution.status, resolution.stderr).toBe(0);
     const noPolicy = f.run('status', '--mode', 'empirical', '--model-version', 'model-v1');
@@ -58,7 +53,12 @@ describe('local market-blind logger CLI', () => {
     const policyPath = join(f.root, 'approval-fixture.json');
     writeFileSync(policyPath, JSON.stringify({ policyId: 'approval-fixture', approvalStatus: 'APPROVED', approvedBy: 'fixture-reviewer', approvedAtMs: 500,
       approvalEvidenceRef: 'local-fixture-record', modelVersion: 'model-v1', repeatedForecastRule: 'FIRST_COMMIT_PER_RESEARCH_QUESTION' }));
-    const strict = f.run('status', '--mode', 'empirical', '--model-version', 'model-v1', '--policy', policyPath);
+    const noRegistry = f.run('status', '--mode', 'empirical', '--model-version', 'model-v1', '--policy', policyPath);
+    expect(noRegistry.status, noRegistry.stderr).toBe(0);
+    expect(JSON.parse(noRegistry.stdout)).toMatchObject({ resolvedEligibleCount: 0, empiricalEligible: false });
+    const registryPath = join(f.root, 'verifier-registry.json');
+    writeFileSync(registryPath, JSON.stringify(verifierFixture.registry));
+    const strict = f.run('status', '--mode', 'empirical', '--model-version', 'model-v1', '--policy', policyPath, '--verifier-registry', registryPath);
     expect(strict.status, strict.stderr).toBe(0);
     expect(JSON.parse(strict.stdout)).toMatchObject({ resolvedEligibleCount: 1, empiricalEligible: true, integrityVerified: true });
     const checkpoint = JSON.parse(readFileSync(f.checkpoint, 'utf8')) as { recordCount: number };

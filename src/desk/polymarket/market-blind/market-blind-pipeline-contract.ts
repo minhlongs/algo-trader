@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import type { MarketBlindDocumentInput, MarketBlindPosteriorConfig, MarketBlindSanitizerConfig, SealedForecastReceipt, SkillGateFailureReason } from './market-blind-types';
+import {
+  settlementVerificationReceiptSchema,
+  type SettlementVerificationReceipt,
+  type SettlementVerificationStage,
+  type TrustedSettlementVerifierRegistry,
+} from './settlement-verification-contract';
+
+export type { SettlementVerificationReceipt, SettlementVerificationStage, TrustedSettlementVerifierRegistry };
 
 export type MarketBlindResolutionState = 'RESOLVED_YES' | 'RESOLVED_NO' | 'VOIDED' | 'CANCELLED' | 'UMA_DISPUTED';
 export type ProspectiveOosVerdict = 'INSUFFICIENT_DATA' | 'FAIL_CALIBRATION' | 'PASS_PROSPECTIVE_SKILL';
@@ -20,6 +28,8 @@ export interface SettlementProvenance {
   payloadHash: string;
   reference: string;
   correctionReason?: string;
+  /** Independently signed verification receipt required for empirical OOS eligibility. */
+  verificationReceipt?: SettlementVerificationReceipt;
 }
 export interface ForecastProvenance { kind: 'REAL' | 'SYNTHETIC'; source: string; reference: string; }
 export interface ProspectiveCommitInput {
@@ -55,6 +65,7 @@ export interface ApprovedRepeatedForecastPolicy {
 export interface ProspectiveOosReportOptions {
   category?: string; calibrate?: (pRaw: number) => number; config?: Partial<MarketBlindPosteriorConfig>;
   mode?: 'diagnostic' | 'empirical'; modelVersion?: string; policy?: ApprovedRepeatedForecastPolicy;
+  settlementVerifierRegistry?: TrustedSettlementVerifierRegistry;
 }
 export interface ProspectiveOosReport {
   committedCount: number; resolvedScoredCount: number; voidedCount: number; cancelledCount: number; umaDisputedCount: number; pendingCount: number;
@@ -92,6 +103,7 @@ export const settlementProvenanceSchema = z.object({
   payloadHash: hash,
   reference: identifier,
   correctionReason: identifier.optional(),
+  verificationReceipt: settlementVerificationReceiptSchema.optional(),
 }).strict();
 export const resolutionSchema = z.object({
   entryHash: hash, questionId: identifier, status: z.enum(['RESOLVED_YES', 'RESOLVED_NO', 'VOIDED', 'CANCELLED', 'UMA_DISPUTED']),

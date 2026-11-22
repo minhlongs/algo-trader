@@ -20,8 +20,8 @@
 - **Financial Commitment:** `$0` (existing Cloudflare Workers/Pages free/existing plan).
 - **Precondition for `USER_001`:** `USER_001_INVITE` remains `HOLD` until this redeploy is verified live and Founder separately approves inviting `USER_001`.
 
-## Authorization Request 4 — Review & Merge Track E Settlement Provenance Draft PR
-- **Action Requested:** Review Draft PR (`fix/poly-g8-6-settlement-provenance`) implementing fail-closed on-chain `settlementProvenance` verification for empirical Market-Blind OOS scoring (`w_skill = 0` enforced).
+## Authorization Request 4 — Review & Merge Track E Settlement Verification Boundary Draft PR (`#292`)
+- **Action Requested:** Review Draft PR `#292` (`fix/poly-g8-6-settlement-provenance`) implementing offline settlement-claim hardening, read-only Polygon PoS CTF `ConditionResolution` verifier interface, Ed25519-signed verification receipts, public-key verifier registry, and adversarial regression tests (`w_skill = 0` enforced; live RPC verification remains `HOLD`).
 - **Financial Commitment:** `$0` (offline code & unit tests only).
 
 ## Authorization Request 5 — Defer Infrastructure Budget Expansion Until Track A Pricing Arrives

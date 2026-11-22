@@ -11,7 +11,7 @@
 - [ ] **Gate A — Written Data License (`#278`):** Signed/written permission from Adventure One QSS, Inc. and/or ICE Data Services covering Vietnam operator, up to 150 markets, automated API/WebSocket L2 snapshots/deltas/trades, 30-day rolling WAL/Parquet retention, isolated Linux VPS processing, and private Cloudflare R2 storage.
 - [ ] **Gate C — Vietnam Legal G12 Opinion:** Dated written preliminary legal opinion from independent licensed Vietnamese counsel clearing Research Group 1 (data collection + offline backtest) under current Vietnamese law (including Law `71/2025/QH15`, Resolution `05/2025/NQ-CP`, privacy, and cross-border cloud rules).
 - [ ] **Gate D — Infrastructure & License Budget Sign-Off:** Founder explicit written approval of total recurring monthly cost (VPS + R2 + tax + payment fees + Track A license fee) and hard spending stop-trigger.
-- [ ] **Gate E — Resolution Authority & Code Baseline:** Track E Draft PR (`fix/poly-g8-6-settlement-provenance`) reviewed, CI-green, and merged to `main`; independent checkpoint path provisioned outside collector write scope; IC repeated-forecast policy formally signed.
+- [ ] **Gate E — Resolution Authority & Code Baseline:** Track E Draft PR `#292` (`fix/poly-g8-6-settlement-provenance`) reviewed, CI-green, and merged to `main`; independent checkpoint path and verifier public-key registry provisioned outside operator/collector write scope; authorized live Polygon PoS chain verifier deployed (offline fixtures only at this stage); IC repeated-forecast policy formally signed.
 
 ---
 

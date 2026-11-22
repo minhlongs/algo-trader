@@ -1,16 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { createInMemoryAppendOnlyStore } from '../../src/desk/polymarket/market-blind/market-blind-ledger-store';
 import {
+  CANONICAL_POLYGON_CTF_CONTRACT,
   MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS,
+  POLYGON_POS_CHAIN_ID,
   ProspectivePipelineLedger,
   attachPostCommitMarketSnapshot,
+  classifySettlementVerificationStage,
   evaluateProspectiveOosReport,
   recordMarketBlindResolution,
+  settlementProvenanceSchema,
   submitMarketBlindForecast,
+  verifyOnChainSettlement,
   type ApprovedRepeatedForecastPolicy,
   type SettlementProvenance,
+  type SettlementVerificationRequest,
 } from '../../src/desk/polymarket/market-blind/market-blind-prospective-pipeline';
+import {
+  createMockChainProvider,
+  createOfflineVerifierFixture,
+  encodeConditionResolutionLog,
+  encodeOrderFilledWrongEventLog,
+  type MockChainState,
+} from './helpers/settlement-verifier-test-fixture';
 
+// TEST_ONLY fixtures. No test fixture counts as empirical IC OOS evidence.
+const verifier = createOfflineVerifierFixture();
 const policy: ApprovedRepeatedForecastPolicy = {
   policyId: 'ic-policy-settlement-test',
   approvalStatus: 'APPROVED',
@@ -20,9 +35,16 @@ const policy: ApprovedRepeatedForecastPolicy = {
   modelVersion: 'model-v1',
   repeatedForecastRule: 'FIRST_COMMIT_PER_RESEARCH_QUESTION',
 };
-const empiricalOptions = { mode: 'empirical' as const, modelVersion: 'model-v1', policy };
+const empiricalOptions = {
+  mode: 'empirical' as const,
+  modelVersion: 'model-v1',
+  policy,
+  settlementVerifierRegistry: verifier.registry,
+};
 
-function validProvenance(marketId: string, resolvedAtMs: number, overrides: Partial<SettlementProvenance> = {}): SettlementProvenance {
+const ORACLE_ADDRESS = '0x157ce2d672854c848c9b79c49a8cc6cc89176a49';
+
+function buildUnsignedClaim(marketId: string, resolvedAtMs: number, overrides: Partial<SettlementProvenance> = {}): SettlementProvenance {
   return {
     source: 'CTF_ONCHAIN',
     finalityStatus: 'FINALIZED',
@@ -40,7 +62,7 @@ function validProvenance(marketId: string, resolvedAtMs: number, overrides: Part
   };
 }
 
-function commitAndAttach(ledger: ProspectivePipelineLedger, id: string, committedAtMs = 1000) {
+function commitAndAttach(ledger: ProspectivePipelineLedger, id: string, pRaw = 0.85, committedAtMs = 1000) {
   const receipt = submitMarketBlindForecast(ledger, {
     questionId: id,
     researchQuestionId: `rq-${id}`,
@@ -50,7 +72,7 @@ function commitAndAttach(ledger: ProspectivePipelineLedger, id: string, committe
     forecastHorizonMs: 5000,
     provenance: { kind: 'REAL', source: 'official-publication', reference: `pub-${id}` },
     modelVersion: 'model-v1',
-    pRaw: 0.85,
+    pRaw,
     evidence: 'Official public record.',
     committedAtMs,
   });
@@ -62,167 +84,350 @@ function commitAndAttach(ledger: ProspectivePipelineLedger, id: string, committe
   return receipt;
 }
 
-describe('market-blind authoritative settlement provenance trust boundary', () => {
-  it('excludes missing, MANUAL_ADMIN, and bare GAMMA_API resolutions from empirical OOS counts and keeps w_skill = 0', () => {
+function createCanonicalMockChain(overrides: Partial<{
+  chainId: number;
+  blockNumber: number;
+  latestBlockNumber: number;
+  blockHash: string;
+  receiptBlockHash: string;
+  blockTimestampMs: number;
+  receiptStatus: 0 | 1;
+  contractAddress: string;
+  logIndex: number;
+  conditionId: string;
+  mappedConditionId: string;
+  ctfQuestionId: string;
+  payoutNumerators: readonly [number, number];
+  omitLogs: boolean;
+  wrongEventLog: boolean;
+  omitReceipt: boolean;
+  umaState: 'NONE' | 'PROPOSED' | 'DISPUTED' | 'SETTLED' | 'CORRECTED';
+  correctionReason?: string;
+}> = {}): { state: MockChainState; request: SettlementVerificationRequest } {
+  const blockNumber = overrides.blockNumber ?? 65_000_100;
+  const latestBlockNumber = overrides.latestBlockNumber ?? blockNumber + MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS;
+  const blockHash = overrides.blockHash ?? `0x${'e'.repeat(64)}`;
+  const receiptBlockHash = overrides.receiptBlockHash ?? blockHash;
+  const blockTimestampMs = overrides.blockTimestampMs ?? 2000;
+  const conditionId = overrides.conditionId ?? `0x${'1'.repeat(64)}`;
+  const mappedConditionId = overrides.mappedConditionId ?? conditionId;
+  const ctfQuestionId = overrides.ctfQuestionId ?? `0x${'2'.repeat(64)}`;
+  const txHash = `0x${'3'.repeat(64)}`;
+  const payoutNumerators = overrides.payoutNumerators ?? [1, 0];
+
+  const logs = overrides.omitLogs
+    ? []
+    : overrides.wrongEventLog
+      ? [encodeOrderFilledWrongEventLog({ address: overrides.contractAddress, logIndex: overrides.logIndex ?? 0 })]
+      : [encodeConditionResolutionLog({
+          address: overrides.contractAddress ?? CANONICAL_POLYGON_CTF_CONTRACT,
+          logIndex: overrides.logIndex ?? 0,
+          conditionId,
+          oracleAddress: ORACLE_ADDRESS,
+          ctfQuestionId,
+          payoutNumerators,
+        })];
+
+  const state: MockChainState = {
+    chainId: overrides.chainId ?? POLYGON_POS_CHAIN_ID,
+    latestBlock: { number: latestBlockNumber, hash: `0x${'9'.repeat(64)}`, timestampMs: blockTimestampMs + 128_000 },
+    blocksByNumber: new Map([[blockNumber, { number: blockNumber, hash: blockHash, timestampMs: blockTimestampMs }]]),
+    receiptsByTxHash: overrides.omitReceipt
+      ? new Map()
+      : new Map([[txHash, {
+          txHash,
+          blockNumber,
+          blockHash: receiptBlockHash,
+          status: overrides.receiptStatus ?? 1,
+          logs,
+        }]]),
+    marketMappings: new Map([['market-chain', {
+      marketId: 'market-chain',
+      eventId: 'event-market-chain',
+      conditionId: mappedConditionId,
+      ctfQuestionId,
+      expectedOracleAddress: ORACLE_ADDRESS,
+    }]]),
+    umaDisputes: new Map([[conditionId, {
+      state: overrides.umaState ?? 'NONE',
+      ...(overrides.correctionReason ? { correctionReason: overrides.correctionReason } : {}),
+    }]]),
+  };
+
+  const request: SettlementVerificationRequest = {
+    marketId: 'market-chain',
+    eventId: 'event-market-chain',
+    expectedConditionId: conditionId,
+    txHash,
+    logIndex: 0,
+    expectedPayoutNumerators: [1, 0],
+    committedAtMs: 1000,
+    resolvedAtMs: 2000,
+  };
+
+  return { state, request };
+}
+
+describe('trusted settlement verification boundary (offline chain verifier + signed receipts)', () => {
+  it('blocks the 150-record forged CTF metadata attack and keeps resolvedEligibleCount = 0 and w_skill = 0', () => {
     const ledger = new ProspectivePipelineLedger(createInMemoryAppendOnlyStore(), () => 1000);
-    const rMissing = commitAndAttach(ledger, 'missing');
-    recordMarketBlindResolution(ledger, { entryHash: rMissing.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000 });
-
-    const rManual = commitAndAttach(ledger, 'manual');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rManual.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-manual', 2000, { source: 'MANUAL_ADMIN' }),
-    });
-
-    const rGamma = commitAndAttach(ledger, 'gamma');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rGamma.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-gamma', 2000, { source: 'GAMMA_API' }),
-    });
+    for (let i = 0; i < 150; i += 1) {
+      const isYes = i % 2 === 0;
+      const correct = i % 10 !== 0; // 90% accuracy — would unlock w_skill = 0.35 if counted
+      const pRaw = isYes ? 0.90 : 0.10;
+      const status = (correct ? isYes : !isYes) ? 'RESOLVED_YES' : 'RESOLVED_NO';
+      const receipt = commitAndAttach(ledger, `forged-${i}`, pRaw, 1000 + i * 10);
+      const resolvedAtMs = 20_000 + i * 10;
+      // Internally consistent, schema-valid operator-supplied CTF_ONCHAIN JSON WITHOUT independent attestation
+      recordMarketBlindResolution(ledger, {
+        entryHash: receipt.entryHash,
+        status,
+        resolvedAtMs,
+        settlementProvenance: buildUnsignedClaim(`market-forged-${i}`, resolvedAtMs, {
+          conditionId: `0x${(i + 1).toString(16).padStart(64, 'a')}`,
+          txHash: `0x${(i + 1).toString(16).padStart(64, 'b')}`,
+          blockNumber: 65_000_000 + i,
+          confirmations: MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS,
+          payoutNumerators: status === 'RESOLVED_YES' ? [1, 0] : [0, 1],
+          payloadHash: (i + 1).toString(16).padStart(64, 'c'),
+        }),
+      });
+    }
 
     const report = evaluateProspectiveOosReport(ledger, empiricalOptions);
     expect(report.resolvedEligibleCount).toBe(0);
     expect(report.resolvedScoredCount).toBe(0);
     expect(report.skillGate.wSkill).toBe(0);
     expect(report.skillGate.unlocked).toBe(false);
+    expect(report.verdict).toBe('INSUFFICIENT_DATA');
     expect(report.eligibilityReasons).toContain('UNVERIFIED_OR_NON_FINAL_SETTLEMENT_EXCLUDED');
 
-    // Diagnostic mode continues to report scored counts for local debugging without unlocking empirical eligibility.
+    // Diagnostic mode still reports scored counts for local debugging without empirical eligibility.
     const diagnostic = evaluateProspectiveOosReport(ledger);
-    expect(diagnostic.resolvedScoredCount).toBe(3);
+    expect(diagnostic.resolvedScoredCount).toBe(150);
     expect(diagnostic.resolvedEligibleCount).toBe(0);
     expect(diagnostic.empiricalEligible).toBe(false);
   });
 
-  it('distinguishes PROPOSED, DISPUTED, FINALIZED, and CORRECTED outcomes and enforces confirmation depth', () => {
+  it('rejects 150 records signed by an untrusted self-generated keypair', () => {
+    const rogueVerifier = createOfflineVerifierFixture('rogue-operator-key', '1.0.0');
     const ledger = new ProspectivePipelineLedger(createInMemoryAppendOnlyStore(), () => 1000);
-
-    const rProposed = commitAndAttach(ledger, 'proposed');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rProposed.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-proposed', 2000, { finalityStatus: 'PROPOSED' }),
-    });
-
-    const rDisputed = commitAndAttach(ledger, 'disputed');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rDisputed.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-disputed', 2000, { finalityStatus: 'DISPUTED' }),
-    });
-
-    const rShallow = commitAndAttach(ledger, 'shallow');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rShallow.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-shallow', 2000, {
-        confirmations: MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS - 1,
-      }),
-    });
-
-    const rFinal = commitAndAttach(ledger, 'final');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rFinal.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-final', 2000, { finalityStatus: 'FINALIZED' }),
-    });
-
-    const rCorrected = commitAndAttach(ledger, 'corrected');
-    recordMarketBlindResolution(ledger, {
-      entryHash: rCorrected.entryHash,
-      status: 'RESOLVED_NO',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-corrected', 2000, {
-        finalityStatus: 'CORRECTED',
-        payoutNumerators: [0, 1],
-        correctionReason: 'UMA DVM dispute overturned initial proposal',
-      }),
-    });
+    for (let i = 0; i < 150; i += 1) {
+      const receipt = commitAndAttach(ledger, `rogue-${i}`, 0.90, 1000 + i * 10);
+      const resolvedAtMs = 20_000 + i * 10;
+      recordMarketBlindResolution(ledger, {
+        entryHash: receipt.entryHash,
+        status: 'RESOLVED_YES',
+        resolvedAtMs,
+        settlementProvenance: rogueVerifier.buildSignedProvenance({
+          marketId: `market-rogue-${i}`,
+          eventId: `event-market-rogue-${i}`,
+          resolvedAtMs,
+          index: i + 1,
+        }),
+      });
+    }
 
     const report = evaluateProspectiveOosReport(ledger, empiricalOptions);
-    expect(report.resolvedEligibleCount).toBe(2);
-    expect(report.eligibilityReasons).toContain('UNVERIFIED_OR_NON_FINAL_SETTLEMENT_EXCLUDED');
+    expect(report.resolvedEligibleCount).toBe(0);
+    expect(report.skillGate.wSkill).toBe(0);
+    expect(report.skillGate.unlocked).toBe(false);
+    expect(report.verdict).toBe('INSUFFICIENT_DATA');
+  });
+
+  it('rejects a user-supplied verified: true boolean in settlement provenance JSON', () => {
+    const forgedWithBoolean = {
+      ...buildUnsignedClaim('market-bool', 2000),
+      verified: true,
+    };
+    expect(() => settlementProvenanceSchema.parse(forgedWithBoolean)).toThrow();
+  });
+
+  it('produces an empirically eligible receipt when offline mock chain verification succeeds', async () => {
+    const { state, request } = createCanonicalMockChain();
+    const provider = createMockChainProvider(state);
+    const verified = await verifyOnChainSettlement(request, provider, verifier.signer, { nowMs: () => 2500 });
+
+    expect(verified.ok).toBe(true);
+    if (!verified.ok) throw new Error(verified.reason);
+    expect(verified.stage).toBe('SETTLEMENT_FINALIZED');
+
+    const receipt = verified.receipt;
+    const provenance: SettlementProvenance = {
+      source: 'CTF_ONCHAIN',
+      finalityStatus: receipt.finalityStatus,
+      marketId: receipt.marketId,
+      eventId: receipt.eventId,
+      conditionId: receipt.conditionId,
+      txHash: receipt.txHash,
+      blockNumber: receipt.blockNumber,
+      confirmations: receipt.verifiedConfirmations,
+      payoutNumerators: receipt.payoutNumerators,
+      observedAtMs: receipt.verifiedAtMs,
+      payloadHash: receipt.canonicalPayloadDigest,
+      reference: `polygon-ctf-${receipt.marketId}`,
+      verificationReceipt: receipt,
+    };
+
+    const ledger = new ProspectivePipelineLedger(createInMemoryAppendOnlyStore(), () => 1000);
+    const commit = commitAndAttach(ledger, 'chain');
+    recordMarketBlindResolution(ledger, {
+      entryHash: commit.entryHash,
+      status: 'RESOLVED_YES',
+      resolvedAtMs: 2000,
+      settlementProvenance: provenance,
+    });
+
+    const stage = classifySettlementVerificationStage(commit, ledger.resolutions.get(commit.entryHash)!, verifier.registry);
+    expect(stage.stage).toBe('SETTLEMENT_EMPIRICALLY_ELIGIBLE');
+
+    const report = evaluateProspectiveOosReport(ledger, empiricalOptions);
+    expect(report.resolvedEligibleCount).toBe(1);
+    expect(report.empiricalEligible).toBe(true);
     expect(report.skillGate.wSkill).toBe(0);
   });
 
-  it('rejects marketId mismatch, payout-outcome mismatch, pre-resolution observation, synthetic provenance, and incomplete CTF_ONCHAIN records', () => {
-    const ledger = new ProspectivePipelineLedger(createInMemoryAppendOnlyStore(), () => 1000);
-    const receipt = commitAndAttach(ledger, 'strict-checks');
+  it('verifies every chain-level rejection vector fails closed in verifyOnChainSettlement', async () => {
+    const cases: Array<{ name: string; overrides: Parameters<typeof createCanonicalMockChain>[0]; reqOverrides?: Partial<SettlementVerificationRequest>; expectedReasonPrefix: string }> = [
+      { name: 'fake transaction hash (missing receipt)', overrides: { omitReceipt: true }, expectedReasonPrefix: 'TX_RECEIPT_NOT_FOUND' },
+      { name: 'wrong chain ID', overrides: { chainId: 1 }, expectedReasonPrefix: 'WRONG_CHAIN_ID' },
+      { name: 'wrong contract address', overrides: { contractAddress: '0x000000000000000000000000000000000000dead' }, expectedReasonPrefix: 'UNAUTHORIZED_SETTLEMENT_CONTRACT' },
+      { name: 'failed transaction receipt', overrides: { receiptStatus: 0 }, expectedReasonPrefix: 'TX_RECEIPT_FAILED' },
+      { name: 'missing log', overrides: { omitLogs: true }, expectedReasonPrefix: 'LOG_NOT_FOUND_AT_INDEX' },
+      { name: 'wrong event signature (OrderFilled vs ConditionResolution)', overrides: { wrongEventLog: true }, expectedReasonPrefix: 'WRONG_EVENT_SIGNATURE' },
+      { name: 'wrong log index', overrides: { logIndex: 7 }, expectedReasonPrefix: 'LOG_NOT_FOUND_AT_INDEX' },
+      { name: 'wrong condition ID', overrides: { mappedConditionId: `0x${'f'.repeat(64)}` }, expectedReasonPrefix: 'MARKET_CONDITION_MAPPING_MISMATCH' },
+      { name: 'mismatched payout', overrides: { payoutNumerators: [0, 1] }, expectedReasonPrefix: 'PAYOUT_NUMERATOR_MISMATCH' },
+      { name: 'fake confirmation count (insufficient verified depth)', overrides: { latestBlockNumber: 65_000_100 + MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS - 2 }, expectedReasonPrefix: 'INSUFFICIENT_CONFIRMATIONS' },
+      { name: 'non-canonical block hash / chain reorganization', overrides: { receiptBlockHash: `0x${'0'.repeat(64)}` }, expectedReasonPrefix: 'NON_CANONICAL_BLOCK_OR_REORG' },
+      { name: 'chain reorganization against expected block hash', overrides: {}, reqOverrides: { expectedBlockHash: `0x${'d'.repeat(64)}` }, expectedReasonPrefix: 'CHAIN_REORGANIZATION_DETECTED' },
+      { name: 'inconsistent block timestamp (precedes commit)', overrides: { blockTimestampMs: 900 }, expectedReasonPrefix: 'BLOCK_TIMESTAMP_PRECEDES_COMMIT' },
+      { name: 'unfinalized proposal (PROPOSED)', overrides: { umaState: 'PROPOSED' }, expectedReasonPrefix: 'UNFINALIZED_PROPOSAL' },
+      { name: 'pending UMA dispute (DISPUTED)', overrides: { umaState: 'DISPUTED' }, expectedReasonPrefix: 'PENDING_UMA_DISPUTE' },
+      {
+        name: 'corrected resolution without verified follow-up evidence',
+        overrides: { umaState: 'CORRECTED', correctionReason: 'UMA DVM overturn' },
+        expectedReasonPrefix: 'CORRECTED_RESOLUTION_MISSING_VERIFIED_FOLLOWUP',
+      },
+    ];
 
-    expect(() => recordMarketBlindResolution(ledger, {
-      entryHash: receipt.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-wrong', 2000),
-    })).toThrow(/marketId mismatch/);
+    for (const tc of cases) {
+      const { state, request } = createCanonicalMockChain(tc.overrides);
+      const res = await verifyOnChainSettlement(
+        { ...request, ...tc.reqOverrides },
+        createMockChainProvider(state),
+        verifier.signer,
+        { nowMs: () => 2500 },
+      );
+      expect(res.ok, tc.name).toBe(false);
+      if (res.ok) throw new Error(`Expected failure for ${tc.name}`);
+      expect(res.reason.startsWith(tc.expectedReasonPrefix), `${tc.name}: got ${res.reason}`).toBe(true);
+    }
 
-    expect(() => recordMarketBlindResolution(ledger, {
-      entryHash: receipt.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-strict-checks', 2000, { payoutNumerators: [0, 1] }),
-    })).toThrow(/payoutNumerators/);
-
-    expect(() => recordMarketBlindResolution(ledger, {
-      entryHash: receipt.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-strict-checks', 2000, { observedAtMs: 1999 }),
-    })).toThrow(/observedAtMs/);
-
-    expect(() => recordMarketBlindResolution(ledger, {
-      entryHash: receipt.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-strict-checks', 2000, { finalityStatus: 'CORRECTED' }),
-    })).toThrow(/correctionReason/);
-
-    expect(() => recordMarketBlindResolution(ledger, {
-      entryHash: receipt.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-strict-checks', 2000, { txHash: undefined }),
-    })).toThrow(/CTF_ONCHAIN/);
-
-    // Synthetic reference is persisted if schema-valid, but strictly excluded from empirical scoring.
-    recordMarketBlindResolution(ledger, {
-      entryHash: receipt.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: validProvenance('market-strict-checks', 2000, { reference: 'synthetic-fixture-ref' }),
+    // Corrected resolution WITH verified follow-up supersedesReceiptDigest succeeds
+    const { state, request } = createCanonicalMockChain({
+      payoutNumerators: [0, 1],
+      umaState: 'CORRECTED',
+      correctionReason: 'UMA DVM finalized overturn',
     });
-    const report = evaluateProspectiveOosReport(ledger, empiricalOptions);
-    expect(report.resolvedEligibleCount).toBe(0);
-    expect(report.eligibilityReasons).toContain('UNVERIFIED_OR_NON_FINAL_SETTLEMENT_EXCLUDED');
+    const corrected = await verifyOnChainSettlement(
+      {
+        ...request,
+        expectedPayoutNumerators: [0, 1],
+        supersedesReceiptDigest: 'a'.repeat(64),
+      },
+      createMockChainProvider(state),
+      verifier.signer,
+      { nowMs: () => 2500 },
+    );
+    expect(corrected.ok).toBe(true);
+    expect(corrected.stage).toBe('SETTLEMENT_FINALIZED');
   });
 
-  it('preserves settlementProvenance across journal hydration and excludes ambiguous/voided/cancelled/disputed states', () => {
+  it('excludes duplicate receipts, expired/revoked verifiers, tampered receipts, missing registry, and non-authoritative sources', () => {
+    const ledger = new ProspectivePipelineLedger(createInMemoryAppendOnlyStore(), () => 1000);
+
+    // 1. Missing provenance, MANUAL_ADMIN, bare GAMMA_API
+    const rMissing = commitAndAttach(ledger, 'missing');
+    recordMarketBlindResolution(ledger, { entryHash: rMissing.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000 });
+    const rManual = commitAndAttach(ledger, 'manual');
+    recordMarketBlindResolution(ledger, {
+      entryHash: rManual.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000,
+      settlementProvenance: buildUnsignedClaim('market-manual', 2000, { source: 'MANUAL_ADMIN' }),
+    });
+    const rGamma = commitAndAttach(ledger, 'gamma');
+    recordMarketBlindResolution(ledger, {
+      entryHash: rGamma.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000,
+      settlementProvenance: buildUnsignedClaim('market-gamma', 2000, { source: 'GAMMA_API' }),
+    });
+
+    // 2. Tampered verification receipt (mutated blockNumber after signing)
+    const rTampered = commitAndAttach(ledger, 'tampered');
+    const validSigned = verifier.buildSignedProvenance({ marketId: 'market-tampered', eventId: 'event-market-tampered', resolvedAtMs: 2000, index: 50 });
+    const tamperedReceipt = { ...validSigned.verificationReceipt!, blockNumber: validSigned.verificationReceipt!.blockNumber + 1 };
+    recordMarketBlindResolution(ledger, {
+      entryHash: rTampered.entryHash,
+      status: 'RESOLVED_YES',
+      resolvedAtMs: 2000,
+      settlementProvenance: { ...validSigned, blockNumber: tamperedReceipt.blockNumber, verificationReceipt: tamperedReceipt },
+    });
+
+    // 3. Duplicate resolution: two distinct questions referencing the same (conditionId, txHash, logIndex)
+    const rDup1 = commitAndAttach(ledger, 'dup-1');
+    const rDup2 = commitAndAttach(ledger, 'dup-2');
+    const sharedReceipt1 = verifier.buildSignedProvenance({ marketId: 'market-dup-1', eventId: 'event-market-dup-1', resolvedAtMs: 2000, index: 77 });
+    const sharedReceipt2 = verifier.buildSignedProvenance({
+      marketId: 'market-dup-2',
+      eventId: 'event-market-dup-2',
+      resolvedAtMs: 2000,
+      index: 77,
+    });
+    recordMarketBlindResolution(ledger, { entryHash: rDup1.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000, settlementProvenance: sharedReceipt1 });
+    recordMarketBlindResolution(ledger, { entryHash: rDup2.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000, settlementProvenance: sharedReceipt2 });
+
+    const report = evaluateProspectiveOosReport(ledger, empiricalOptions);
+    // Only the first of the duplicate pair (rDup1) is eligible; rDup2, rTampered, rMissing, rManual, rGamma are excluded
+    expect(report.resolvedEligibleCount).toBe(1);
+    expect(report.eligibilityReasons).toContain('UNVERIFIED_OR_NON_FINAL_SETTLEMENT_EXCLUDED');
+    expect(report.eligibilityReasons).toContain('DUPLICATE_SETTLEMENT_RECEIPT_EXCLUDED');
+    expect(report.skillGate.wSkill).toBe(0);
+
+    // 4. Missing settlementVerifierRegistry -> fail closed (0 eligible)
+    const noRegistry = evaluateProspectiveOosReport(ledger, { mode: 'empirical', modelVersion: 'model-v1', policy });
+    expect(noRegistry.resolvedEligibleCount).toBe(0);
+    expect(noRegistry.eligibilityReasons).toContain('SETTLEMENT_VERIFIER_AUTHORITY_REQUIRED');
+
+    // 5. Revoked verifier authority -> fail closed (0 eligible)
+    const revokedRegistry = {
+      authorities: [{ ...verifier.registry.authorities[0]!, status: 'REVOKED' as const }],
+    };
+    const revokedReport = evaluateProspectiveOosReport(ledger, { ...empiricalOptions, settlementVerifierRegistry: revokedRegistry });
+    expect(revokedReport.resolvedEligibleCount).toBe(0);
+
+    // 6. Expired verifier authority -> fail closed (0 eligible)
+    const expiredRegistry = {
+      authorities: [{ ...verifier.registry.authorities[0]!, validUntilMs: 1500 }],
+    };
+    const expiredReport = evaluateProspectiveOosReport(ledger, { ...empiricalOptions, settlementVerifierRegistry: expiredRegistry });
+    expect(expiredReport.resolvedEligibleCount).toBe(0);
+  });
+
+  it('preserves signed verificationReceipt across journal hydration and freezes nested fields', () => {
     const store = createInMemoryAppendOnlyStore();
     const ledger = new ProspectivePipelineLedger(store, () => 1000);
     const rFinal = commitAndAttach(ledger, 'hydrated');
-    const prov = validProvenance('market-hydrated', 2000);
-    recordMarketBlindResolution(ledger, {
-      entryHash: rFinal.entryHash,
-      status: 'RESOLVED_YES',
-      resolvedAtMs: 2000,
-      settlementProvenance: prov,
-    });
+    const prov = verifier.buildSignedProvenance({ marketId: 'market-hydrated', eventId: 'event-market-hydrated', resolvedAtMs: 2000, index: 99 });
+    recordMarketBlindResolution(ledger, { entryHash: rFinal.entryHash, status: 'RESOLVED_YES', resolvedAtMs: 2000, settlementProvenance: prov });
     const rVoid = commitAndAttach(ledger, 'voided');
     recordMarketBlindResolution(ledger, { entryHash: rVoid.entryHash, status: 'VOIDED', resolvedAtMs: 2000 });
     const rUma = commitAndAttach(ledger, 'uma');
     recordMarketBlindResolution(ledger, { entryHash: rUma.entryHash, status: 'UMA_DISPUTED', resolvedAtMs: 2000 });
 
     const restored = ProspectivePipelineLedger.hydrateFromStore(store);
-    expect(restored.resolutions.get(rFinal.entryHash)?.settlementProvenance).toEqual(prov);
-    expect(Object.isFrozen(restored.resolutions.get(rFinal.entryHash)?.settlementProvenance)).toBe(true);
+    const hydratedProv = restored.resolutions.get(rFinal.entryHash)?.settlementProvenance;
+    expect(hydratedProv).toEqual(prov);
+    expect(Object.isFrozen(hydratedProv)).toBe(true);
+    expect(Object.isFrozen(hydratedProv?.verificationReceipt)).toBe(true);
 
     const report = evaluateProspectiveOosReport(restored, empiricalOptions);
     expect(report.resolvedEligibleCount).toBe(1);

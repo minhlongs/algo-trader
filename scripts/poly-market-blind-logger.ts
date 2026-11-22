@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { approvedPolicySchema, settlementProvenanceSchema } from '../src/desk/polymarket/market-blind/market-blind-pipeline-contract';
+import { trustedSettlementVerifierRegistrySchema } from '../src/desk/polymarket/market-blind/settlement-verification-contract';
 import {
   ProspectivePipelineLedger,
   attachPostCommitMarketSnapshot,
@@ -44,7 +45,7 @@ function parseCli(argv: readonly string[]): ParsedCli {
         throw new Error(`Missing value for flag ${token}`);
       }
       const name = token.slice(2);
-      const known = new Set(['ledger', 'checkpoint', 'question-id', 'raw-prob', 'evidence', 'model-version', 'prompt-version', 'category', 'prompt', 'committed-at-ms', 'forecast-id', 'research-question-id', 'event-id', 'market-id', 'forecast-horizon-ms', 'provenance-kind', 'provenance-source', 'provenance-reference', 'entry-hash', 'market-prob', 'read-at-ms', 'source', 'status', 'resolved-at-ms', 'note', 'settlement-provenance', 'mode', 'policy']);
+      const known = new Set(['ledger', 'checkpoint', 'question-id', 'raw-prob', 'evidence', 'model-version', 'prompt-version', 'category', 'prompt', 'committed-at-ms', 'forecast-id', 'research-question-id', 'event-id', 'market-id', 'forecast-horizon-ms', 'provenance-kind', 'provenance-source', 'provenance-reference', 'entry-hash', 'market-prob', 'read-at-ms', 'source', 'status', 'resolved-at-ms', 'note', 'settlement-provenance', 'mode', 'policy', 'verifier-registry']);
       if (!known.has(name) || flags.has(name)) throw new Error(`Unknown or duplicate flag ${token}`);
       flags.set(name, value);
       i += 1;
@@ -151,7 +152,11 @@ function main(): void {
     if (mode !== 'diagnostic' && mode !== 'empirical') throw new Error('Invalid --mode');
     const policyPath = flags.get('policy');
     const policy = policyPath ? approvedPolicySchema.parse(JSON.parse(readFileSync(resolve(process.cwd(), policyPath), 'utf8')) as unknown) : undefined;
-    const report = evaluateProspectiveOosReport(ledger, { category: flags.get('category'), mode, modelVersion: flags.get('model-version'), policy });
+    const registryPath = flags.get('verifier-registry');
+    const settlementVerifierRegistry = registryPath
+      ? trustedSettlementVerifierRegistrySchema.parse(JSON.parse(readFileSync(resolve(process.cwd(), registryPath), 'utf8')) as unknown)
+      : undefined;
+    const report = evaluateProspectiveOosReport(ledger, { category: flags.get('category'), mode, modelVersion: flags.get('model-version'), policy, settlementVerifierRegistry });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return;
   }

@@ -7,7 +7,9 @@ import { MarketBlindError, type MarketBlindDocumentInput } from './market-blind-
 import { commitPayloadSchema, storedCommitSchema, snapshotSchema, resolutionSchema, type CommitPayload, type ProspectiveCommitInput, type ProspectiveCommitReceipt, type PostCommitMarketSnapshotInput, type PostCommitMarketSnapshotRecord, type MarketBlindResolutionInput, type MarketBlindResolutionAuditRecord } from './market-blind-pipeline-contract';
 export type * from './market-blind-pipeline-contract';
 export { MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS, settlementProvenanceSchema } from './market-blind-pipeline-contract';
-export { evaluateProspectiveOosReport } from './market-blind-oos-report';
+export { CANONICAL_POLYGON_CTF_CONTRACT, CONDITION_RESOLUTION_EVENT_SIGNATURE, CONDITION_RESOLUTION_TOPIC0, POLYGON_POS_CHAIN_ID, POLYGON_POS_NETWORK, SETTLEMENT_VERIFICATION_RECEIPT_VERSION, computeCanonicalReceiptDigest, settlementVerificationReceiptSchema, signSettlementVerificationReceipt, trustedSettlementVerifierAuthoritySchema, trustedSettlementVerifierRegistrySchema, verifySettlementVerificationReceipt, type ReceiptVerificationResult, type SettlementVerificationReceiptBody, type TrustedSettlementVerifierAuthority } from './settlement-verification-contract';
+export { verifyOnChainSettlement, type ChainBlockHeader, type ChainReceiptLog, type ChainSettlementProvider, type ChainSettlementVerificationResult, type ChainTransactionReceipt, type MarketConditionMapping, type SettlementReceiptSigner, type SettlementVerificationOptions, type SettlementVerificationRequest, type UmaDisputeStatus } from './settlement-chain-verifier';
+export { classifySettlementVerificationStage, evaluateProspectiveOosReport, type SettlementStageAssessment } from './market-blind-oos-report';
 const invalid = (message: string): never => { throw new MarketBlindError('INVALID_MARKET_BLIND_INPUT', message); };
 const same = (a: object, b: object): boolean => JSON.stringify(a) === JSON.stringify(b);
 
@@ -120,7 +122,19 @@ export class ProspectivePipelineLedger {
         invalid('CTF_ONCHAIN settlement provenance requires conditionId, txHash, blockNumber and confirmations');
       }
     }
-    return p ? { ...r, settlementProvenance: Object.freeze({ ...p, ...(p.payoutNumerators ? { payoutNumerators: Object.freeze([...p.payoutNumerators] as [number, number]) } : {}) }) } : r;
+    return p ? {
+      ...r,
+      settlementProvenance: Object.freeze({
+        ...p,
+        ...(p.payoutNumerators ? { payoutNumerators: Object.freeze([...p.payoutNumerators] as [number, number]) } : {}),
+        ...(p.verificationReceipt ? {
+          verificationReceipt: Object.freeze({
+            ...p.verificationReceipt,
+            payoutNumerators: Object.freeze([...p.verificationReceipt.payoutNumerators] as [number, number]),
+          }),
+        } : {}),
+      }),
+    } : r;
   }
   private applyInnerResolution(inner: MarketBlindProspectiveLedger, r: MarketBlindResolutionAuditRecord): void {
     if (r.outcome === null || r.marketProb === null || r.marketReadAtMs === null) return;

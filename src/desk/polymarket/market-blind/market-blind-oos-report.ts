@@ -1,34 +1,24 @@
 import { evaluateCalibrationMetrics } from './market-blind-calibrator';
 import { evaluateSkillGate } from './market-blind-shrunk-posterior';
 import { DEFAULT_POSTERIOR_CONFIG, type OosEvaluationRecord } from './market-blind-types';
-import { approvedPolicySchema, MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS, type ProspectiveCommitReceipt, type ProspectiveOosReport, type ProspectiveOosReportOptions, type MarketBlindResolutionAuditRecord } from './market-blind-pipeline-contract';
+import {
+  approvedPolicySchema,
+  type ProspectiveCommitReceipt,
+  type ProspectiveOosReport,
+  type ProspectiveOosReportOptions,
+  type MarketBlindResolutionAuditRecord,
+} from './market-blind-pipeline-contract';
+import { trustedSettlementVerifierRegistrySchema } from './settlement-verification-contract';
+import {
+  classifySettlementVerificationStage,
+  hasEmpiricalMetadata,
+  isSyntheticIdentifier,
+} from './settlement-stage-classifier';
 import type { ProspectivePipelineLedger } from './market-blind-prospective-pipeline';
 
+export { classifySettlementVerificationStage, type SettlementStageAssessment } from './settlement-stage-classifier';
+
 const numOrNull = (n: number, value: number): number | null => n > 0 && Number.isFinite(value) ? value : null;
-const synthetic = (value: string): boolean => /test[_ -]?only|synthetic/i.test(value);
-function hasEmpiricalMetadata(c: ProspectiveCommitReceipt): boolean {
-  return !!(c.forecastId && c.researchQuestionId && c.eventId && c.marketId && c.forecastHorizonMs
-    && c.provenance?.kind === 'REAL' && c.provenance.source && c.provenance.reference
-    && ![c.forecastId, c.questionId, c.researchQuestionId, c.eventId, c.marketId, c.modelVersion, c.category, c.provenance.source, c.provenance.reference].some(synthetic));
-}
-function hasAuthoritativeFinalSettlement(c: ProspectiveCommitReceipt, r: MarketBlindResolutionAuditRecord): boolean {
-  const p = r.settlementProvenance;
-  if (!p) return false;
-  if (p.source === 'MANUAL_ADMIN' || p.source === 'GAMMA_API') return false;
-  if (p.finalityStatus !== 'FINALIZED' && p.finalityStatus !== 'CORRECTED') return false;
-  if (p.finalityStatus === 'CORRECTED' && !p.correctionReason) return false;
-  if (!c.marketId || p.marketId !== c.marketId) return false;
-  if (c.eventId && p.eventId && p.eventId !== c.eventId) return false;
-  if (!p.conditionId || !p.txHash || p.blockNumber === undefined) return false;
-  if (p.confirmations === undefined || p.confirmations < MIN_ONCHAIN_SETTLEMENT_CONFIRMATIONS) return false;
-  if (!p.payoutNumerators) return false;
-  const [yesNum, noNum] = p.payoutNumerators;
-  const payoutMatches = r.outcome === 1 ? (yesNum > 0 && noNum === 0) : r.outcome === 0 ? (noNum > 0 && yesNum === 0) : false;
-  if (!payoutMatches) return false;
-  if (p.observedAtMs < r.resolvedAtMs) return false;
-  if ([p.marketId, p.reference, ...(p.eventId ? [p.eventId] : [])].some(synthetic)) return false;
-  return true;
-}
 
 /** Diagnostic scores are never IC evidence. Empirical mode requires external approval and retained checkpoint. */
 export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, options: ProspectiveOosReportOptions = {}): ProspectiveOosReport {
@@ -38,13 +28,20 @@ export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, 
   const reasons: string[] = [];
   const chainVerified = ledger.verifyChainIntegrity(), integrityVerified = ledger.integrityVerified();
   const policy = approvedPolicySchema.safeParse(options.policy);
+  const parsedRegistry = options.settlementVerifierRegistry
+    ? trustedSettlementVerifierRegistrySchema.safeParse(options.settlementVerifierRegistry)
+    : null;
+  const activeRegistry = parsedRegistry?.success && parsedRegistry.data.authorities.some((a) => a.status === 'ACTIVE')
+    ? parsedRegistry.data
+    : undefined;
   if (!strict) reasons.push('DIAGNOSTIC_ONLY');
   if (!integrityVerified) reasons.push('INDEPENDENT_CHECKPOINT_REQUIRED_OR_INTEGRITY_FAILED');
   if (!policy.success) reasons.push('APPROVED_REPEATED_FORECAST_POLICY_REQUIRED');
+  if (strict && !activeRegistry) reasons.push('SETTLEMENT_VERIFIER_AUTHORITY_REQUIRED');
   if (strict && !options.modelVersion) reasons.push('MODEL_VERSION_REQUIRED');
   if (new Set(commits.map((c) => c.modelVersion)).size > 1) reasons.push('CROSS_MODEL_POOLING_FORBIDDEN');
   if (policy.success && policy.data.modelVersion !== options.modelVersion) reasons.push('POLICY_MODEL_MISMATCH');
-  if (strict && policy.success && [policy.data.policyId, policy.data.approvedBy, policy.data.approvalEvidenceRef].some(synthetic)) {
+  if (strict && policy.success && [policy.data.policyId, policy.data.approvedBy, policy.data.approvalEvidenceRef].some(isSyntheticIdentifier)) {
     reasons.push('SYNTHETIC_POLICY_FORBIDDEN');
   }
   if (strict && (options.calibrate || options.config)) reasons.push('UNAPPROVED_SCORING_OVERRIDE');
@@ -61,7 +58,8 @@ export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, 
   }
   const scored: Array<{ commit: ProspectiveCommitReceipt; res: MarketBlindResolutionAuditRecord }> = [];
   let voidedCount = 0, cancelledCount = 0, umaDisputedCount = 0, pendingCount = 0;
-  let hindcastDetected = ledger.hasHindcastViolation(), excludedMetadata = 0, excludedBeforeApproval = 0, excludedUnattested = 0, excludedUnverifiedSettlement = 0;
+  let hindcastDetected = ledger.hasHindcastViolation(), excludedMetadata = 0, excludedBeforeApproval = 0, excludedUnattested = 0, excludedUnverifiedSettlement = 0, excludedDuplicateReceipt = 0;
+  const seenReceiptKeys = new Set<string>();
   for (const c of selected.values()) {
     const r = ledger.resolutions.get(c.entryHash), s = ledger.snapshots.get(c.entryHash);
     if (s && s.marketReadAtMs < c.committedAtMs) hindcastDetected = true;
@@ -74,9 +72,16 @@ export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, 
       excludedUnattested += 1;
       if (strict) continue;
     }
-    if (strict && (!hasEmpiricalMetadata(c) || !s || synthetic(s.source))) { excludedMetadata += 1; continue; }
+    if (strict && (!hasEmpiricalMetadata(c) || !s || isSyntheticIdentifier(s.source))) { excludedMetadata += 1; continue; }
     if (strict && policy.success && c.committedAtMs < policy.data.approvedAtMs) { excludedBeforeApproval += 1; continue; }
-    if (strict && !hasAuthoritativeFinalSettlement(c, r)) { excludedUnverifiedSettlement += 1; continue; }
+    if (strict) {
+      const stageAssessment = classifySettlementVerificationStage(c, r, activeRegistry);
+      if (stageAssessment.stage !== 'SETTLEMENT_EMPIRICALLY_ELIGIBLE') { excludedUnverifiedSettlement += 1; continue; }
+      const vr = r.settlementProvenance!.verificationReceipt!;
+      const receiptKey = `${vr.conditionId.toLowerCase()}:${vr.txHash.toLowerCase()}:${vr.logIndex}`;
+      if (seenReceiptKeys.has(receiptKey)) { excludedDuplicateReceipt += 1; continue; }
+      seenReceiptKeys.add(receiptKey);
+    }
     if (r.outcome !== null && r.marketProb !== null) scored.push({ commit: c, res: r });
   }
   const globalBlock = reasons.some((r) => r !== 'DIAGNOSTIC_ONLY');
@@ -84,6 +89,7 @@ export function evaluateProspectiveOosReport(ledger: ProspectivePipelineLedger, 
   if (excludedMetadata) reasons.push('FORECASTS_WITHOUT_REAL_PROVENANCE_OR_METADATA_EXCLUDED');
   if (excludedBeforeApproval) reasons.push('PRE_APPROVAL_FORECASTS_EXCLUDED');
   if (excludedUnverifiedSettlement) reasons.push('UNVERIFIED_OR_NON_FINAL_SETTLEMENT_EXCLUDED');
+  if (excludedDuplicateReceipt) reasons.push('DUPLICATE_SETTLEMENT_RECEIPT_EXCLUDED');
   if (hindcastDetected) reasons.push('HINDCAST_DETECTED');
   if ((strict && globalBlock) || reasons.includes('CROSS_MODEL_POOLING_FORBIDDEN')) scored.length = 0;
   scored.sort((a, b) => a.res.resolvedAtMs - b.res.resolvedAtMs || a.commit.committedAtMs - b.commit.committedAtMs);
