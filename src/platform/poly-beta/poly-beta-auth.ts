@@ -24,6 +24,7 @@ import {
 } from './poly-beta-schemas';
 import { provisionTenantGenesisLedger } from './poly-beta-genesis';
 import { runAtomicBatch } from './poly-beta-ledger';
+import { isEmailAuthorizedForBetaSignup } from './poly-beta-signup-allowlist';
 
 export { authenticateBetaRequest } from './poly-beta-session-guard';
 
@@ -72,6 +73,19 @@ export async function handleBetaSignup(
   }
 
   const { email, password } = parsed.data;
+  const allowlistCheck = await isEmailAuthorizedForBetaSignup(email, env);
+  if (!allowlistCheck.allowed) {
+    return betaJsonResponse(
+      request,
+      env,
+      {
+        error: 'Private Paper Beta signup is restricted to explicitly enrolled pilot accounts.',
+        code: 'SIGNUP_ALLOWLIST_REQUIRED',
+      },
+      403,
+    );
+  }
+
   const existing = await env.POLY_BETA_DB.prepare(`SELECT id FROM beta_users WHERE email = ?`)
     .bind(email)
     .first<{ id: string }>();

@@ -133,6 +133,8 @@ export interface PolyBetaEnv {
   TENANT_PAPER_ENGINE: PolyBetaDoNamespace;
   ENVIRONMENT?: string;
   LIVE_TRADING_ENABLED?: string;
+  SIGNUP_GATE_MODE?: string;
+  BETA_SIGNUP_ALLOWLIST?: string;
   G1_SOAK_LOCK?: string;
   G2_POLY_SHADOW_LOCK?: string;
   ALLOWED_ORIGINS?: string;

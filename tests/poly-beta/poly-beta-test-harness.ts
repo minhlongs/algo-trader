@@ -131,7 +131,34 @@ export function seedMarketSnapshots(nowMs = Date.now()): PolyBetaMarketSnapshot[
   ];
 }
 
-export async function createPolyBetaTestHarness() {
+const DEFAULT_TEST_SIGNUP_ALLOWLIST = [
+  'atomic-audit@example.com',
+  'branch@example.com',
+  ...Array.from({ length: 10 }, (_, i) => `branch${i}@example.com`),
+  'branch99@example.com',
+  'dev@example.com',
+  'secure@example.com',
+  'c1-ledger@example.com',
+  'risk@example.com',
+  'h3-halt@example.com',
+  'm4-do@example.com',
+  'm4-null@example.com',
+  'm4@example.com',
+  'guard@example.com',
+  'alice@example.com',
+  'bob@example.com',
+  'stale-check@example.com',
+  'trader1@example.com',
+  'serial-do@example.com',
+  'signed-client@example.com',
+  'toxicity-aware-mm-paper@example.com',
+  'neg-risk-bundle-paper@example.com',
+  'bayesian-fair-value-paper@example.com',
+].join(',');
+
+export async function createPolyBetaTestHarness(options?: {
+  signupAllowlist?: string | undefined;
+}) {
   const { db, raw } = createSqliteD1();
   const kv = createMemoryKv();
   const engines = new Map<string, { instance: TenantPaperEngine; storage: ReturnType<typeof createMemoryDoStorage> }>();
@@ -142,6 +169,10 @@ export async function createPolyBetaTestHarness() {
     TENANT_PAPER_ENGINE: {} as PolyBetaDoNamespace,
     ENVIRONMENT: 'test',
     LIVE_TRADING_ENABLED: 'false',
+    SIGNUP_GATE_MODE: 'allowlist',
+    ...(options && 'signupAllowlist' in options
+      ? (options.signupAllowlist !== undefined ? { BETA_SIGNUP_ALLOWLIST: options.signupAllowlist } : {})
+      : { BETA_SIGNUP_ALLOWLIST: DEFAULT_TEST_SIGNUP_ALLOWLIST }),
     G1_SOAK_LOCK: 'locked',
     G2_POLY_SHADOW_LOCK: 'locked',
     ALLOWED_ORIGINS: 'https://poly-beta-dashboard.pages.dev,http://localhost:5173',
