@@ -94,6 +94,15 @@ export class TenantPaperEngine {
           if ((await this.state.storage.get<number>('rlActiveSlot')) !== undefined) await this.state.storage.deleteAll();
           return;
         }
+        const liveForbidden = String(this.env.LIVE_TRADING_ENABLED ?? 'false').toLowerCase() === 'true';
+        const maintenance = String(this.env.MAINTENANCE_MODE ?? 'false').toLowerCase() === 'true';
+        if (liveForbidden || maintenance) {
+          const reason = liveForbidden ? 'LIVE_TRADING_FORBIDDEN_IN_BETA' : 'MAINTENANCE_MODE';
+          await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();
+          await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', reason, 'Paper engine paused by runtime safety guard.', Date.now());
+          await this.state.storage.deleteAlarm();
+          return;
+        }
         const ticksRemaining = (await this.state.storage.get<number>('ticksRemaining')) ?? 0;
         if (ticksRemaining <= 0) {
           await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();

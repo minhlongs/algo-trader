@@ -17,7 +17,21 @@ import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const VALID_TARGETS = new Set(['poly-beta-staging', 'poly-beta-prod']);
+export const TARGET_BINDINGS = Object.freeze({
+  'poly-beta-prod': Object.freeze({
+    wranglerEnv: '',
+    expectedEnvironment: 'public-beta',
+    expectedDatabaseName: 'poly-beta-db',
+    requireEnvSection: false,
+  }),
+  'poly-beta-staging': Object.freeze({
+    wranglerEnv: 'staging',
+    expectedEnvironment: 'staging',
+    expectedDatabaseName: 'poly-beta-db-staging',
+    requireEnvSection: true,
+  }),
+});
+export const VALID_TARGETS = new Set(Object.keys(TARGET_BINDINGS));
 export const VALID_MODES = new Set(['disable-signup', 'maintenance', 'full-disable']);
 export const PRESERVED_TABLES = Object.freeze(['beta_feedback', 'beta_invite_redemptions']);
 
@@ -50,7 +64,27 @@ export function parseDisableCliArgs(argv) {
   };
 }
 
-export function validateWranglerConfig(configPath) {
+function extractTomlSection(content, sectionHeader) {
+  const lines = content.split(/\r?\n/);
+  const target = sectionHeader.trim();
+  let inSection = false;
+  const body = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('[')) {
+      if (inSection) break;
+      if (trimmed === target) {
+        inSection = true;
+        continue;
+      }
+    } else if (inSection) {
+      body.push(line);
+    }
+  }
+  return inSection ? body.join('\n') : null;
+}
+
+export function validateWranglerConfig(configPath, target) {
   const resolvedPath = resolve(configPath);
   const content = readFileSync(resolvedPath, 'utf8');
 
@@ -62,23 +96,65 @@ export function validateWranglerConfig(configPath) {
     );
   }
 
-  const liveMatch = content.match(/^\s*LIVE_TRADING_ENABLED\s*=\s*"([^"]+)"/m);
-  const liveTrading = liveMatch ? liveMatch[1].trim().toLowerCase() : null;
-  if (liveTrading !== 'false') {
+  const binding = target ? TARGET_BINDINGS[target] : null;
+  if (target && !binding) {
     throw new Error(
-      `Refusing to run: LIVE_TRADING_ENABLED must be "false" (found "${liveTrading ?? 'missing'}").`,
+      `Invalid --target "${target}". Must be one of: ${Array.from(VALID_TARGETS).join(', ')}.`,
     );
   }
 
-  const dbMatch = content.match(/^\s*database_name\s*=\s*"([^"]+)"/m);
+  const varsHeader = binding?.requireEnvSection ? `[env.${binding.wranglerEnv}.vars]` : '[vars]';
+  const varsSection = extractTomlSection(content, varsHeader);
+  if (binding?.requireEnvSection && !varsSection) {
+    throw new Error(
+      `Refusing to run: target "${target}" requires explicit ${varsHeader} in ${resolvedPath}. Failing closed to prevent hitting production.`,
+    );
+  }
+  const varsSource = varsSection ?? content;
+
+  const liveMatch = varsSource.match(/^\s*LIVE_TRADING_ENABLED\s*=\s*"([^"]+)"/m);
+  const liveTrading = liveMatch ? liveMatch[1].trim().toLowerCase() : null;
+  if (liveTrading !== 'false') {
+    throw new Error(
+      `Refusing to run: LIVE_TRADING_ENABLED must be "false" in ${varsHeader} (found "${liveTrading ?? 'missing'}").`,
+    );
+  }
+
+  if (binding) {
+    const envMatch = varsSource.match(/^\s*ENVIRONMENT\s*=\s*"([^"]+)"/m);
+    const actualEnv = envMatch ? envMatch[1].trim() : null;
+    if (actualEnv !== binding.expectedEnvironment) {
+      throw new Error(
+        `Refusing to run: target "${target}" requires ENVIRONMENT = "${binding.expectedEnvironment}" in ${varsHeader} (found "${actualEnv ?? 'missing'}").`,
+      );
+    }
+  }
+
+  const dbHeader = binding?.requireEnvSection
+    ? `[[env.${binding.wranglerEnv}.d1_databases]]`
+    : '[[d1_databases]]';
+  const dbSection = extractTomlSection(content, dbHeader);
+  if (binding?.requireEnvSection && !dbSection) {
+    throw new Error(
+      `Refusing to run: target "${target}" requires explicit ${dbHeader} in ${resolvedPath}. Failing closed to prevent hitting production D1.`,
+    );
+  }
+  const dbSource = dbSection ?? content;
+  const dbMatch = dbSource.match(/^\s*database_name\s*=\s*"([^"]+)"/m);
   const databaseName = dbMatch ? dbMatch[1].trim() : 'poly-beta-db';
   if (databaseName === 'algo-trader-db') {
     throw new Error('Refusing to run: database_name must not be production algo-trader-db.');
+  }
+  if (binding && databaseName !== binding.expectedDatabaseName) {
+    throw new Error(
+      `Refusing to run: target "${target}" requires database_name = "${binding.expectedDatabaseName}" in ${dbHeader} (found "${databaseName}").`,
+    );
   }
 
   return {
     configPath: resolvedPath,
     workerName,
+    wranglerEnv: binding ? binding.wranglerEnv : '',
     liveTradingEnabled: false,
     databaseName,
   };
@@ -100,7 +176,8 @@ export function buildDisablePlan(options) {
   }
 
   const configPath = options?.wranglerConfig ?? 'wrangler.poly-beta.toml';
-  const validated = validateWranglerConfig(configPath);
+  const validated = validateWranglerConfig(configPath, target);
+  const envArgs = ['--env', validated.wranglerEnv];
 
   const actions = [
     {
@@ -116,6 +193,7 @@ export function buildDisablePlan(options) {
         'BETA_SIGNUP_ALLOWLIST',
         '--config',
         validated.configPath,
+        ...envArgs,
       ],
     },
     {
@@ -131,6 +209,7 @@ export function buildDisablePlan(options) {
         'BETA_SIGNUP_INVITES',
         '--config',
         validated.configPath,
+        ...envArgs,
       ],
     },
   ];
@@ -149,6 +228,7 @@ export function buildDisablePlan(options) {
         'MAINTENANCE_MODE',
         '--config',
         validated.configPath,
+        ...envArgs,
       ],
     });
   }
@@ -166,6 +246,7 @@ export function buildDisablePlan(options) {
         validated.databaseName,
         '--config',
         validated.configPath,
+        ...envArgs,
         '--remote',
         '--command',
         'DELETE FROM beta_sessions;',
@@ -178,6 +259,7 @@ export function buildDisablePlan(options) {
   return {
     schemaVersion: 'poly-beta-disable-plan/v1',
     target,
+    wranglerEnv: validated.wranglerEnv,
     mode,
     dryRun: !executeRequested,
     workerName: validated.workerName,

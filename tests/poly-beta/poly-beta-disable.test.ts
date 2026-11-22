@@ -23,15 +23,17 @@ describe('poly-beta-disable', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('builds a dry-run plan by default and preserves beta_feedback and beta_invite_redemptions', () => {
+  it('builds a dry-run plan for poly-beta-prod with explicit --env "" and preserves audit tables', () => {
     const plan = buildDisablePlan({
-      target: 'poly-beta-staging',
+      target: 'poly-beta-prod',
       mode: 'full-disable',
       wranglerConfig: POLY_BETA_WRANGLER,
     });
 
     expect(plan.dryRun).toBe(true);
     expect(plan.workerName).toBe('poly-beta-api');
+    expect(plan.wranglerEnv).toBe('');
+    expect(plan.databaseName).toBe('poly-beta-db');
     expect(plan.preservedTables).toEqual(['beta_feedback', 'beta_invite_redemptions']);
     expect(plan.actions.map((a: { id: string }) => a.id)).toEqual([
       'clear-signup-allowlist',
@@ -39,10 +41,54 @@ describe('poly-beta-disable', () => {
       'enable-maintenance-mode',
       'revoke-beta-sessions',
     ]);
-    for (const action of plan.actions) {
+    for (const action of plan.actions as Array<{ idempotent: boolean; command: string[] }>) {
       expect(action.idempotent).toBe(true);
+      const envIdx = action.command.indexOf('--env');
+      expect(envIdx).toBeGreaterThan(-1);
+      expect(action.command[envIdx + 1]).toBe('');
       expect(JSON.stringify(action)).not.toContain('beta_feedback');
       expect(JSON.stringify(action)).not.toContain('beta_invite_redemptions');
+    }
+  });
+
+  it('fails closed when poly-beta-staging has no dedicated [env.staging] section and binds --env staging when present', () => {
+    // Production wrangler.poly-beta.toml has no [env.staging] section -> must fail closed
+    expect(() =>
+      buildDisablePlan({
+        target: 'poly-beta-staging',
+        mode: 'disable-signup',
+        wranglerConfig: POLY_BETA_WRANGLER,
+      }),
+    ).toThrow(/requires explicit \[env\.staging\.vars\]/);
+
+    const stagingConfig = join(tempDir, 'wrangler.staging.toml');
+    writeFileSync(
+      stagingConfig,
+      [
+        'name = "poly-beta-api"',
+        '[vars]',
+        'ENVIRONMENT = "public-beta"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[env.staging.vars]',
+        'ENVIRONMENT = "staging"',
+        'LIVE_TRADING_ENABLED = "false"',
+        '[[env.staging.d1_databases]]',
+        'binding = "POLY_BETA_DB"',
+        'database_name = "poly-beta-db-staging"',
+      ].join('\n'),
+      'utf8',
+    );
+    const plan = buildDisablePlan({
+      target: 'poly-beta-staging',
+      mode: 'full-disable',
+      wranglerConfig: stagingConfig,
+    });
+    expect(plan.wranglerEnv).toBe('staging');
+    expect(plan.databaseName).toBe('poly-beta-db-staging');
+    for (const action of plan.actions as Array<{ command: string[] }>) {
+      const envIdx = action.command.indexOf('--env');
+      expect(envIdx).toBeGreaterThan(-1);
+      expect(action.command[envIdx + 1]).toBe('staging');
     }
   });
 
@@ -125,11 +171,11 @@ describe('poly-beta-disable', () => {
 
     const res1 = executeDisableProcedure(
       {
-        target: 'poly-beta-staging',
+        target: 'poly-beta-prod',
         mode: 'maintenance',
         execute: true,
         dryRun: false,
-        confirmDisable: 'poly-beta-staging',
+        confirmDisable: 'poly-beta-prod',
         auditLog,
         operator: 'ops-tester',
         wranglerConfig: POLY_BETA_WRANGLER,
@@ -139,11 +185,11 @@ describe('poly-beta-disable', () => {
 
     const res2 = executeDisableProcedure(
       {
-        target: 'poly-beta-staging',
+        target: 'poly-beta-prod',
         mode: 'maintenance',
         execute: true,
         dryRun: false,
-        confirmDisable: 'poly-beta-staging',
+        confirmDisable: 'poly-beta-prod',
         auditLog,
         operator: 'ops-tester',
         wranglerConfig: POLY_BETA_WRANGLER,
@@ -163,7 +209,7 @@ describe('poly-beta-disable', () => {
     const lines = readFileSync(auditLog, 'utf8').trim().split('\n');
     expect(lines).toHaveLength(2);
     const parsed = JSON.parse(lines[0]);
-    expect(parsed.target).toBe('poly-beta-staging');
+    expect(parsed.target).toBe('poly-beta-prod');
     expect(parsed.mode).toBe('maintenance');
     expect(parsed.operator).toBe('ops-tester');
     expect(parsed.dryRun).toBe(false);

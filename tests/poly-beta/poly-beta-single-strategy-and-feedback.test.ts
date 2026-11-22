@@ -450,4 +450,63 @@ describe('In-app feedback API, isolation, rate limit, and account deletion purge
       rawSqlite.close();
     }
   });
+
+  it('pauses RUNNING DO alarm and deletes scheduled alarm under MAINTENANCE_MODE or LIVE_TRADING_ENABLED=true', async () => {
+    const { env, rawSqlite, engines } = await createPolyBetaTestHarness();
+    try {
+      const alice = await signupTenant(env, 'alice@example.com');
+      const market = seedMarketSnapshots()[0]!;
+      const startRes = await worker.fetch(
+        new Request(`${ORIGIN}/api/beta/strategy/control`, {
+          method: 'POST',
+          headers: alice.headers,
+          body: JSON.stringify({ action: 'START', marketId: market.marketId }),
+        }),
+        env,
+      );
+      expect(startRes.status).toBe(200);
+      const ordersBefore = (
+        rawSqlite.prepare(`SELECT COUNT(*) AS cnt FROM beta_orders WHERE tenant_id = ?`).get(alice.tenantId) as { cnt: number }
+      ).cnt;
+
+      const doEntry = engines.get(alice.tenantId)!;
+      env.MAINTENANCE_MODE = 'true';
+      await doEntry.instance.alarm();
+
+      const pfMaint = rawSqlite
+        .prepare(`SELECT engine_state FROM beta_portfolios WHERE tenant_id = ?`)
+        .get(alice.tenantId) as { engine_state: string };
+      expect(pfMaint.engine_state).toBe('PAUSED');
+      expect(doEntry.storage.getScheduledAlarm()).toBeNull();
+      const ordersAfterMaint = (
+        rawSqlite.prepare(`SELECT COUNT(*) AS cnt FROM beta_orders WHERE tenant_id = ?`).get(alice.tenantId) as { cnt: number }
+      ).cnt;
+      expect(ordersAfterMaint).toBe(ordersBefore);
+      const maintLog = rawSqlite
+        .prepare(`SELECT event_code FROM beta_execution_logs WHERE tenant_id = ? AND event_code = 'MAINTENANCE_MODE'`)
+        .get(alice.tenantId);
+      expect(maintLog).toBeTruthy();
+
+      // Also verify LIVE_TRADING_ENABLED=true guard in DO alarm
+      env.MAINTENANCE_MODE = 'false';
+      env.LIVE_TRADING_ENABLED = 'true';
+      rawSqlite
+        .prepare(`UPDATE beta_portfolios SET engine_state = 'RUNNING' WHERE tenant_id = ?`)
+        .run(alice.tenantId);
+      await doEntry.storage.setAlarm(Date.now() + 10_000);
+      await doEntry.instance.alarm();
+
+      const pfLive = rawSqlite
+        .prepare(`SELECT engine_state FROM beta_portfolios WHERE tenant_id = ?`)
+        .get(alice.tenantId) as { engine_state: string };
+      expect(pfLive.engine_state).toBe('PAUSED');
+      expect(doEntry.storage.getScheduledAlarm()).toBeNull();
+      const liveLog = rawSqlite
+        .prepare(`SELECT event_code FROM beta_execution_logs WHERE tenant_id = ? AND event_code = 'LIVE_TRADING_FORBIDDEN_IN_BETA'`)
+        .get(alice.tenantId);
+      expect(liveLog).toBeTruthy();
+    } finally {
+      rawSqlite.close();
+    }
+  });
 });
