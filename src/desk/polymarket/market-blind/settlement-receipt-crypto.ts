@@ -108,7 +108,7 @@ export function verifySettlementVerificationReceipt(
     return { ok: false, reason: 'AMBIGUOUS_VERIFIER_AUTHORITY' };
   }
   const authority = matchingAuthorities[0]!;
-  const checkTimeMs = evaluatedAtMs ?? registry.evaluatedAtMs ?? r.verifiedAtMs;
+  const checkTimeMs = evaluatedAtMs ?? registry.evaluatedAtMs ?? Date.now();
   if (r.verifiedAtMs < authority.validFromMs || r.verifiedAtMs > authority.validUntilMs
     || checkTimeMs < authority.validFromMs || checkTimeMs > authority.validUntilMs) {
     return { ok: false, reason: 'EXPIRED_VERIFIER_AUTHORITY' };

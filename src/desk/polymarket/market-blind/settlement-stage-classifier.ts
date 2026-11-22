@@ -13,6 +13,8 @@ import {
   type TrustedSettlementVerifierRegistry,
 } from './settlement-verification-contract';
 
+const MAX_BLOCK_TIMESTAMP_DRIFT_MS = 15 * 60 * 1000;
+
 export const isSyntheticIdentifier = (value: string): boolean => /test[_ -]?only|synthetic/i.test(value);
 
 export function hasEmpiricalMetadata(c: ProspectiveCommitReceipt): boolean {
@@ -87,7 +89,13 @@ export function classifySettlementVerificationStage(
     || vr.blockNumber !== p.blockNumber) {
     return { stage: 'SETTLEMENT_SCHEMA_VALID', reason: 'RECEIPT_COORDINATE_MISMATCH' };
   }
-  if (vr.blockTimestampMs <= c.committedAtMs || vr.verifiedAtMs < vr.blockTimestampMs) {
+  if (vr.blockTimestampMs <= c.committedAtMs
+    || c.recordedAtMs === undefined
+    || vr.blockTimestampMs <= c.recordedAtMs
+    || r.marketReadAtMs === null
+    || r.marketReadAtMs >= vr.blockTimestampMs
+    || Math.abs(r.resolvedAtMs - vr.blockTimestampMs) > MAX_BLOCK_TIMESTAMP_DRIFT_MS
+    || vr.verifiedAtMs < vr.blockTimestampMs) {
     return { stage: 'SETTLEMENT_SCHEMA_VALID', reason: 'RECEIPT_TIMESTAMP_INCONSISTENT' };
   }
 

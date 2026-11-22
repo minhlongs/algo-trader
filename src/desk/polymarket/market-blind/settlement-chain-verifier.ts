@@ -160,6 +160,9 @@ export async function verifyOnChainSettlement(
   if (dispute.state === 'CORRECTED' && (!dispute.correctionReason || !request.supersedesReceiptDigest || !SHA256_HEX_PATTERN.test(request.supersedesReceiptDigest))) {
     return { ok: false, stage: 'SETTLEMENT_CHAIN_VERIFIED', reason: 'CORRECTED_RESOLUTION_MISSING_VERIFIED_FOLLOWUP' };
   }
+  if (dispute.state !== 'NONE' && dispute.state !== 'SETTLED' && dispute.state !== 'CORRECTED') {
+    return { ok: false, stage: 'SETTLEMENT_CHAIN_VERIFIED', reason: 'UNKNOWN_UMA_DISPUTE_STATE' };
+  }
 
   const verifiedConfirmations = latestBlock.number - txReceipt.blockNumber + 1;
   if (verifiedConfirmations < minConfirmations) return { ok: false, stage: 'SETTLEMENT_CHAIN_VERIFIED', reason: `INSUFFICIENT_CONFIRMATIONS:${verifiedConfirmations}` };
