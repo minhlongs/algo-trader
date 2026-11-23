@@ -199,6 +199,8 @@ const DEFAULT_TEST_SIGNUP_INVITES = buildTestInvitesJson(
 export async function createPolyBetaTestHarness(options?: {
   signupAllowlist?: string | undefined;
   signupInvites?: string | undefined;
+  marketDataEnabled?: string | undefined;
+  maintenanceMode?: string | undefined;
 }) {
   const { db, raw } = createSqliteD1();
   const kv = createMemoryKv();
@@ -210,6 +212,12 @@ export async function createPolyBetaTestHarness(options?: {
     TENANT_PAPER_ENGINE: {} as PolyBetaDoNamespace,
     ENVIRONMENT: 'test',
     LIVE_TRADING_ENABLED: 'false',
+    ...(options && 'maintenanceMode' in options
+      ? (options.maintenanceMode !== undefined ? { MAINTENANCE_MODE: options.maintenanceMode } : {})
+      : {}),
+    ...(options && 'marketDataEnabled' in options
+      ? (options.marketDataEnabled !== undefined ? { MARKET_DATA_ENABLED: options.marketDataEnabled } : {})
+      : { MARKET_DATA_ENABLED: 'true' }),
     SIGNUP_GATE_MODE: 'allowlist',
     ...(options && 'signupAllowlist' in options
       ? (options.signupAllowlist !== undefined ? { BETA_SIGNUP_ALLOWLIST: options.signupAllowlist } : {})

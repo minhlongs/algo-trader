@@ -159,4 +159,29 @@ describe('PolyBetaShell dashboard content', () => {
     expect(screen.getByTestId('strategy-start-btn')).toBeDisabled();
     expect(screen.getByTestId('market-select')).toBeDisabled();
   });
+
+  it('Case 24: renders Paper Beta UI cleanly in maintenance mode without crashing or making external calls', async () => {
+    const requestedUrls: string[] = [];
+    mockFetch(({ url }) => {
+      requestedUrls.push(url);
+      if (url.endsWith('/api/beta/auth/me')) {
+        return jsonResponse(
+          { error: 'Paper Beta is temporarily paused for maintenance.', code: 'MAINTENANCE_MODE' },
+          503,
+        );
+      }
+      return jsonResponse({ error: 'Maintenance', code: 'MAINTENANCE_MODE' }, 503);
+    });
+
+    render(<PolyBetaShell />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Paper Beta is temporarily paused for maintenance/i);
+    // Same-origin relative path only — never calls workers.dev, gamma, or clob directly
+    expect(requestedUrls.length).toBeGreaterThan(0);
+    for (const u of requestedUrls) {
+      expect(u.startsWith('/api/beta/')).toBe(true);
+      expect(u).not.toContain('workers.dev');
+      expect(u).not.toContain('gamma-api.polymarket.com');
+      expect(u).not.toContain('clob.polymarket.com');
+    }
+  });
 });

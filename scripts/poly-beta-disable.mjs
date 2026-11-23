@@ -314,6 +314,16 @@ export function validateWranglerConfig(configPath, target) {
     );
   }
 
+  const routesValue = binding?.requireEnvSection ? envTable?.routes : parsed.routes;
+  const hasUnexpectedRoutes =
+    (typeof routesValue === 'string' && routesValue.replace(/\s+/g, '') !== '[]') ||
+    (Array.isArray(routesValue) && routesValue.length > 0);
+  if (hasUnexpectedRoutes) {
+    throw new Error(
+      `Refusing to run: unexpected public routes configured in ${resolvedPath}. poly-beta-api must keep routes = [].`,
+    );
+  }
+
   const varsHeader = binding?.requireEnvSection ? `[env.${binding.wranglerEnv}.vars]` : '[vars]';
   const varsObj = binding?.requireEnvSection ? envTable?.vars : parsed.vars;
   if (!varsObj || typeof varsObj !== 'object') {

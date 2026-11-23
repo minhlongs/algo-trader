@@ -18,10 +18,26 @@ export const SESSION_TTL_MS = 24 * 60 * 60 * 1_000;
 
 export const PILOT_APPROVED_STRATEGY_ID = 'toxicity-aware-mm-paper' as const;
 
+export const MARKET_DATA_DISABLED_REASON = 'MARKET_DATA_DISABLED' as const;
+
 export type ApprovedPaperStrategyId = typeof PILOT_APPROVED_STRATEGY_ID;
 
 export function isApprovedPaperStrategyId(id: unknown): id is ApprovedPaperStrategyId {
   return id === PILOT_APPROVED_STRATEGY_ID;
+}
+
+/**
+ * Default-deny market-data policy.
+ * Returns `true` ONLY when `MARKET_DATA_ENABLED` is explicitly `"true"` (case-insensitive,
+ * trimmed). Missing, `"false"`, or malformed values evaluate to `false` so external
+ * Gamma/CLOB/RPC egress is never accidentally enabled.
+ */
+export function isMarketDataEnabled(env: Pick<PolyBetaEnv, 'MARKET_DATA_ENABLED'>): boolean {
+  return typeof env.MARKET_DATA_ENABLED === 'string' && env.MARKET_DATA_ENABLED.trim().toLowerCase() === 'true';
+}
+
+export function isMaintenanceModeEnabled(env: Pick<PolyBetaEnv, 'MAINTENANCE_MODE'>): boolean {
+  return typeof env.MAINTENANCE_MODE === 'string' && env.MAINTENANCE_MODE.trim().toLowerCase() === 'true';
 }
 
 export type EngineLifecycleState = 'STOPPED' | 'RUNNING' | 'PAUSED' | 'HALTED';
@@ -115,6 +131,7 @@ export interface PolyBetaEnv {
   ENVIRONMENT?: string;
   LIVE_TRADING_ENABLED?: string;
   MAINTENANCE_MODE?: string;
+  MARKET_DATA_ENABLED?: string;
   SIGNUP_GATE_MODE?: string;
   BETA_SIGNUP_ALLOWLIST?: string;
   BETA_SIGNUP_INVITES?: string;
