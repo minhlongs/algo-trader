@@ -9,6 +9,8 @@
  */
 
 import {
+  isMarketDataEnabled,
+  MARKET_DATA_DISABLED_REASON,
   MARKET_STALENESS_LIMIT_MS,
   type PolyBetaEnv,
   type PolyBetaMarketSnapshot,
@@ -45,6 +47,56 @@ async function resolveClobQuotes(
   }
 }
 
+/**
+ * Side-effect-free health status probe for market feeds.
+ * NEVER invokes `fetch()`, NEVER writes to KV, and skips KV reads completely
+ * when `MARKET_DATA_ENABLED` is not explicitly `"true"`.
+ */
+export async function readBetaMarketHealthStatus(
+  env: PolyBetaEnv,
+  nowMs = Date.now(),
+): Promise<{
+  marketDataEnabled: boolean;
+  feedHealthy: boolean;
+  supportedMarketCount: number;
+  disabledReason: string | null;
+}> {
+  if (!isMarketDataEnabled(env)) {
+    return {
+      marketDataEnabled: false,
+      feedHealthy: false,
+      supportedMarketCount: 0,
+      disabledReason: MARKET_DATA_DISABLED_REASON,
+    };
+  }
+  const cachedRaw = await env.POLY_BETA_KV.get(MARKET_CACHE_KEY);
+  if (cachedRaw) {
+    try {
+      const cached = JSON.parse(cachedRaw) as PolyBetaMarketSnapshot[];
+      if (
+        Array.isArray(cached) &&
+        cached.length > 0 &&
+        cached.every((m) => isMarketSnapshotFresh(m, nowMs).fresh)
+      ) {
+        return {
+          marketDataEnabled: true,
+          feedHealthy: true,
+          supportedMarketCount: cached.length,
+          disabledReason: null,
+        };
+      }
+    } catch {
+      // Malformed cache -> report unhealthy without outbound fetch
+    }
+  }
+  return {
+    marketDataEnabled: true,
+    feedHealthy: false,
+    supportedMarketCount: 0,
+    disabledReason: 'MARKET_CACHE_EMPTY_OR_STALE',
+  };
+}
+
 export async function fetchSupportedBetaMarkets(
   env: PolyBetaEnv,
   options: { fetchImpl?: typeof fetch; nowMs?: number } = {},
@@ -52,7 +104,18 @@ export async function fetchSupportedBetaMarkets(
   markets: PolyBetaMarketSnapshot[];
   feedHealthy: boolean;
   staleReason: string | null;
+  marketDataEnabled: boolean;
 }> {
+  // Default-deny guard: execute BEFORE any KV cache read or outbound fetch().
+  if (!isMarketDataEnabled(env)) {
+    return {
+      markets: [],
+      feedHealthy: false,
+      staleReason: MARKET_DATA_DISABLED_REASON,
+      marketDataEnabled: false,
+    };
+  }
+
   const nowMs = options.nowMs ?? Date.now();
   const cachedRaw = await env.POLY_BETA_KV.get(MARKET_CACHE_KEY);
   if (cachedRaw) {
@@ -63,7 +126,7 @@ export async function fetchSupportedBetaMarkets(
         cached.length > 0 &&
         cached.every((m) => isMarketSnapshotFresh(m, nowMs).fresh)
       ) {
-        return { markets: cached, feedHealthy: true, staleReason: null };
+        return { markets: cached, feedHealthy: true, staleReason: null, marketDataEnabled: true };
       }
     } catch {
       // Fall through to live fetch
@@ -72,7 +135,7 @@ export async function fetchSupportedBetaMarkets(
 
   const negReason = await readMarketNegativeCache(env, nowMs);
   if (negReason && !options.fetchImpl) {
-    return { markets: [], feedHealthy: false, staleReason: negReason };
+    return { markets: [], feedHealthy: false, staleReason: negReason, marketDataEnabled: true };
   }
 
   const baseUrl = (
@@ -88,7 +151,7 @@ export async function fetchSupportedBetaMarkets(
     if (!res.ok) {
       const reason = `Upstream market feed returned HTTP ${res.status}`;
       await writeMarketNegativeCache(env, reason, nowMs);
-      return { markets: [], feedHealthy: false, staleReason: reason };
+      return { markets: [], feedHealthy: false, staleReason: reason, marketDataEnabled: true };
     }
     const payload = (await res.json()) as unknown;
     const list = Array.isArray(payload) ? payload : [];
@@ -102,16 +165,16 @@ export async function fetchSupportedBetaMarkets(
           ? 'Upstream market quotes are stale (>30s)'
           : 'No eligible non-5m markets returned by upstream feed';
       await writeMarketNegativeCache(env, reason, nowMs);
-      return { markets: [], feedHealthy: false, staleReason: reason };
+      return { markets: [], feedHealthy: false, staleReason: reason, marketDataEnabled: true };
     }
     await env.POLY_BETA_KV.put(MARKET_CACHE_KEY, JSON.stringify(freshMarkets), {
       expirationTtl: MARKET_CACHE_TTL_SEC,
     });
-    return { markets: freshMarkets, feedHealthy: true, staleReason: null };
+    return { markets: freshMarkets, feedHealthy: true, staleReason: null, marketDataEnabled: true };
   } catch {
     const reason = 'Upstream market fetch failed';
     await writeMarketNegativeCache(env, reason, nowMs).catch(() => {});
-    return { markets: [], feedHealthy: false, staleReason: reason };
+    return { markets: [], feedHealthy: false, staleReason: reason, marketDataEnabled: true };
   }
 }
 

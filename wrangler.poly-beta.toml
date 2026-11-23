@@ -2,20 +2,26 @@
 #
 # SAFETY INVARIANTS:
 # 1. Dedicated Worker name `poly-beta-api` — NEVER touches `algo-trader` Worker.
-# 2. `routes = []` + `workers_dev = true` — NEVER touches `cashclaw.cc` or `api.cashclaw.cc/*`.
+# 2. Private Worker routing: `workers_dev = false`, `preview_urls = false`, `routes = []` —
+#    reachable ONLY via internal Cloudflare Pages Service Binding (`POLY_BETA_API`).
 # 3. `LIVE_TRADING_ENABLED = "false"` — hard-locked to simulated $100 paper portfolio.
-# 4. Separate D1 (`poly-beta-db`), separate KV (`POLY_BETA_KV`), separate DO (`TenantPaperEngine`).
+# 4. Default-deny market data (`MARKET_DATA_ENABLED = "false"`) and explicit maintenance
+#    (`MAINTENANCE_MODE = "true"`) — zero outbound Gamma/CLOB/RPC egress until authorized.
+# 5. Separate D1 (`poly-beta-db`), separate KV (`POLY_BETA_KV`), separate DO (`TenantPaperEngine`).
 
 name = "poly-beta-api"
 main = "src/platform/poly-beta/poly-beta-worker.ts"
 compatibility_date = "2025-02-01"
 compatibility_flags = ["nodejs_compat"]
-workers_dev = true
+workers_dev = false
+preview_urls = false
 routes = []
 
 [vars]
 ENVIRONMENT = "public-beta"
 LIVE_TRADING_ENABLED = "false"
+MAINTENANCE_MODE = "true"
+MARKET_DATA_ENABLED = "false"
 SIGNUP_GATE_MODE = "allowlist"
 G1_SOAK_LOCK = "locked"
 G2_POLY_SHADOW_LOCK = "locked"
@@ -35,6 +41,8 @@ POLYMARKET_PUBLIC_CLOB_URL = "https://clob.polymarket.com"
 [env.dev.vars]
 ENVIRONMENT = "dev"
 LIVE_TRADING_ENABLED = "false"
+MAINTENANCE_MODE = "true"
+MARKET_DATA_ENABLED = "false"
 SIGNUP_GATE_MODE = "allowlist"
 G1_SOAK_LOCK = "locked"
 G2_POLY_SHADOW_LOCK = "locked"

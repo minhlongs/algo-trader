@@ -1,6 +1,17 @@
 /** POLY-G5 `TenantPaperEngine` Durable Object — per-tenant serialized paper engine & rate limiter. */
 
-import { ACTIVE_ENGINE_ALARM_MS, isApprovedPaperStrategyId, MAX_CUMULATIVE_DRAWDOWN_BPS, PILOT_APPROVED_STRATEGY_ID, type ApprovedPaperStrategyId, type EngineLifecycleState, type PolyBetaEnv } from './poly-beta-types';
+import {
+  ACTIVE_ENGINE_ALARM_MS,
+  isApprovedPaperStrategyId,
+  isMaintenanceModeEnabled,
+  isMarketDataEnabled,
+  MARKET_DATA_DISABLED_REASON,
+  MAX_CUMULATIVE_DRAWDOWN_BPS,
+  PILOT_APPROVED_STRATEGY_ID,
+  type ApprovedPaperStrategyId,
+  type EngineLifecycleState,
+  type PolyBetaEnv,
+} from './poly-beta-types';
 import { fetchSupportedBetaMarkets } from './poly-beta-markets';
 import { appendExecutionLog, refreshMarksAndDrawdown } from './poly-beta-ledger';
 import { executeSerializedPaperOrder, settleSerializedPaperMarket } from './poly-beta-execution';
@@ -10,27 +21,19 @@ import { consumeDoRateLimitSlot } from './poly-beta-rate-limiter';
 export type { DoStateLike, DoStorageLike } from './tenant-paper-engine-actions';
 
 const MAX_BOUNDED_SESSION_TICKS = 180;
+const jsonRes = (payload: unknown, status: number): Response => new Response(JSON.stringify(payload), { status });
 
 export class TenantPaperEngine {
   private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(
-    private readonly state: DoStateLike,
-    private readonly env: PolyBetaEnv,
-  ) {}
+  constructor(private readonly state: DoStateLike, private readonly env: PolyBetaEnv) {}
 
   private async runSerialized<T>(fn: () => Promise<T>): Promise<T> {
     const prev = this.queue;
     let release!: () => void;
-    this.queue = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    this.queue = new Promise<void>((resolve) => { release = resolve; });
     await prev;
-    try {
-      return await fn();
-    } finally {
-      release();
-    }
+    try { return await fn(); } finally { release(); }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -38,10 +41,7 @@ export class TenantPaperEngine {
       try {
         return await this.routeDoRequest(request);
       } catch {
-        return new Response(
-          JSON.stringify({ ok: false, error: 'Engine internal error', code: 'DO_INTERNAL_ERROR' }),
-          { status: 500 },
-        );
+        return jsonRes({ ok: false, error: 'Engine internal error', code: 'DO_INTERNAL_ERROR' }, 500);
       }
     });
   }
@@ -54,35 +54,26 @@ export class TenantPaperEngine {
     }
 
     const tenantId = String(body.tenantId ?? '');
-    if (!tenantId) {
-      return new Response(JSON.stringify({ ok: false, error: 'Missing tenantId' }), { status: 400 });
-    }
+    if (!tenantId) return jsonRes({ ok: false, error: 'Missing tenantId' }, 400);
 
     if (url.pathname === '/purge' && request.method === 'POST') {
       await this.state.storage.deleteAlarm();
       await this.state.storage.deleteAll();
-      return new Response(JSON.stringify({ ok: true, purged: true }), { status: 200 });
+      return jsonRes({ ok: true, purged: true }, 200);
     }
-    if (url.pathname === '/control' && request.method === 'POST') {
-      return this.handleControl(tenantId, body);
-    }
-    if (url.pathname === '/order' && request.method === 'POST') {
-      return this.handleManualOrder(tenantId, body);
-    }
+    if (url.pathname === '/control' && request.method === 'POST') return this.handleControl(tenantId, body);
+    if (url.pathname === '/order' && request.method === 'POST') return this.handleManualOrder(tenantId, body);
     if (url.pathname === '/cancel-order' && request.method === 'POST') {
       return cancelTenantPaperOrder(this.env, tenantId, String(body.orderId ?? ''), Date.now());
     }
     if (url.pathname === '/settle' && request.method === 'POST') {
       const res = await settleSerializedPaperMarket(
-        this.env.POLY_BETA_DB,
-        tenantId,
-        String(body.marketId ?? ''),
-        body.winningOutcome === 'NO' ? 'NO' : 'YES',
-        Date.now(),
+        this.env.POLY_BETA_DB, tenantId, String(body.marketId ?? ''),
+        body.winningOutcome === 'NO' ? 'NO' : 'YES', Date.now(),
       );
-      return new Response(JSON.stringify({ ok: true, ...res }), { status: 200 });
+      return jsonRes({ ok: true, ...res }, 200);
     }
-    return new Response(JSON.stringify({ ok: false, error: 'Unknown DO route' }), { status: 404 });
+    return jsonRes({ ok: false, error: 'Unknown DO route' }, 404);
   }
 
   async alarm(): Promise<void> {
@@ -95,9 +86,10 @@ export class TenantPaperEngine {
           return;
         }
         const liveForbidden = String(this.env.LIVE_TRADING_ENABLED ?? 'false').toLowerCase() === 'true';
-        const maintenance = String(this.env.MAINTENANCE_MODE ?? 'false').toLowerCase() === 'true';
-        if (liveForbidden || maintenance) {
-          const reason = liveForbidden ? 'LIVE_TRADING_FORBIDDEN_IN_BETA' : 'MAINTENANCE_MODE';
+        const maintenance = isMaintenanceModeEnabled(this.env);
+        const marketDataDisabled = !isMarketDataEnabled(this.env);
+        if (liveForbidden || maintenance || marketDataDisabled) {
+          const reason = liveForbidden ? 'LIVE_TRADING_FORBIDDEN_IN_BETA' : maintenance ? 'MAINTENANCE_MODE' : MARKET_DATA_DISABLED_REASON;
           await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();
           await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', reason, 'Paper engine paused by runtime safety guard.', Date.now());
           await this.state.storage.deleteAlarm();
@@ -127,7 +119,7 @@ export class TenantPaperEngine {
     const nowMs = Date.now();
     const action = String(body.action ?? '');
     if (body.strategyId !== undefined && !isApprovedPaperStrategyId(body.strategyId)) {
-      return new Response(JSON.stringify({ ok: false, error: 'Only toxicity-aware-mm-paper is approved', code: 'UNSUPPORTED_STRATEGY' }), { status: 400 });
+      return jsonRes({ ok: false, error: 'Only toxicity-aware-mm-paper is approved', code: 'UNSUPPORTED_STRATEGY' }, 400);
     }
     const strategyId = body.strategyId as ApprovedPaperStrategyId | undefined;
     const marketId = typeof body.marketId === 'string' ? body.marketId : undefined;
@@ -140,16 +132,21 @@ export class TenantPaperEngine {
     }
 
     if (action === 'START' || action === 'STEP') {
-      const pf = await this.env.POLY_BETA_DB.prepare(`SELECT max_drawdown_bps, selected_strategy_id FROM beta_portfolios WHERE tenant_id = ?`).bind(tenantId).first<{ max_drawdown_bps: number; selected_strategy_id: string | null }>();
+      const pf = await this.env.POLY_BETA_DB.prepare(`SELECT max_drawdown_bps, selected_strategy_id, engine_state FROM beta_portfolios WHERE tenant_id = ?`).bind(tenantId).first<{ max_drawdown_bps: number; selected_strategy_id: string | null; engine_state: EngineLifecycleState }>();
       if (!strategyId && !isApprovedPaperStrategyId(pf?.selected_strategy_id)) {
-        return new Response(JSON.stringify({ ok: false, error: 'Persisted strategy is not approved', code: 'UNSUPPORTED_STRATEGY' }), { status: 400 });
+        return jsonRes({ ok: false, error: 'Persisted strategy is not approved', code: 'UNSUPPORTED_STRATEGY' }, 400);
+      }
+      if (!isMarketDataEnabled(this.env)) {
+        await this.state.storage.deleteAlarm();
+        await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', MARKET_DATA_DISABLED_REASON, `Paper strategy ${action} blocked: market data feed is disabled.`, nowMs);
+        return jsonRes({ ok: false, error: 'Market data feed is disabled; paper strategy execution is unavailable.', code: MARKET_DATA_DISABLED_REASON, engineState: pf?.engine_state ?? 'STOPPED' }, 503);
       }
       if (action === 'STEP') {
         const ok = await runEngineStrategyStep(this.state.storage, this.env, tenantId, nowMs);
-        return new Response(JSON.stringify({ ok: true, stepped: ok }), { status: 200 });
+        return jsonRes({ ok: true, stepped: ok }, 200);
       }
       if (pf && pf.max_drawdown_bps >= MAX_CUMULATIVE_DRAWDOWN_BPS) {
-        return new Response(JSON.stringify({ ok: false, error: 'Cannot start: cumulative 5% drawdown limit reached.', code: 'DRAWDOWN_HALT_LOCKED' }), { status: 409 });
+        return jsonRes({ ok: false, error: 'Cannot start: cumulative 5% drawdown limit reached.', code: 'DRAWDOWN_HALT_LOCKED' }, 409);
       }
       await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'RUNNING', halt_reason = NULL, updated_at_ms = ? WHERE tenant_id = ? AND max_drawdown_bps < ?`).bind(nowMs, tenantId, MAX_CUMULATIVE_DRAWDOWN_BPS).run();
       await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'INFO', 'STRATEGY_START', 'Paper engine RUNNING (10s DO alarm)', nowMs);
@@ -158,7 +155,7 @@ export class TenantPaperEngine {
       if (stillRunning) await this.state.storage.setAlarm(nowMs + ACTIVE_ENGINE_ALARM_MS);
       else await this.state.storage.deleteAlarm();
       const persisted = await this.env.POLY_BETA_DB.prepare(`SELECT engine_state FROM beta_portfolios WHERE tenant_id = ?`).bind(tenantId).first<{ engine_state: EngineLifecycleState }>();
-      return new Response(JSON.stringify({ ok: true, engineState: persisted?.engine_state ?? 'STOPPED' }), { status: 200 });
+      return jsonRes({ ok: true, engineState: persisted?.engine_state ?? 'STOPPED' }, 200);
     }
 
     return applyEngineStopOrPause(this.state.storage, this.env, tenantId, action === 'PAUSE' ? 'PAUSED' : 'STOPPED', nowMs);
@@ -166,21 +163,14 @@ export class TenantPaperEngine {
 
   private async handleManualOrder(tenantId: string, body: Record<string, unknown>): Promise<Response> {
     if (body.strategyId !== undefined && !isApprovedPaperStrategyId(body.strategyId)) {
-      return new Response(JSON.stringify({ ok: false, error: 'Only toxicity-aware-mm-paper is approved', code: 'UNSUPPORTED_STRATEGY' }), { status: 400 });
+      return jsonRes({ ok: false, error: 'Only toxicity-aware-mm-paper is approved', code: 'UNSUPPORTED_STRATEGY' }, 400);
     }
     const nowMs = Date.now();
     const feed = await fetchSupportedBetaMarkets(this.env, { nowMs });
     const market = feed.markets.find((m) => m.marketId === String(body.marketId ?? ''));
     if (!feed.feedHealthy || !market) {
-      await this.env.POLY_BETA_DB.prepare(
-        `UPDATE beta_portfolios SET engine_state = 'HALTED', halt_reason = ?, updated_at_ms = ? WHERE tenant_id = ?`,
-      )
-        .bind(feed.staleReason ?? 'MARKET_NOT_AVAILABLE', nowMs, tenantId)
-        .run();
-      return new Response(
-        JSON.stringify({ ok: false, code: 'MARKET_UNAVAILABLE_FAIL_CLOSED', detail: feed.staleReason ?? 'Market unavailable' }),
-        { status: 503 },
-      );
+      await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'HALTED', halt_reason = ?, updated_at_ms = ? WHERE tenant_id = ?`).bind(feed.staleReason ?? 'MARKET_NOT_AVAILABLE', nowMs, tenantId).run();
+      return jsonRes({ ok: false, code: 'MARKET_UNAVAILABLE_FAIL_CLOSED', detail: feed.staleReason ?? 'Market unavailable' }, 503);
     }
 
     const res = await executeSerializedPaperOrder(this.env.POLY_BETA_DB, {
@@ -194,6 +184,6 @@ export class TenantPaperEngine {
       ...(typeof body.limitPrice === 'number' ? { limitPrice: body.limitPrice } : {}),
       nowMs,
     });
-    return new Response(JSON.stringify(res), { status: res.ok ? 200 : 422 });
+    return jsonRes(res, res.ok ? 200 : 422);
   }
 }

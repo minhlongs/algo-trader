@@ -2,7 +2,13 @@
  * POLY-G5 Public Beta — Isolated Cloudflare Worker Entrypoint (`poly-beta-api`).
  */
 
-import { APPROVED_PAPER_STRATEGIES, type PolyBetaEnv } from './poly-beta-types';
+import {
+  APPROVED_PAPER_STRATEGIES,
+  isMaintenanceModeEnabled,
+  isMarketDataEnabled,
+  MARKET_DATA_DISABLED_REASON,
+  type PolyBetaEnv,
+} from './poly-beta-types';
 import {
   BETA_SECURITY_HEADERS,
   betaJsonResponse,
@@ -22,7 +28,7 @@ import {
   handleBetaLogout,
   handleBetaSessionInfo,
 } from './poly-beta-account';
-import { fetchSupportedBetaMarkets } from './poly-beta-markets';
+import { fetchSupportedBetaMarkets, readBetaMarketHealthStatus } from './poly-beta-markets';
 import { buildAuthoritativeDashboardView } from './poly-beta-dashboard-view';
 import { handleBetaCreateFeedback, handleBetaListFeedback } from './poly-beta-feedback';
 import { dispatchAuthenticatedTenantMutation } from './poly-beta-mutations';
@@ -50,47 +56,42 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
     }
 
     if (String(env.LIVE_TRADING_ENABLED ?? 'false').toLowerCase() === 'true') {
-      return betaJsonResponse(
-        request,
-        env,
-        {
-          error: 'Safety halt: poly-beta-api forbids LIVE_TRADING_ENABLED=true',
-          code: 'LIVE_TRADING_FORBIDDEN_IN_BETA',
-        },
-        503,
-      );
+      return betaJsonResponse(request, env, { error: 'Safety halt: poly-beta-api forbids LIVE_TRADING_ENABLED=true', code: 'LIVE_TRADING_FORBIDDEN_IN_BETA' }, 503);
     }
 
-    if (String(env.MAINTENANCE_MODE ?? 'false').toLowerCase() === 'true' && path !== '/api/health' && path !== '/health' && path !== '/api/beta/auth/logout') {
+    const maintenanceMode = isMaintenanceModeEnabled(env);
+    if (maintenanceMode && path !== '/api/health' && path !== '/health' && path !== '/api/beta/auth/logout') {
       return betaJsonResponse(request, env, { error: 'Paper Beta is temporarily paused for maintenance.', code: 'MAINTENANCE_MODE' }, 503);
     }
 
     if (REAL_MONEY_BLOCKED_PATTERNS.some((re) => re.test(path))) {
-      return betaJsonResponse(
-        request,
-        env,
-        {
-          error: 'Real-money, deposit, withdrawal, wallet signing, and live trading operations are strictly disabled in Public Beta.',
-          code: 'REAL_MONEY_OPERATIONS_DISABLED',
-          liveTradingEnabled: false,
-        },
-        403,
-      );
+      return betaJsonResponse(request, env, {
+        error: 'Real-money, deposit, withdrawal, wallet signing, and live trading operations are strictly disabled in Public Beta.',
+        code: 'REAL_MONEY_OPERATIONS_DISABLED',
+        liveTradingEnabled: false,
+      }, 403);
     }
 
     if ((path === '/api/health' || path === '/health') && request.method === 'GET') {
-      const feed = await fetchSupportedBetaMarkets(env);
+      const marketDataEnabled = isMarketDataEnabled(env);
+      const feedStatus = !marketDataEnabled || maintenanceMode
+        ? { marketDataEnabled, feedHealthy: false, supportedMarketCount: 0, disabledReason: !marketDataEnabled ? MARKET_DATA_DISABLED_REASON : 'MAINTENANCE_MODE' }
+        : await readBetaMarketHealthStatus(env);
       return betaJsonResponse(request, env, {
         ok: true,
+        status: 'operational',
         service: 'poly-beta-api',
         mode: 'PAPER_ONLY',
         liveTradingEnabled: false,
+        maintenanceMode,
+        marketDataEnabled: feedStatus.marketDataEnabled,
+        marketFeedHealthy: feedStatus.feedHealthy,
+        supportedMarketCount: feedStatus.supportedMarketCount,
+        marketFeedDisabledReason: feedStatus.disabledReason,
         signupGateMode: 'allowlist',
         g1SoakLocked: env.G1_SOAK_LOCK !== 'unlocked',
         g2PolyShadowLocked: env.G2_POLY_SHADOW_LOCK !== 'unlocked',
         commitSha: env.COMMIT_SHA ?? 'dev',
-        marketFeedHealthy: feed.feedHealthy,
-        supportedMarketCount: feed.markets.length,
         timestamp: new Date().toISOString(),
       });
     }
@@ -105,6 +106,7 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
       return betaJsonResponse(request, env, {
         ok: true,
         mode: 'PAPER_ONLY',
+        marketDataEnabled: feed.marketDataEnabled,
         feedHealthy: feed.feedHealthy,
         staleReason: feed.staleReason,
         markets: feed.markets,
@@ -157,6 +159,7 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
           feed.feedHealthy,
           feed.staleReason,
           Date.now(),
+          feed.marketDataEnabled,
         );
         return betaJsonResponse(request, env, { ok: true, ...view, markets: feed.markets });
       }

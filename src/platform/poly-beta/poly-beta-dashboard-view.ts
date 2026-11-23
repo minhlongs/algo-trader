@@ -24,6 +24,7 @@ export async function buildAuthoritativeDashboardView(
   feedHealthy: boolean,
   staleReason: string | null,
   nowMs: number,
+  marketDataEnabled = true,
 ) {
   const marketsById = new Map(markets.map((m) => [m.marketId, m]));
   const state = await refreshMarksAndDrawdown(db, tenantId, marketsById, nowMs, false);
@@ -73,7 +74,8 @@ export async function buildAuthoritativeDashboardView(
       lastTickAtMs: state.portfolio.last_tick_at_ms,
     },
     health: {
-      marketFeedHealthy: feedHealthy,
+      marketDataEnabled,
+      marketFeedHealthy: marketDataEnabled && feedHealthy,
       staleReason,
       ghostGuardMode: 'OFFLINE_DRILL_VERIFIED_NO_LIVE_CHAIN',
       cryptoFiveMinuteGuard: 'ENFORCED_BLOCKED',
@@ -82,7 +84,9 @@ export async function buildAuthoritativeDashboardView(
         gammaApi: 'https://gamma-api.polymarket.com',
         clobApi: 'https://clob.polymarket.com',
         stalenessLimitMs: MARKET_STALENESS_LIMIT_MS,
-        mode: 'READ_ONLY_PUBLIC_PAPER_FEED' as const,
+        mode: marketDataEnabled
+          ? ('READ_ONLY_PUBLIC_PAPER_FEED' as const)
+          : ('DISABLED_DEFAULT_DENY' as const),
       },
     },
     strategies: APPROVED_PAPER_STRATEGIES,

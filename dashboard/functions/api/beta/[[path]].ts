@@ -8,7 +8,7 @@ export interface BetaPagesProxyEnv {
   POLY_BETA_PROXY_SECRET?: string;
 }
 
-const DEFAULT_API_ORIGIN = 'https://poly-beta-api.agencyos-openclaw.workers.dev';
+const INTERNAL_SERVICE_ORIGIN = 'https://poly-beta-api.internal';
 const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'DELETE', 'OPTIONS']);
 const ALLOWED_REQUEST_HEADERS = new Set([
   'accept',
@@ -16,6 +16,23 @@ const ALLOWED_REQUEST_HEADERS = new Set([
   'idempotency-key',
   'x-csrf-token',
 ]);
+
+function isLocalDevHost(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1';
+}
+
+function isAllowedLoopbackUpstreamOrigin(originRaw: string): boolean {
+  try {
+    const parsed = new URL(originRaw);
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      isLocalDevHost(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function isAllowedBetaPagesHost(hostname: string): boolean {
   const h = hostname.trim().toLowerCase();
@@ -116,7 +133,29 @@ export const onRequest: PagesFunction<BetaPagesProxyEnv> = async ({ request, env
     return jsonError(403, 'Forbidden mutation source', 'ORIGIN_DENIED');
   }
 
-  const upstreamOrigin = env.POLY_BETA_API_ORIGIN || DEFAULT_API_ORIGIN;
+  // Private Worker routing: production/preview Pages MUST invoke `poly-beta-api`
+  // exclusively via the internal `POLY_BETA_API` Service Binding. Never fall back
+  // to a public `workers.dev` URL. Only explicit loopback `POLY_BETA_API_ORIGIN`
+  // on localhost/127.0.0.1 is permitted for local development without a Service Binding.
+  const useServiceBinding = Boolean(env.POLY_BETA_API);
+  if (!useServiceBinding) {
+    const localOverride = env.POLY_BETA_API_ORIGIN?.trim();
+    if (
+      !isLocalDevHost(url.hostname) ||
+      !localOverride ||
+      !isAllowedLoopbackUpstreamOrigin(localOverride)
+    ) {
+      return jsonError(
+        503,
+        'Private API service binding is unavailable',
+        'SERVICE_BINDING_MISSING',
+      );
+    }
+  }
+
+  const upstreamOrigin = useServiceBinding
+    ? INTERNAL_SERVICE_ORIGIN
+    : env.POLY_BETA_API_ORIGIN!.trim();
   let upstreamUrl: URL;
   try {
     upstreamUrl = new URL(url.pathname + url.search, upstreamOrigin);
