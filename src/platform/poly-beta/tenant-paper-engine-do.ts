@@ -1,6 +1,6 @@
 /** POLY-G5 `TenantPaperEngine` Durable Object — per-tenant serialized paper engine & rate limiter. */
 
-import { ACTIVE_ENGINE_ALARM_MS, MAX_CUMULATIVE_DRAWDOWN_BPS, type ApprovedPaperStrategyId, type EngineLifecycleState, type PolyBetaEnv } from './poly-beta-types';
+import { ACTIVE_ENGINE_ALARM_MS, isApprovedPaperStrategyId, MAX_CUMULATIVE_DRAWDOWN_BPS, PILOT_APPROVED_STRATEGY_ID, type ApprovedPaperStrategyId, type EngineLifecycleState, type PolyBetaEnv } from './poly-beta-types';
 import { fetchSupportedBetaMarkets } from './poly-beta-markets';
 import { appendExecutionLog, refreshMarksAndDrawdown } from './poly-beta-ledger';
 import { executeSerializedPaperOrder, settleSerializedPaperMarket } from './poly-beta-execution';
@@ -94,6 +94,15 @@ export class TenantPaperEngine {
           if ((await this.state.storage.get<number>('rlActiveSlot')) !== undefined) await this.state.storage.deleteAll();
           return;
         }
+        const liveForbidden = String(this.env.LIVE_TRADING_ENABLED ?? 'false').toLowerCase() === 'true';
+        const maintenance = String(this.env.MAINTENANCE_MODE ?? 'false').toLowerCase() === 'true';
+        if (liveForbidden || maintenance) {
+          const reason = liveForbidden ? 'LIVE_TRADING_FORBIDDEN_IN_BETA' : 'MAINTENANCE_MODE';
+          await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();
+          await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', reason, 'Paper engine paused by runtime safety guard.', Date.now());
+          await this.state.storage.deleteAlarm();
+          return;
+        }
         const ticksRemaining = (await this.state.storage.get<number>('ticksRemaining')) ?? 0;
         if (ticksRemaining <= 0) {
           await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();
@@ -117,6 +126,9 @@ export class TenantPaperEngine {
   private async handleControl(tenantId: string, body: Record<string, unknown>): Promise<Response> {
     const nowMs = Date.now();
     const action = String(body.action ?? '');
+    if (body.strategyId !== undefined && !isApprovedPaperStrategyId(body.strategyId)) {
+      return new Response(JSON.stringify({ ok: false, error: 'Only toxicity-aware-mm-paper is approved', code: 'UNSUPPORTED_STRATEGY' }), { status: 400 });
+    }
     const strategyId = body.strategyId as ApprovedPaperStrategyId | undefined;
     const marketId = typeof body.marketId === 'string' ? body.marketId : undefined;
     await this.state.storage.put('tenantId', tenantId);
@@ -127,8 +139,15 @@ export class TenantPaperEngine {
       await refreshMarksAndDrawdown(this.env.POLY_BETA_DB, tenantId, new Map(feed.markets.map((m) => [m.marketId, m])), nowMs, true);
     }
 
-    if (action === 'START') {
-      const pf = await this.env.POLY_BETA_DB.prepare(`SELECT max_drawdown_bps FROM beta_portfolios WHERE tenant_id = ?`).bind(tenantId).first<{ max_drawdown_bps: number }>();
+    if (action === 'START' || action === 'STEP') {
+      const pf = await this.env.POLY_BETA_DB.prepare(`SELECT max_drawdown_bps, selected_strategy_id FROM beta_portfolios WHERE tenant_id = ?`).bind(tenantId).first<{ max_drawdown_bps: number; selected_strategy_id: string | null }>();
+      if (!strategyId && !isApprovedPaperStrategyId(pf?.selected_strategy_id)) {
+        return new Response(JSON.stringify({ ok: false, error: 'Persisted strategy is not approved', code: 'UNSUPPORTED_STRATEGY' }), { status: 400 });
+      }
+      if (action === 'STEP') {
+        const ok = await runEngineStrategyStep(this.state.storage, this.env, tenantId, nowMs);
+        return new Response(JSON.stringify({ ok: true, stepped: ok }), { status: 200 });
+      }
       if (pf && pf.max_drawdown_bps >= MAX_CUMULATIVE_DRAWDOWN_BPS) {
         return new Response(JSON.stringify({ ok: false, error: 'Cannot start: cumulative 5% drawdown limit reached.', code: 'DRAWDOWN_HALT_LOCKED' }), { status: 409 });
       }
@@ -138,27 +157,17 @@ export class TenantPaperEngine {
       const stillRunning = await runEngineStrategyStep(this.state.storage, this.env, tenantId, nowMs);
       if (stillRunning) await this.state.storage.setAlarm(nowMs + ACTIVE_ENGINE_ALARM_MS);
       else await this.state.storage.deleteAlarm();
-      const persisted = await this.env.POLY_BETA_DB.prepare(
-        `SELECT engine_state FROM beta_portfolios WHERE tenant_id = ?`,
-      ).bind(tenantId).first<{ engine_state: EngineLifecycleState }>();
+      const persisted = await this.env.POLY_BETA_DB.prepare(`SELECT engine_state FROM beta_portfolios WHERE tenant_id = ?`).bind(tenantId).first<{ engine_state: EngineLifecycleState }>();
       return new Response(JSON.stringify({ ok: true, engineState: persisted?.engine_state ?? 'STOPPED' }), { status: 200 });
     }
 
-    if (action === 'STEP') {
-      const ok = await runEngineStrategyStep(this.state.storage, this.env, tenantId, nowMs);
-      return new Response(JSON.stringify({ ok: true, stepped: ok }), { status: 200 });
-    }
-
-    return applyEngineStopOrPause(
-      this.state.storage,
-      this.env,
-      tenantId,
-      action === 'PAUSE' ? 'PAUSED' : 'STOPPED',
-      nowMs,
-    );
+    return applyEngineStopOrPause(this.state.storage, this.env, tenantId, action === 'PAUSE' ? 'PAUSED' : 'STOPPED', nowMs);
   }
 
   private async handleManualOrder(tenantId: string, body: Record<string, unknown>): Promise<Response> {
+    if (body.strategyId !== undefined && !isApprovedPaperStrategyId(body.strategyId)) {
+      return new Response(JSON.stringify({ ok: false, error: 'Only toxicity-aware-mm-paper is approved', code: 'UNSUPPORTED_STRATEGY' }), { status: 400 });
+    }
     const nowMs = Date.now();
     const feed = await fetchSupportedBetaMarkets(this.env, { nowMs });
     const market = feed.markets.find((m) => m.marketId === String(body.marketId ?? ''));
@@ -177,7 +186,7 @@ export class TenantPaperEngine {
     const res = await executeSerializedPaperOrder(this.env.POLY_BETA_DB, {
       tenantId,
       idempotencyKey: String(body.idempotencyKey),
-      strategyId: (body.strategyId as ApprovedPaperStrategyId | undefined) ?? 'toxicity-aware-mm-paper',
+      strategyId: (body.strategyId as ApprovedPaperStrategyId | undefined) ?? PILOT_APPROVED_STRATEGY_ID,
       market,
       outcome: body.outcome === 'NO' ? 'NO' : 'YES',
       side: body.side === 'SELL' ? 'SELL' : 'BUY',

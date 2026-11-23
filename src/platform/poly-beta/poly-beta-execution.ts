@@ -8,6 +8,7 @@
 
 import { classifyFiveMinuteExclusion } from '../../shared/polymarket/five-minute-crypto-guard';
 import {
+  isApprovedPaperStrategyId,
   MAX_CUMULATIVE_DRAWDOWN_BPS,
   MAX_PORTFOLIO_EXPOSURE_MICRO,
   MAX_SINGLE_ORDER_MICRO,
@@ -47,6 +48,9 @@ export async function executeSerializedPaperOrder(
   | { ok: true; orderId: string; idempotentReplay: boolean }
   | { ok: false; code: string; detail: string }
 > {
+  if (!isApprovedPaperStrategyId(req.strategyId)) {
+    return { ok: false, code: 'UNSUPPORTED_STRATEGY', detail: 'Only toxicity-aware-mm-paper is approved' };
+  }
   const existing = await db
     .prepare(`SELECT order_id, status FROM beta_orders WHERE tenant_id = ? AND idempotency_key = ?`)
     .bind(req.tenantId, req.idempotencyKey)

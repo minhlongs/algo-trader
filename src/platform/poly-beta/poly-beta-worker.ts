@@ -24,6 +24,7 @@ import {
 } from './poly-beta-account';
 import { fetchSupportedBetaMarkets } from './poly-beta-markets';
 import { buildAuthoritativeDashboardView } from './poly-beta-dashboard-view';
+import { handleBetaCreateFeedback, handleBetaListFeedback } from './poly-beta-feedback';
 import { dispatchAuthenticatedTenantMutation } from './poly-beta-mutations';
 
 export { TenantPaperEngine } from './tenant-paper-engine-do';
@@ -58,6 +59,10 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
         },
         503,
       );
+    }
+
+    if (String(env.MAINTENANCE_MODE ?? 'false').toLowerCase() === 'true' && path !== '/api/health' && path !== '/health' && path !== '/api/beta/auth/logout') {
+      return betaJsonResponse(request, env, { error: 'Paper Beta is temporarily paused for maintenance.', code: 'MAINTENANCE_MODE' }, 503);
     }
 
     if (REAL_MONEY_BLOCKED_PATTERNS.some((re) => re.test(path))) {
@@ -154,6 +159,13 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
           Date.now(),
         );
         return betaJsonResponse(request, env, { ok: true, ...view, markets: feed.markets });
+      }
+
+      if (path === '/api/beta/feedback' && request.method === 'GET') {
+        return handleBetaListFeedback(request, env, ctx);
+      }
+      if (path === '/api/beta/feedback' && request.method === 'POST') {
+        return handleBetaCreateFeedback(request, env, url, ctx);
       }
 
       const mutated = await dispatchAuthenticatedTenantMutation(request, env, url, path, ctx);

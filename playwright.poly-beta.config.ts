@@ -15,7 +15,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000,
   use: {
-    baseURL: process.env.POLY_BETA_URL || 'https://poly-beta-dashboard.pages.dev',
+    ...(process.env.POLY_BETA_URL ? { baseURL: process.env.POLY_BETA_URL } : {}),
     trace: 'off',
     ...(launchOptions ? { launchOptions } : {}),
   },

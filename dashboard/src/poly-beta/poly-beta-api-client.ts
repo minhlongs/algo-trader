@@ -25,13 +25,29 @@ export interface BetaMarket {
 }
 
 export interface BetaStrategy {
-  id: 'toxicity-aware-mm-paper' | 'neg-risk-bundle-paper' | 'bayesian-fair-value-paper';
+  id: 'toxicity-aware-mm-paper';
   name: string;
   mode: 'PAPER_ONLY';
   summaryVi: string;
   summaryEn: string;
   feeModel: string;
   queueAssumption: string;
+}
+
+export type BetaFeedbackCategory =
+  | 'bug'
+  | 'confusing_workflow'
+  | 'trading_simulation'
+  | 'feature_suggestion'
+  | 'other';
+
+export interface BetaFeedbackItem {
+  feedbackId: string;
+  category: BetaFeedbackCategory;
+  message: string;
+  screenId: string | null;
+  status: string;
+  createdAtMs: number;
 }
 
 export interface BetaPosition {
@@ -80,6 +96,12 @@ export interface BetaPortfolioView {
     ghostGuardMode: string;
     cryptoFiveMinuteGuard: string;
     liveExecutionLock: string;
+    marketDataProvenance?: {
+      gammaApi: string;
+      clobApi: string;
+      stalenessLimitMs: number;
+      mode: string;
+    };
   };
   strategies: BetaStrategy[];
   markets: BetaMarket[];

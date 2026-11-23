@@ -16,10 +16,13 @@ export const SESSION_COOKIE_NAME = '__Host-poly_beta_sid';
 export const DEV_SESSION_COOKIE_NAME = 'poly_beta_sid';
 export const SESSION_TTL_MS = 24 * 60 * 60 * 1_000;
 
-export type ApprovedPaperStrategyId =
-  | 'toxicity-aware-mm-paper'
-  | 'neg-risk-bundle-paper'
-  | 'bayesian-fair-value-paper';
+export const PILOT_APPROVED_STRATEGY_ID = 'toxicity-aware-mm-paper' as const;
+
+export type ApprovedPaperStrategyId = typeof PILOT_APPROVED_STRATEGY_ID;
+
+export function isApprovedPaperStrategyId(id: unknown): id is ApprovedPaperStrategyId {
+  return id === PILOT_APPROVED_STRATEGY_ID;
+}
 
 export type EngineLifecycleState = 'STOPPED' | 'RUNNING' | 'PAUSED' | 'HALTED';
 
@@ -43,37 +46,15 @@ export interface ApprovedPaperStrategyDescriptor {
  */
 export const APPROVED_PAPER_STRATEGIES: readonly ApprovedPaperStrategyDescriptor[] = [
   {
-    id: 'toxicity-aware-mm-paper',
+    id: PILOT_APPROVED_STRATEGY_ID,
     name: 'Execution Harness — Taker (crosses spread)',
     mode: 'PAPER_ONLY',
     summaryVi:
-      'ID cũ giữ để tương thích sổ cái. Hành vi hiện tại: mua YES ngay tại giá bán tốt nhất (best ask), không có mô hình tín hiệu OFI/VPIN nào chạy.',
+      'Chiến lược duy nhất được phê duyệt trong Public Beta: mua YES ngay tại giá bán tốt nhất (best ask) với giới hạn rủi ro nghiêm ngặt.',
     summaryEn:
-      'Legacy ID kept for ledger compatibility. Current behaviour: immediate BUY YES at best ask. No OFI/VPIN signal model runs in this beta.',
+      'Single approved Public Beta execution harness: immediate BUY YES at best ask under strict paper risk limits.',
     feeModel: 'Taker parabolic fee = 0.02 × p × (1-p) × notional, floor $0.001',
     queueAssumption: 'No queue: fills immediately at best ask, pays taker fee',
-  },
-  {
-    id: 'neg-risk-bundle-paper',
-    name: 'Execution Harness — Post-only (rests at best bid)',
-    mode: 'PAPER_ONLY',
-    summaryVi:
-      'ID cũ giữ để tương thích sổ cái. Hành vi hiện tại: đặt lệnh BUY giới hạn tại best bid và nằm chờ; beta chưa khớp lệnh chờ.',
-    summaryEn:
-      'Legacy ID kept for ledger compatibility. Current behaviour: rests a BUY limit order at best bid. Resting orders never auto-match in this beta.',
-    feeModel: 'Maker 0 bps — resting orders are never filled, so no fee is charged',
-    queueAssumption: 'Rests at best bid until manually cancelled or market settlement',
-  },
-  {
-    id: 'bayesian-fair-value-paper',
-    name: 'Execution Harness — Passive (rests below best bid)',
-    mode: 'PAPER_ONLY',
-    summaryVi:
-      'ID cũ giữ để tương thích sổ cái. Hành vi hiện tại: đặt lệnh BUY giới hạn thấp hơn best bid một bước giá và nằm chờ; không có mô hình định giá Bayes.',
-    summaryEn:
-      'Legacy ID kept for ledger compatibility. Current behaviour: rests a BUY limit one tick below best bid. No Bayesian fair-value model runs in this beta.',
-    feeModel: 'Maker 0 bps — resting orders are never filled, so no fee is charged',
-    queueAssumption: 'Rests one tick below best bid until manually cancelled or settlement',
   },
 ] as const;
 
@@ -133,6 +114,7 @@ export interface PolyBetaEnv {
   TENANT_PAPER_ENGINE: PolyBetaDoNamespace;
   ENVIRONMENT?: string;
   LIVE_TRADING_ENABLED?: string;
+  MAINTENANCE_MODE?: string;
   SIGNUP_GATE_MODE?: string;
   BETA_SIGNUP_ALLOWLIST?: string;
   BETA_SIGNUP_INVITES?: string;

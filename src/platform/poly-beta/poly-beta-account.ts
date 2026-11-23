@@ -55,6 +55,7 @@ export async function handleBetaDeleteAccount(
   // first so any concurrent request cannot re-authenticate or resurrect DO state.
   const tables = [
     'beta_sessions',
+    'beta_feedback',
     'beta_execution_logs',
     'beta_ledger_entries',
     'beta_fills',

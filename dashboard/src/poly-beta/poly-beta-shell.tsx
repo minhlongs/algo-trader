@@ -6,6 +6,7 @@ import { usePolyBetaSession } from './use-poly-beta-session';
 import { usePolyBetaMutations } from './use-poly-beta-mutations';
 import { PolyBetaLandingAuth } from './poly-beta-landing-auth';
 import { PolyBetaControlsHealth } from './poly-beta-controls-health';
+import { PolyBetaFeedbackPanel } from './poly-beta-feedback-panel';
 import { PolyBetaLedgerTables } from './poly-beta-ledger-tables';
 import { PolyBetaAccountDangerZone, PolyBetaHeader, PolyBetaSummaryCards } from './poly-beta-summary-cards';
 
@@ -105,6 +106,8 @@ export function PolyBetaShell() {
           onCancelOrder={mutations.cancelOrder}
           onSettleMarket={mutations.settleMarket}
         />
+
+        <PolyBetaFeedbackPanel lang={lang} authedRequest={session.authedRequest} />
 
         <PolyBetaAccountDangerZone
           lang={lang}
