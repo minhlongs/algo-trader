@@ -27,6 +27,9 @@ export const betaSignupSchema = z
       .regex(/[^A-Za-z0-9]/, 'Password must contain a special character'),
     acknowledgeSimulationAndRisk: z.literal(true),
     inviteToken: z.string().trim().min(32, 'Valid one-time invite token is required').max(128).optional(),
+    countryCode: z.string().trim().min(2).max(2).optional(),
+    regionCode: z.string().trim().min(1).max(8).optional(),
+    acknowledgeJurisdictionAndNonVpn: z.boolean().optional(),
   })
   .strict();
 

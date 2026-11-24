@@ -84,6 +84,8 @@ export async function buildAuthoritativeDashboardView(
         gammaApi: 'https://gamma-api.polymarket.com',
         clobApi: 'https://clob.polymarket.com',
         stalenessLimitMs: MARKET_STALENESS_LIMIT_MS,
+        accountingCurrency: 'USD' as const,
+        dataRightsStatus: 'HOLD' as const,
         mode: marketDataEnabled
           ? ('READ_ONLY_PUBLIC_PAPER_FEED' as const)
           : ('DISABLED_DEFAULT_DENY' as const),

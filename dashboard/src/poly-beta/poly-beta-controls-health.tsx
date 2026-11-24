@@ -123,7 +123,7 @@ export function PolyBetaControlsHealth({
           <p className="font-semibold text-slate-300">{t.provenanceTitle}</p>
           <p className="font-mono text-slate-400 break-words">
             {provenance
-              ? `${provenance.gammaApi} + ${provenance.clobApi} (${provenance.mode})`
+              ? `${provenance.gammaApi} + ${provenance.clobApi} (${provenance.mode}${provenance.dataRightsStatus ? `, DATA_LICENSE=${provenance.dataRightsStatus}` : ''})`
               : t.provenanceSourcesFallback}
           </p>
           <p className="text-slate-400 font-mono tabular-nums">

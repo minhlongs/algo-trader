@@ -15,6 +15,7 @@ import {
   runRepositoryBacktestAudit,
   type RepoRemoteState,
 } from '../src/desk/governance';
+import { evaluatePolymarketVenueEligibility } from '../src/desk/polymarket/venue-eligibility';
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -48,10 +49,20 @@ async function main(): Promise<void> {
     : baselineMap;
   const watchlistReport = diffWatchlistSnapshots(baselineMap, observedMap);
 
+  const venueGovernance = evaluatePolymarketVenueEligibility();
+
   const summary = {
-    ok: backtestAudit.passed,
+    ok: backtestAudit.passed && venueGovernance.liveTradingEnabled === false,
     backtestAudit,
     eodDiagnostics: eodSample,
+    venueGovernance: {
+      strategicBaseline: venueGovernance.strategicBaseline,
+      venueEligibility: venueGovernance.venueEligibility,
+      liveTradingEnabled: venueGovernance.liveTradingEnabled,
+      realMoneyTrading: venueGovernance.realMoneyTrading,
+      dataLicenseStatus: venueGovernance.dataLicenseStatus,
+      scopedGates: venueGovernance.scopedGates,
+    },
     watchlist: {
       repoCount: watchlistReport.repoCount,
       driftCount: watchlistReport.driftCount,
@@ -67,12 +78,16 @@ async function main(): Promise<void> {
       `[poly-governance-audit] Backtest Integrity: ${backtestAudit.passed ? 'PASS' : 'FAIL'} ` +
         `(scanned=${backtestAudit.scannedFiles}, findings=${backtestAudit.findings.length})\n` +
         `[poly-governance-audit] EOD Diagnostics Baseline: ${eodSample.status}\n` +
+        `[poly-governance-audit] Venue & Scoped Gates: VENUE_ELIGIBILITY=${venueGovernance.venueEligibility} ` +
+        `LIVE_TRADING_ENABLED=${String(venueGovernance.liveTradingEnabled)} ` +
+        `OFFLINE_ENGINEERING=${venueGovernance.scopedGates.OFFLINE_ENGINEERING} ` +
+        `RESEARCH_DATA_RIGHTS=${venueGovernance.scopedGates.RESEARCH_DATA_RIGHTS}\n` +
         `[poly-governance-audit] Watchlist Coverage: ${watchlistReport.repoCount}/10 canonical repos ` +
         `(drift=${watchlistReport.driftCount}, unreachable=${watchlistReport.unreachableCount})\n`,
     );
   }
 
-  if (!backtestAudit.passed) {
+  if (!summary.ok) {
     process.exitCode = 1;
   }
 }

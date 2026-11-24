@@ -132,6 +132,10 @@ export interface PolyBetaEnv {
   LIVE_TRADING_ENABLED?: string;
   MAINTENANCE_MODE?: string;
   MARKET_DATA_ENABLED?: string;
+  TARGET_MARKET?: string;
+  TARGET_VIETNAM_CUSTOMERS?: string;
+  PRODUCT_LANGUAGE?: string;
+  ACCOUNTING_CURRENCY?: string;
   SIGNUP_GATE_MODE?: string;
   BETA_SIGNUP_ALLOWLIST?: string;
   BETA_SIGNUP_INVITES?: string;

@@ -1,6 +1,6 @@
 /**
- * Setup guide Phase A: VPN, wallet, USDC, Polymarket account.
- * Customer-facing step-by-step from zero to funded Polymarket wallet.
+ * Setup guide Phase A: Jurisdiction & venue eligibility verification, wallet, USDC, Polymarket account.
+ * Customer-facing step-by-step for eligible international operators (zero VPN/proxy circumvention).
  */
 import { CopyBlock, CollapsibleItem, InfoBanner } from './guide-shared-components';
 import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
@@ -10,37 +10,32 @@ export function SetupVpnCrypto() {
     <section id="phase-a">
       <h2 className="text-xl font-bold text-white mb-2">Phase A: Accounts & Crypto</h2>
       <p className="text-sm text-onSurfaceVariant mb-6">
-        Skip this phase if you already have a funded Polymarket account.
+        Skip this phase if you already hold an eligible, verified Polymarket account in a permitted jurisdiction.
       </p>
 
       <div className="space-y-8">
-        {/* A1: VPN */}
+        {/* A1: Jurisdiction & Venue Eligibility */}
         <div id="vpn-setup">
           <p className="text-sm text-white mb-2">
-            <span className="text-primary font-bold">A1.</span> VPN Setup (required for restricted regions)
+            <span className="text-primary font-bold">A1.</span> Jurisdiction &amp; Venue Eligibility Check (Mandatory — Zero Circumvention)
           </p>
           <p className="text-sm text-onSurfaceVariant mb-3">
-            Polymarket is restricted in some countries. Use a VPN to access it.
+            Polymarket restricts trading by persons or entities residing in, located in, incorporated in, or controlled from Restricted Jurisdictions under its Terms of Use. Using VPNs, proxies, location spoofing, or nominee accounts to bypass geographic restrictions is strictly prohibited.
           </p>
           <div className="space-y-3">
-            <CollapsibleItem title="Option 1: Cloudflare WARP (free, recommended)">
+            <CollapsibleItem title="Step 1: Verify Official Polymarket Geoblock & Terms Eligibility">
               <div className="space-y-2">
-                <p>1. Download from <span className="text-primary">1.1.1.1</span> (iOS, Android, macOS, Windows)</p>
-                <p>2. Install and open the app</p>
-                <p>3. Toggle WARP ON</p>
-                <p>4. Verify: visit <span className="text-primary">polymarket.com</span> — should load without error</p>
-                <CopyBlock code={`# macOS: install via Homebrew
-brew install --cask cloudflare-warp
-
-# Or download from https://1.1.1.1`} />
+                <p>1. Review <span className="text-primary">polymarket.com/tos</span> and <span className="text-primary">docs.polymarket.com/api-reference/geoblock</span></p>
+                <p>2. Confirm your citizenship, residency, physical operating location, and legal entity are all outside Restricted Jurisdictions and compliant with domestic law</p>
+                <p>3. Run the official direct geoblock check (without any VPN, proxy, or relay):</p>
+                <CopyBlock code={`# Verify direct IP eligibility (must return "blocked": false without VPN/proxy)
+curl -s https://polymarket.com/api/geoblock`} />
               </div>
             </CollapsibleItem>
-            <CollapsibleItem title="Option 2: ProtonVPN (free)">
+            <CollapsibleItem title="Step 2: Server Location Never Substitutes for Operator Eligibility">
               <div className="space-y-2">
-                <p>1. Download from <span className="text-primary">protonvpn.com</span></p>
-                <p>2. Create free account</p>
-                <p>3. Connect to a US server</p>
-                <p>4. Verify: visit <span className="text-primary">polymarket.com</span></p>
+                <p>1. Hosting a cloud server in an unrestricted region (e.g., <span className="text-primary">eu-west-1</span>) never authorizes an ineligible operator or entity</p>
+                <p>2. If your jurisdiction or data-usage clearance is unresolved, keep <span className="text-yellow-400">LIVE_TRADING_ENABLED=false</span> and operate only in permitted offline simulation mode</p>
               </div>
             </CollapsibleItem>
           </div>
@@ -103,12 +98,12 @@ brew install --cask cloudflare-warp
         {/* A5: Polymarket */}
         <div id="polymarket-account">
           <p className="text-sm text-white mb-2">
-            <span className="text-primary font-bold">A5.</span> Polymarket Account
+            <span className="text-primary font-bold">A5.</span> Polymarket Account (Eligible Jurisdictions Only)
           </p>
           <div className="text-sm text-onSurfaceVariant space-y-2">
-            <p>1. Enable VPN &rarr; visit <span className="text-primary">polymarket.com</span></p>
+            <p>1. From a directly eligible jurisdiction (no VPN/proxy), visit <span className="text-primary">polymarket.com</span></p>
             <p>2. Log In &rarr; Connect Wallet &rarr; MetaMask</p>
-            <p>3. Deposit USDC into Polymarket</p>
+            <p>3. Complete any required platform onboarding / pUSD funding checks</p>
           </div>
         </div>
 

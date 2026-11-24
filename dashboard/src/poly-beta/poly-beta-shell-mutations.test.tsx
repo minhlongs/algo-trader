@@ -59,7 +59,7 @@ describe('PolyBetaShell mutations and locks', () => {
     // The success banner reports the server's realized settled PnL, not a
     // client-side payout estimate.
     const banner = await screen.findByTestId('status-banner');
-    expect(banner).toHaveTextContent('PnL Tất toán');
+    expect(banner).toHaveTextContent('Settled Redemption PnL');
     expect(banner).toHaveTextContent('+$0.7500');
   });
 
@@ -106,7 +106,7 @@ describe('PolyBetaShell mutations and locks', () => {
     });
 
     render(<PolyBetaShell />);
-    const cancelButtons = await screen.findAllByRole('button', { name: /hủy lệnh/i });
+    const cancelButtons = await screen.findAllByRole('button', { name: /^cancel$/i });
     act(() => { fireEvent.click(cancelButtons[0]); });
 
     const banner = await screen.findByTestId('status-banner');
@@ -114,6 +114,6 @@ describe('PolyBetaShell mutations and locks', () => {
     expect(banner).toHaveTextContent('Ledger locked');
     expect(banner).toHaveTextContent('LEDGER_LOCKED');
     // The lock releases, so the action is retryable.
-    await waitFor(() => expect(screen.getByRole('button', { name: /hủy lệnh/i })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: /^cancel$/i })).toBeEnabled());
   });
 });

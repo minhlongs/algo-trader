@@ -14,11 +14,29 @@
   "icDay0": null,
   "icClockActive": false,
   "rawPdfAvailableLocally": false,
-  "sourceAuthority": "POLY ALPHA HUNTER v4 (reconciled via #POLY-G8.4 spec and docs/poly-g7/01-IC-PDF-TO-REPO-TRACEABILITY.md)",
+  "sourceAuthority": "POLY ALPHA HUNTER v4 (reconciled via #POLY-G8.4 spec, #POLY-G10, and #POLY-G10.5 global-first strategic rebaseline)",
+  "strategicBaseline": {
+    "releaseId": "POLY-G10.5",
+    "rebaselinedFromMainSha": "3d4977c2c42a4f02726ce4aed0114573e376b454",
+    "TARGET_MARKET": "INTERNATIONAL",
+    "TARGET_VIETNAM_CUSTOMERS": false,
+    "PRODUCT_LANGUAGE": "en",
+    "ACCOUNTING_CURRENCY": "USD",
+    "PRIMARY_VENUE": "POLYMARKET_INTERNATIONAL",
+    "LEGAL_FRAMEWORK": "JURISDICTION_AWARE",
+    "VENUE_ELIGIBILITY": "UNKNOWN"
+  },
+  "scopedGovernanceGates": {
+    "OFFLINE_ENGINEERING": "PASS",
+    "RESEARCH_DATA_RIGHTS": "HOLD",
+    "INTERNATIONAL_PRODUCT_ELIGIBILITY": "HOLD",
+    "OPERATOR_JURISDICTION_ELIGIBILITY": "UNKNOWN",
+    "LIVE_TRADING_ELIGIBILITY": "DISABLED"
+  },
   "governanceLocks": {
     "LIVE_TRADING_ENABLED": false,
     "DATA_LICENSE": "HOLD",
-    "VIETNAM_G12": "HOLD",
+    "VIETNAM_G12": "SUPERSEDED_BY_JURISDICTION_AWARE_GATES",
     "INFRA_BUDGET": "HOLD",
     "VPS_R2_ACTIVATION": "HOLD",
     "ECONOMIC_G11": "HOLD",
@@ -109,9 +127,9 @@
       "engineeringStatus": "DESIGN_ONLY",
       "operationalPermissionStatus": "BLOCKED_BY_LEGAL",
       "empiricalStatus": "HOLD",
-      "blockingGates": ["ECONOMIC_G11", "LEGAL_G12", "FOUNDER_G13", "ISSUE_272_SIGNING_PARITY"],
+      "blockingGates": ["ECONOMIC_G11", "OPERATOR_JURISDICTION_ELIGIBILITY", "LIVE_TRADING_ELIGIBILITY", "LEGAL_G12", "FOUNDER_G13", "ISSUE_272_SIGNING_PARITY"],
       "acceptanceConditions": [
-        "Independent Vietnam legal counsel clearance (LEGAL_G12)",
+        "Jurisdiction-aware operator, entity, and venue eligibility clearance (OPERATOR_JURISDICTION_ELIGIBILITY & LEGAL_G12)",
         "IC economic clearance (ECONOMIC_G11)",
         "Explicit Founder sign-off (FOUNDER_G13)",
         "Heartbeat 10s, HTTP 425 cooldown, GhostGuard emergency-stop, and ExchangeV3 signing drills passed"

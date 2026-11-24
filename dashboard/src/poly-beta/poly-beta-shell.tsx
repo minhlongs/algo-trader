@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { POLY_BETA_COPY, type BetaLang } from './poly-beta-copy';
+import { DEFAULT_BETA_LANG, POLY_BETA_COPY, type BetaLang } from './poly-beta-copy';
 import { getBannerToneClasses } from './poly-beta-helpers';
 import { usePolyBetaSession } from './use-poly-beta-session';
 import { usePolyBetaMutations } from './use-poly-beta-mutations';
@@ -11,7 +11,7 @@ import { PolyBetaLedgerTables } from './poly-beta-ledger-tables';
 import { PolyBetaAccountDangerZone, PolyBetaHeader, PolyBetaSummaryCards } from './poly-beta-summary-cards';
 
 export function PolyBetaShell() {
-  const [lang, setLang] = useState<BetaLang>('vi');
+  const [lang, setLang] = useState<BetaLang>(DEFAULT_BETA_LANG);
   const session = usePolyBetaSession(lang);
   const mutations = usePolyBetaMutations(session, lang);
   const t = POLY_BETA_COPY[lang];

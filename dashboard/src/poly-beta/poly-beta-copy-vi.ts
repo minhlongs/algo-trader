@@ -1,5 +1,5 @@
 /**
- * POLY-G5 Public Beta — Vietnamese Copy (default language).
+ * POLY-G5 / POLY-G10.5 International Paper Beta — Vietnamese Copy (secondary toggle).
  */
 
 export const POLY_BETA_COPY_VI = {
@@ -22,7 +22,9 @@ export const POLY_BETA_COPY_VI = {
   showPassword: 'Hiện',
   hidePassword: 'Ẩn',
   noPasswordResetNotice: 'Lưu ý: Bản Public Beta không hỗ trợ đặt lại mật khẩu qua email. Hãy lưu mật khẩu vào trình quản lý mật khẩu; nếu quên, bạn cần tạo tài khoản Paper mới.',
-  ackCheckbox: 'Tôi hiểu đây là phần mềm mô phỏng Paper-Only ($0 tiền thật), kết quả mô phỏng không đảm bảo lợi nhuận thật, và hệ thống không bao giờ yêu cầu khóa riêng hay seed phrase.',
+  countryCodeLabel: 'Quốc gia cư trú / vận hành (Mã ISO 2 ký tự, không hỗ trợ khu vực bị hạn chế)',
+  countryCodeHint: 'Nhập mã ISO 3166-1 alpha-2 hợp lệ (ví dụ: CH, SE, ES, MX). Không tiếp nhận VN, US, GB, SG, EU bị giới hạn hoặc OFAC.',
+  ackCheckbox: 'Tôi hiểu đây là phần mềm mô phỏng Paper-Only ($0 USD tiền thật), không lưu ký, không thực thi lệnh hộ người dùng, không cam kết lợi nhuận, không dùng VPN/proxy vượt rào địa lý, và thuộc khu vực pháp lý đủ điều kiện.',
   submitSignup: 'Khởi tạo Danh mục Ảo $100',
   submitLogin: 'Đăng nhập vào Bảng điều khiển',
   submitting: 'Đang xử lý...',
