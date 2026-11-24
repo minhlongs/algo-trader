@@ -16,13 +16,21 @@ import type {
   RedemptionResult,
 } from './gnosis-ctf-settlement-types';
 
+export type RelayerExecutionMode = 'offline-paper' | 'live';
+
 export class GnosisCtfSettlementRelayer extends EventEmitter {
   private readonly nonceManager: RelayerNonceManager;
+  private readonly mode: RelayerExecutionMode;
   private conditions = new Map<string, ConditionPayoutReport>();
 
-  constructor(relayerAddress: string, initialNonce: number = 0) {
+  constructor(
+    relayerAddress: string,
+    initialNonce: number = 0,
+    mode: RelayerExecutionMode = 'offline-paper',
+  ) {
     super();
     this.nonceManager = new RelayerNonceManager(relayerAddress, initialNonce);
+    this.mode = mode;
   }
 
   public registerCondition(report: ConditionPayoutReport): void {
@@ -47,6 +55,11 @@ export class GnosisCtfSettlementRelayer extends EventEmitter {
   }
 
   public async executeRedemption(position: PositionHolding): Promise<RedemptionResult | null> {
+    if (this.mode === 'live') {
+      throw new Error(
+        'GnosisCtfSettlementRelayer live mode is disabled: Relayer V2 broadcast and CtfEthCallPreflight are not enabled',
+      );
+    }
     const payoutUsd = this.calculatePayout(position);
     if (payoutUsd <= 0) return null;
 

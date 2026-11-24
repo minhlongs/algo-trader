@@ -7,82 +7,30 @@
  * governance gates lock to `INSUFFICIENT_DATA` / `HOLD` / `DISABLED`.
  */
 
+import type {
+  FinalVerdictKey,
+  FinalVerdictValue,
+  ICEmpiricalSamples,
+  ICKpiMetricResult,
+  ICKpiStatus,
+  ICScorecardInput,
+  ICScorecardReport,
+} from './ic-kpi-scorecard-types';
+
+export type {
+  FinalVerdictKey,
+  FinalVerdictValue,
+  ICEmpiricalSamples,
+  ICKpiMetricResult,
+  ICKpiStatus,
+  ICScorecardInput,
+  ICScorecardReport,
+};
+
 export const UNKNOWN_EMPIRICAL_LABEL = 'UNKNOWN — INSUFFICIENT EMPIRICAL SAMPLE';
 export const MIN_RECORDED_L2_DAYS = 30;
 export const MIN_QUALIFYING_MAKER_FILLS = 500;
 export const MIN_RESOLVED_OOS_FORECASTS = 150;
-
-export type ICKpiStatus = 'PASS' | 'FAIL' | 'UNKNOWN_INSUFFICIENT_EMPIRICAL_SAMPLE';
-
-export interface ICKpiMetricResult {
-  id: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
-  name: string;
-  status: ICKpiStatus;
-  label: string;
-  observed: string;
-  threshold: string;
-  detail: string;
-}
-
-export type FinalVerdictKey =
-  | 'ARCHITECTURE_PARITY'
-  | 'L2_CAPTURE_READINESS'
-  | '30_DAY_L2_DATA'
-  | 'MAKER_ALPHA'
-  | 'NEGRISK_ALPHA'
-  | 'MARKET_BLIND_ALPHA'
-  | 'ECONOMIC_G11'
-  | 'LEGAL_G12'
-  | 'FOUNDER_G13'
-  | 'REAL_MONEY_TRADING';
-
-export type FinalVerdictValue = 'PASS' | 'FAIL' | 'INSUFFICIENT_DATA' | 'GO' | 'HOLD' | 'DISABLED' | 'ENABLED';
-
-export interface ICEmpiricalSamples {
-  recordedL2Days: number;
-  qualifyingMakerFills: number;
-  resolvedOosForecasts: number;
-}
-
-export interface ICScorecardInput {
-  generatedAtIso?: string;
-  mode: 'sim' | 'pilot';
-  strategyClass: 'mm' | 'event';
-  samples: ICEmpiricalSamples;
-  netPnlBootstrapCiLowerPusd?: number;
-  sortinoRatio?: number;
-  /** Annualized deflated Sharpe (>= 1.5 per IC PDF p. 59) OR pass `deflatedSharpeProbability` (>= 0.95). */
-  deflatedSharpe?: number;
-  deflatedSharpeProbability?: number;
-  maxDrawdownMtmPct?: number;
-  profitFactor?: number;
-  fillRateDivergencePct?: number;
-  multiLegCompletionPct?: number;
-  realizedSpread60sPlusRebateRewardBps?: number;
-  bssOos?: number;
-  ece?: number;
-  weightedAvgLockupDays?: number;
-  lockedCapitalPct?: number;
-  stress15xSlippageNetPnlPusd?: number;
-  stress15xCancelLatencyNetPnlPusd?: number;
-  stressMinus50PctRewardsNetPnlPusd?: number;
-  deployableCapacityPusd?: number;
-  clusterWorstCaseLossNavPct?: number;
-  ghostFillCount?: number;
-  maxTokenDrift?: number;
-  architectureParityPassed?: boolean;
-  l2CaptureReady?: boolean;
-  legalG12Approved?: boolean;
-  founderG13Approved?: boolean;
-}
-
-export interface ICScorecardReport {
-  generatedAtIso: string;
-  empiricalSampleGatePassed: boolean;
-  samples: ICEmpiricalSamples;
-  kpis: ICKpiMetricResult[];
-  verdicts: Record<FinalVerdictKey, FinalVerdictValue>;
-}
 
 const finite = (v: number | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -115,18 +63,66 @@ export function evaluateICKpiScorecard(input: ICScorecardInput): ICScorecardRepo
   const ddMax = input.mode === 'pilot' ? 2.5 : 4.0;
   const pfMin = input.strategyClass === 'event' ? 1.6 : 1.35;
 
-  const k1 = finite(input.netPnlBootstrapCiLowerPusd) && input.netPnlBootstrapCiLowerPusd > 0;
+  const shadowDaysOk = input.paperShadowDays === undefined || (finite(input.paperShadowDays) && input.paperShadowDays >= 21);
+  const concentrationOk =
+    input.totalNetPnlPusd === undefined || input.maxSingleClusterNetPnlPusd === undefined
+      ? true
+      : finite(input.totalNetPnlPusd) &&
+        finite(input.maxSingleClusterNetPnlPusd) &&
+        input.totalNetPnlPusd - input.maxSingleClusterNetPnlPusd > 0;
+  const k1 =
+    finite(input.netPnlBootstrapCiLowerPusd) &&
+    input.netPnlBootstrapCiLowerPusd > 0 &&
+    shadowDaysOk &&
+    concentrationOk;
   const dsrPass =
-    (finite(input.deflatedSharpeProbability) && input.deflatedSharpeProbability >= 0.95) ||
-    (finite(input.deflatedSharpe) && input.deflatedSharpe >= 1.5);
+    input.deflatedSharpe !== undefined
+      ? finite(input.deflatedSharpe) &&
+        input.deflatedSharpe >= 1.5 &&
+        (input.deflatedSharpeProbability === undefined ||
+          (finite(input.deflatedSharpeProbability) && input.deflatedSharpeProbability >= 0.95))
+      : finite(input.deflatedSharpeProbability) && input.deflatedSharpeProbability >= 0.95;
   const k2 = finite(input.sortinoRatio) && input.sortinoRatio >= 2.0 && dsrPass;
   const k3 = finite(input.maxDrawdownMtmPct) && input.maxDrawdownMtmPct >= 0 && input.maxDrawdownMtmPct < ddMax;
   const k4 = finite(input.profitFactor) && input.profitFactor >= pfMin;
-  const k5 = finite(input.fillRateDivergencePct) && finite(input.multiLegCompletionPct) && input.fillRateDivergencePct >= 0 && input.fillRateDivergencePct < 20 && input.multiLegCompletionPct >= 92;
+  const postOnlyRejectOk =
+    input.postOnlyRejectedPct === undefined ||
+    (finite(input.postOnlyRejectedPct) && input.postOnlyRejectedPct >= 0 && input.postOnlyRejectedPct <= 30);
+  const cancelLatencyOk =
+    input.cancelLatencyP99Ms === undefined ||
+    (finite(input.cancelLatencyP99Ms) && input.cancelLatencyP99Ms >= 0 && input.cancelLatencyP99Ms < 250);
+  const k5 =
+    finite(input.fillRateDivergencePct) &&
+    finite(input.multiLegCompletionPct) &&
+    input.fillRateDivergencePct >= 0 &&
+    input.fillRateDivergencePct < 20 &&
+    input.multiLegCompletionPct >= 92 &&
+    postOnlyRejectOk &&
+    cancelLatencyOk;
   const k6 = finite(input.realizedSpread60sPlusRebateRewardBps) && input.realizedSpread60sPlusRebateRewardBps >= 15 && s.qualifyingMakerFills >= MIN_QUALIFYING_MAKER_FILLS;
   const k7 = finite(input.bssOos) && finite(input.ece) && input.bssOos >= 0.02 && input.ece >= 0 && input.ece < 0.035 && s.resolvedOosForecasts >= MIN_RESOLVED_OOS_FORECASTS;
-  const k8 = finite(input.weightedAvgLockupDays) && finite(input.lockedCapitalPct) && input.weightedAvgLockupDays >= 0 && input.weightedAvgLockupDays < 10 && input.lockedCapitalPct >= 0 && input.lockedCapitalPct < 25;
-  const k9 = finite(input.stress15xSlippageNetPnlPusd) && finite(input.stress15xCancelLatencyNetPnlPusd) && finite(input.stressMinus50PctRewardsNetPnlPusd) && input.stress15xSlippageNetPnlPusd > 0 && input.stress15xCancelLatencyNetPnlPusd > 0 && input.stressMinus50PctRewardsNetPnlPusd > 0;
+  const lockedOver30dOk =
+    input.lockedOver30dPct === undefined ||
+    (finite(input.lockedOver30dPct) && input.lockedOver30dPct >= 0 && input.lockedOver30dPct <= 40);
+  const k8 =
+    finite(input.weightedAvgLockupDays) &&
+    finite(input.lockedCapitalPct) &&
+    input.weightedAvgLockupDays >= 0 &&
+    input.weightedAvgLockupDays < 10 &&
+    input.lockedCapitalPct >= 0 &&
+    input.lockedCapitalPct < 25 &&
+    lockedOver30dOk;
+  const halfTickOk =
+    input.stressPlusHalfTickNetPnlPusd === undefined ||
+    (finite(input.stressPlusHalfTickNetPnlPusd) && input.stressPlusHalfTickNetPnlPusd > 0);
+  const k9 =
+    finite(input.stress15xSlippageNetPnlPusd) &&
+    finite(input.stress15xCancelLatencyNetPnlPusd) &&
+    finite(input.stressMinus50PctRewardsNetPnlPusd) &&
+    input.stress15xSlippageNetPnlPusd > 0 &&
+    input.stress15xCancelLatencyNetPnlPusd > 0 &&
+    input.stressMinus50PctRewardsNetPnlPusd > 0 &&
+    halfTickOk;
   const k10 = finite(input.deployableCapacityPusd) && input.deployableCapacityPusd >= 25_000;
   const k11 = finite(input.clusterWorstCaseLossNavPct) && finite(input.ghostFillCount) && finite(input.maxTokenDrift) && input.clusterWorstCaseLossNavPct >= 0 && input.clusterWorstCaseLossNavPct < 3.0 && input.ghostFillCount === 0 && input.maxTokenDrift >= 0 && input.maxTokenDrift <= 1;
 

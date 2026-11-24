@@ -35,6 +35,12 @@ export interface LogOddsAsQuotePair {
   askProbability: number;
   bidPriceMicro: number;
   askPriceMicro: number;
+  /** Cash-collateralized two-sided BUY-YES price in micro-pUSD (`bidPriceMicro`). */
+  buyYesPriceMicro: number;
+  /** Cash-collateralized two-sided BUY-NO price in micro-pUSD (`1_000_000 - askPriceMicro`). */
+  buyNoPriceMicro: number;
+  /** Combined pair cost in micro-pUSD; strictly `< 1_000_000` (`< 1.00 pUSD`). */
+  combinedPairCostMicro: number;
   halfSpreadProbability: number;
   reservationLogOdds: number;
   optimalHalfSpreadLogOdds: number;
@@ -99,6 +105,10 @@ export class LogOddsAvellanedaStoikovMarketMaker {
     const bidPriceMicro = Math.min(980_000 - grid, Math.max(20_000, rawBidMicro));
     const askPriceMicro = Math.min(980_000, Math.max(bidPriceMicro + grid, rawAskMicro));
 
+    const buyYesPriceMicro = bidPriceMicro;
+    const buyNoPriceMicro = 1_000_000 - askPriceMicro;
+    const combinedPairCostMicro = buyYesPriceMicro + buyNoPriceMicro;
+
     const bidProbability = bidPriceMicro / 1_000_000;
     const askProbability = askPriceMicro / 1_000_000;
     const halfSpreadProbability = (askProbability - bidProbability) / 2;
@@ -108,12 +118,30 @@ export class LogOddsAvellanedaStoikovMarketMaker {
       askProbability,
       bidPriceMicro,
       askPriceMicro,
+      buyYesPriceMicro,
+      buyNoPriceMicro,
+      combinedPairCostMicro,
       halfSpreadProbability,
       reservationLogOdds,
       optimalHalfSpreadLogOdds,
       inventorySkewLogOdds,
     };
   }
+}
+
+/**
+ * Returns true when both accumulated YES and NO inventory exceed the `merge_pusd`
+ * threshold (default 20 pUSD) so paired shares can be merged back into pUSD collateral.
+ */
+export function shouldMergePusd(
+  yesShares: number,
+  noShares: number,
+  thresholdPusd = 20,
+): boolean {
+  if (!Number.isFinite(yesShares) || !Number.isFinite(noShares) || !Number.isFinite(thresholdPusd)) {
+    return false;
+  }
+  return Math.min(Math.max(0, yesShares), Math.max(0, noShares)) >= Math.max(0, thresholdPusd);
 }
 
 /**

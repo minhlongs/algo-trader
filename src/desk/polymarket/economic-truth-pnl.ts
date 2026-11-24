@@ -11,77 +11,16 @@
  * Exposes liquidity rewards dependency via `netEconomicPnlExRewardsPusd`.
  */
 
+import type {
+  EconomicPnLBreakdown,
+  EconomicPnLInput,
+  EconomicPnLItemizedCosts,
+} from './economic-truth-pnl-types';
+
+export type { EconomicPnLBreakdown, EconomicPnLInput, EconomicPnLItemizedCosts };
+
 export const DEFAULT_OPPORTUNITY_COST_ANNUAL_RATE = 0.045;
 const DAYS_PER_YEAR = 365;
-
-export interface EconomicPnLInput {
-  initialCapitalPusd: number;
-  pusdBalance: number;
-  executableBidValuePusd: number;
-  /** Gross PnL from closed trades before explicit trading costs. */
-  grossClosedTradingPnlPusd: number;
-  /** Gross PnL realized post-`redeemPositions` on resolved markets. */
-  grossSettledPnlPusd: number;
-  /** Explicit redemption/settlement cost deducted from settled PnL (default 0). */
-  settledRedemptionCostPusd?: number;
-  makerRebatesPusd: number;
-  liquidityRewardsPusd: number;
-  /** Itemized explicit & economic costs (non-negative pUSD). */
-  realizedFeesPusd: number;
-  estimatedFeesPusd: number;
-  slippagePusd: number;
-  relayerGasPusd: number;
-  inferenceCostPusd: number;
-  infraCostPusd: number;
-  /** Average capital locked in open/unsettled positions (pUSD). */
-  lockedCapitalPusd: number;
-  /** Weighted-average capital lockup duration in days. */
-  weightedAvgLockupDays: number;
-  /** Additional UMA dispute lockup buffer in days (default 0). */
-  umaDisputeLockupDays?: number;
-  /** Annual opportunity cost rate on locked capital (default 0.045 = 4.5%/yr). */
-  opportunityCostAnnualRate?: number;
-  /** Optional explicit override for base opportunity cost (pUSD). */
-  opportunityCostPusd?: number;
-  /** Optional explicit override for UMA dispute lockup cost (pUSD). */
-  umaDisputeLockupCostPusd?: number;
-  /** Total allocated capital denominator for capitalAdjustedReturnPct (default initialCapitalPusd). */
-  totalAllocatedCapitalPusd?: number;
-}
-
-export interface EconomicPnLItemizedCosts {
-  realizedFeesPusd: number;
-  estimatedFeesPusd: number;
-  slippagePusd: number;
-  relayerGasPusd: number;
-  inferenceCostPusd: number;
-  infraCostPusd: number;
-  opportunityCostPusd: number;
-  umaDisputeLockupCostPusd: number;
-  totalCostsPusd: number;
-}
-
-export interface EconomicPnLBreakdown {
-  /** 1. Mark-to-market PnL: `pUSD + Executable Bid Value - initialCapital`. */
-  mtmPnlPusd: number;
-  /** 2. Realized trading PnL: closed trades net of explicit trading fees & slippage. */
-  realizedTradingPnlPusd: number;
-  /** 3. Settled PnL: post-`redeemPositions` on resolved markets. */
-  settledPnlPusd: number;
-  /** 4. Capital-adjusted return (%): net economic PnL / total allocated capital * 100. */
-  capitalAdjustedReturnPct: number;
-  /** 5. Annualized return on capital tied up (%) accounting for lockup + UMA dispute days. */
-  returnOnCapitalTiedUpPct: number;
-  /** Gross trading + rebates + rewards minus all itemized costs. */
-  netEconomicPnlPusd: number;
-  /** Strictly excludes liquidity rewards to expose rewards dependency. */
-  netEconomicPnlExRewardsPusd: number;
-  /** True when positive economic PnL depends on liquidity rewards. */
-  isRewardsDependent: boolean;
-  effectiveLockupDays: number;
-  opportunityCostAnnualRate: number;
-  costs: EconomicPnLItemizedCosts;
-}
 
 function assertFinite(name: string, value: number): void {
   if (!Number.isFinite(value)) {
@@ -157,21 +96,38 @@ export function computeCanonicalEconomicPnL(input: EconomicPnLInput): EconomicPn
   const netEconomicPnlExRewardsPusd =
     input.grossClosedTradingPnlPusd + settledPnlPusd + input.makerRebatesPusd - totalCostsPusd;
 
+  const maxDrawdownPct = input.maxDrawdownPct ?? 0;
+  const tailLossNavPct = input.tailLossNavPct ?? 0;
+  assertNonNegative('maxDrawdownPct', maxDrawdownPct);
+  assertNonNegative('tailLossNavPct', tailLossNavPct);
+
   const capitalAdjustedReturnPct =
     allocatedCapitalPusd > 0 ? (netEconomicPnlPusd / allocatedCapitalPusd) * 100 : 0;
+  const riskPenaltyPct = Math.max(maxDrawdownPct, tailLossNavPct);
+  const riskAdjustedCapitalReturnPct = capitalAdjustedReturnPct / (1 + riskPenaltyPct / 100);
 
   const effectiveLockupDays = input.weightedAvgLockupDays + umaDisputeLockupDays;
   const returnOnCapitalTiedUpPct =
     input.lockedCapitalPusd > 0 && effectiveLockupDays > 0
       ? (netEconomicPnlPusd / input.lockedCapitalPusd) * (DAYS_PER_YEAR / effectiveLockupDays) * 100
       : 0;
+  const edge = input.lockedCapitalPusd > 0 ? netEconomicPnlPusd / input.lockedCapitalPusd : 0;
+  const rawCompoundAnnualizedRocPct =
+    input.lockedCapitalPusd > 0 && effectiveLockupDays > 0 && edge > -1 && edge < 1
+      ? (Math.pow(1 + edge / (1 - edge), DAYS_PER_YEAR / effectiveLockupDays) - 1) * 100
+      : returnOnCapitalTiedUpPct;
+  const compoundAnnualizedRocPct = Number.isFinite(rawCompoundAnnualizedRocPct)
+    ? rawCompoundAnnualizedRocPct
+    : returnOnCapitalTiedUpPct;
 
   return {
     mtmPnlPusd: round4(mtmPnlPusd),
     realizedTradingPnlPusd: round4(realizedTradingPnlPusd),
     settledPnlPusd: round4(settledPnlPusd),
     capitalAdjustedReturnPct: round4(capitalAdjustedReturnPct),
+    riskAdjustedCapitalReturnPct: round4(riskAdjustedCapitalReturnPct),
     returnOnCapitalTiedUpPct: round4(returnOnCapitalTiedUpPct),
+    compoundAnnualizedRocPct: round4(compoundAnnualizedRocPct),
     netEconomicPnlPusd: round4(netEconomicPnlPusd),
     netEconomicPnlExRewardsPusd: round4(netEconomicPnlExRewardsPusd),
     isRewardsDependent: netEconomicPnlPusd > 0 && netEconomicPnlExRewardsPusd <= 0,

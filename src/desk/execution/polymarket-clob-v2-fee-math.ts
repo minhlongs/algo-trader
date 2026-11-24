@@ -36,15 +36,17 @@ export function calcQuadraticTakerFeeRateV2(
   return Math.min(rawRate, CLOB_V2_MAX_BASE_FEE_BPS / 10_000);
 }
 
-/** CLOB V2 quadratic taker fee in pUSD for `contracts` shares at `probability` price. */
+/** CLOB V2 quadratic taker fee in pUSD for `contracts` shares at `probability` price (rounded to 5 decimals, 0.00001 pUSD floor). */
 export function calcQuadraticTakerFeeV2(
   category: PolymarketCategory,
   probability: number,
   contracts: number,
   postOnly = false,
 ): number {
-  if (postOnly || contracts <= 0) return 0;
-  return contracts * calcQuadraticTakerFeeRateV2(category, probability, false);
+  if (postOnly || !Number.isFinite(contracts) || contracts <= 0) return 0;
+  const raw = contracts * calcQuadraticTakerFeeRateV2(category, probability, false);
+  const rounded = Math.round(raw * 100_000) / 100_000;
+  return rounded < 0.00001 ? 0 : rounded;
 }
 
 /** CLOB V2 maker rebate in pUSD when a passive order is filled by a taker. */

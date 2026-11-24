@@ -110,7 +110,7 @@ export function buildAllGoKpiInput(): KpiEvaluationInput {
     { eventClusterId: 'cluster-f', netPnlPusd: -90, feeAndSlippagePusd: 10, notionalPusd: 1_000 },
   ];
 
-  const markouts: KpiMakerMarkoutSample[] = Array.from({ length: 12 }, () => ({
+  const markouts: KpiMakerMarkoutSample[] = Array.from({ length: 500 }, () => ({
     side: 'yes' as const,
     fillPrice: 0.50,
     midAt60s: 0.502,
@@ -118,7 +118,7 @@ export function buildAllGoKpiInput(): KpiEvaluationInput {
     liquidityRewardBps: 2,
   }));
 
-  const forecasts: KpiCalibrationSample[] = Array.from({ length: 24 }, (_, idx) => {
+  const forecasts: KpiCalibrationSample[] = Array.from({ length: 150 }, (_, idx) => {
     const outcome: 0 | 1 = idx % 2 === 0 ? 1 : 0;
     return {
       modelProb: outcome === 1 ? 0.985 : 0.015,
