@@ -103,7 +103,7 @@ describe('Polymarket 11 Governance KPIs Verdicts (GO / NO-GO / NOT ENOUGH DATA)'
         postOnlyRejected: 9,
       },
       adverseSelection: {
-        markouts: Array.from({ length: 12 }, () => ({
+        markouts: Array.from({ length: 500 }, () => ({
           side: 'yes' as const,
           fillPrice: 0.55,
           midAt60s: 0.52,
@@ -112,7 +112,7 @@ describe('Polymarket 11 Governance KPIs Verdicts (GO / NO-GO / NOT ENOUGH DATA)'
         })),
       },
       calibration: {
-        forecasts: Array.from({ length: 24 }, (_, idx) => ({
+        forecasts: Array.from({ length: 150 }, (_, idx) => ({
           modelProb: 0.5,
           marketProb: idx % 2 === 0 ? 0.9 : 0.1,
           outcome: (idx % 2 === 0 ? 1 : 0) as 0 | 1,

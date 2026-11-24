@@ -44,6 +44,8 @@ export interface SettleBundleParams {
   positions: OpenPosition[];
   emitTrade: (trade: TradeEvent) => void;
   ctfPreflight?: CtfEthCallPreflight;
+  /** When true, fail closed if `ctfPreflight` is omitted (required outside offline paper mode). */
+  requirePreflight?: boolean;
   stats: BundlePreflightStats;
 }
 
@@ -108,13 +110,20 @@ async function runBundlePreflight(
 
 /** Emits fills, verifies `eth_call` preflight when configured, settles complete baskets, and tracks residuals. */
 export async function settleOrRecordBundle(params: SettleBundleParams): Promise<void> {
-  const { event, nowMs, totalOutcomeCount, book, cfg, orderManager, strategyName, positions, emitTrade, ctfPreflight, stats } = params;
+  const { event, nowMs, totalOutcomeCount, book, cfg, orderManager, strategyName, positions, emitTrade, ctfPreflight, requirePreflight, stats } = params;
   const eventId = event.id;
   const fills = book.filledLegs(eventId);
   for (const fill of fills) emitBundleFill(fill, strategyName, emitTrade);
 
   if (book.isComplete(eventId)) {
     const qty = book.convertibleQuantity(eventId);
+    if (qty > 0 && requirePreflight && !ctfPreflight) {
+      stats.preflightBlocked += 1;
+      book.markKilled(eventId);
+      logger.warn('Bundle settlement blocked: eth_call preflight required but unconfigured', strategyName, { eventId });
+      for (const position of book.toPositions(eventId)) positions.push(position);
+      return;
+    }
     if (qty > 0 && ctfPreflight) {
       const amountRaw = BigInt(Math.max(1, Math.round(qty * 1e6)));
       const sim = await runBundlePreflight(event, fills, amountRaw, totalOutcomeCount, ctfPreflight);

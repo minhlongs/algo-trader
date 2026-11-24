@@ -152,7 +152,14 @@ export function runNineScenarioStressSuite(input: NineScenarioStressInput): Nine
     riskBudget: { maxNotionalUsd: 100, currentDrawdownPct: 0.5 },
   };
 
-  const staleHalted = feedAgeMs > STALE_FEED_HALT_THRESHOLD_MS;
+  const staleVerdict = evaluatePolyRisk(intent, {
+    ...baseState,
+    marketData: {
+      observedAtMs: nowMs - feedAgeMs,
+      freshnessPolicy: { maxMarketDataAgeMs: STALE_FEED_HALT_THRESHOLD_MS },
+    },
+  });
+  const staleHalted = !staleVerdict.allowed && staleVerdict.reason === 'STALE_MARKET_DATA';
   const http425 = classifyClobV2SubmitResponse(425, { error: 'engine restarting' }, nowMs);
   const cooldown = new EngineRestartCooldown();
   if (http425.kind === 'engine-restarting') cooldown.noteEngineRestart(nowMs);
