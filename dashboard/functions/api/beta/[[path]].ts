@@ -145,7 +145,8 @@ export const onRequest: PagesFunction<BetaPagesProxyEnv> = async ({ request, env
   const clientCountry = ((typeof cfMeta?.country === 'string' ? cfMeta.country : request.headers.get('CF-IPCountry')) ?? '').trim().toUpperCase();
   const clientRegion = (typeof cfMeta?.regionCode === 'string' ? cfMeta.regionCode : '').trim().toUpperCase();
   const proxySecret = env.POLY_BETA_PROXY_SECRET?.trim();
-  if (clientIp && proxySecret) {
+  const hasPipe = (clientIp?.includes('|') ?? false) || clientCountry.includes('|') || clientRegion.includes('|');
+  if (clientIp && proxySecret && !hasPipe) {
     const tsRaw = String(Date.now());
     const sig = await signForwardedClientContext(proxySecret, clientIp, clientCountry, clientRegion, tsRaw);
     upstreamHeaders.set('X-Poly-Beta-Client-IP', clientIp);

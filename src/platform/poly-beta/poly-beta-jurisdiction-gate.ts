@@ -65,8 +65,12 @@ export async function resolveEdgeCountryAndRegion(
     const forwardedRegionRaw = request.headers.get('X-Poly-Beta-Client-Region')?.trim() ?? '';
     const tsRaw = request.headers.get('X-Poly-Beta-Proxy-Ts')?.trim() ?? '';
     const sig = request.headers.get('X-Poly-Beta-Proxy-Sig')?.trim();
+    const hasDelimiter =
+      (forwardedIp?.includes('|') ?? false) ||
+      forwardedCountryRaw.includes('|') ||
+      forwardedRegionRaw.includes('|');
     const ts = DIGITS_ONLY_RE.test(tsRaw) ? Number.parseInt(tsRaw, 10) : Number.NaN;
-    if (forwardedIp && sig && Number.isFinite(ts) && Math.abs(nowMs - ts) <= PROXY_SIG_MAX_SKEW_MS) {
+    if (!hasDelimiter && forwardedIp && sig && Number.isFinite(ts) && Math.abs(nowMs - ts) <= PROXY_SIG_MAX_SKEW_MS) {
       const expected = await hmacSha256Hex(secret, `${forwardedIp}|${forwardedCountryRaw}|${forwardedRegionRaw}|${tsRaw}`);
       if (timingSafeHexEqual(sig, expected)) {
         const country = normalizeCountryCode(forwardedCountryRaw);

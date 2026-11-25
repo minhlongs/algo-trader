@@ -319,7 +319,7 @@ Correlation to BTC: 0.31 (low market beta)
 
 - **Minimum Capital**: $5,000 account size for viable arbitrage after fees
 - **Exchange API Limits**: 10k requests/day on free tier; may throttle
-- **Geographic Restrictions**: US IP blocks on some exchanges (Bybit); requires VPN/relay
+- **Geographic Restrictions**: Venue geographic restrictions apply per exchange Terms of Use; direct jurisdiction eligibility verification is required and VPN/proxy circumvention is prohibited
 - **Regulatory Compliance**: KYC/AML required for exchange withdrawals >$10k/day
 - **Model Retraining**: Weekly retraining on new data; 4h compute time on m6i.2xlarge AWS
 
