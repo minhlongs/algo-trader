@@ -5,6 +5,7 @@ import {
   isApprovedPaperStrategyId,
   isMaintenanceModeEnabled,
   isMarketDataEnabled,
+  isSyntheticOnlyMode,
   MARKET_DATA_DISABLED_REASON,
   MAX_CUMULATIVE_DRAWDOWN_BPS,
   PILOT_APPROVED_STRATEGY_ID,
@@ -87,7 +88,7 @@ export class TenantPaperEngine {
         }
         const liveForbidden = String(this.env.LIVE_TRADING_ENABLED ?? 'false').toLowerCase() === 'true';
         const maintenance = isMaintenanceModeEnabled(this.env);
-        const marketDataDisabled = !isMarketDataEnabled(this.env);
+        const marketDataDisabled = !isMarketDataEnabled(this.env) && !isSyntheticOnlyMode(this.env);
         if (liveForbidden || maintenance || marketDataDisabled) {
           const reason = liveForbidden ? 'LIVE_TRADING_FORBIDDEN_IN_BETA' : maintenance ? 'MAINTENANCE_MODE' : MARKET_DATA_DISABLED_REASON;
           await this.env.POLY_BETA_DB.prepare(`UPDATE beta_portfolios SET engine_state = 'PAUSED', updated_at_ms = ? WHERE tenant_id = ? AND engine_state = 'RUNNING'`).bind(Date.now(), tenantId).run();
@@ -136,7 +137,7 @@ export class TenantPaperEngine {
       if (!strategyId && !isApprovedPaperStrategyId(pf?.selected_strategy_id)) {
         return jsonRes({ ok: false, error: 'Persisted strategy is not approved', code: 'UNSUPPORTED_STRATEGY' }, 400);
       }
-      if (!isMarketDataEnabled(this.env)) {
+      if (!isMarketDataEnabled(this.env) && !isSyntheticOnlyMode(this.env)) {
         await this.state.storage.deleteAlarm();
         await appendExecutionLog(this.env.POLY_BETA_DB, tenantId, 'WARN', MARKET_DATA_DISABLED_REASON, `Paper strategy ${action} blocked: market data feed is disabled.`, nowMs);
         return jsonRes({ ok: false, error: 'Market data feed is disabled; paper strategy execution is unavailable.', code: MARKET_DATA_DISABLED_REASON, engineState: pf?.engine_state ?? 'STOPPED' }, 503);

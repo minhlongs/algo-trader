@@ -6,6 +6,7 @@ import {
   APPROVED_PAPER_STRATEGIES,
   isMaintenanceModeEnabled,
   isMarketDataEnabled,
+  isSyntheticOnlyMode,
   MARKET_DATA_DISABLED_REASON,
   type PolyBetaEnv,
 } from './poly-beta-types';
@@ -74,14 +75,19 @@ async function routeBetaRequest(request: Request, env: PolyBetaEnv): Promise<Res
 
     if ((path === '/api/health' || path === '/health') && request.method === 'GET') {
       const marketDataEnabled = isMarketDataEnabled(env);
-      const feedStatus = !marketDataEnabled || maintenanceMode
-        ? { marketDataEnabled, feedHealthy: false, supportedMarketCount: 0, disabledReason: !marketDataEnabled ? MARKET_DATA_DISABLED_REASON : 'MAINTENANCE_MODE' }
-        : await readBetaMarketHealthStatus(env);
+      const syntheticOnlyMode = isSyntheticOnlyMode(env);
+      const feedStatus = !marketDataEnabled && !syntheticOnlyMode
+        ? { marketDataEnabled: false, feedHealthy: false, supportedMarketCount: 0, disabledReason: MARKET_DATA_DISABLED_REASON }
+        : maintenanceMode
+          ? { marketDataEnabled, feedHealthy: false, supportedMarketCount: 0, disabledReason: 'MAINTENANCE_MODE' }
+          : await readBetaMarketHealthStatus(env);
       return betaJsonResponse(request, env, {
         ok: true,
         status: 'operational',
         service: 'poly-beta-api',
-        mode: 'PAPER_ONLY',
+        mode: syntheticOnlyMode ? 'SYNTHETIC_ONLY' : 'PAPER_ONLY',
+        syntheticOnlyMode,
+        evidenceClass: syntheticOnlyMode ? 'SYNTHETIC_ONLY' : 'PAPER_ONLY',
         targetMarket: env.TARGET_MARKET ?? 'INTERNATIONAL',
         targetVietnamCustomers: String(env.TARGET_VIETNAM_CUSTOMERS ?? 'false').toLowerCase() === 'true',
         productLanguage: env.PRODUCT_LANGUAGE ?? 'en',

@@ -10,11 +10,13 @@
 
 import {
   isMarketDataEnabled,
+  isSyntheticOnlyMode,
   MARKET_DATA_DISABLED_REASON,
   MARKET_STALENESS_LIMIT_MS,
   type PolyBetaEnv,
   type PolyBetaMarketSnapshot,
 } from './poly-beta-types';
+import { buildSyntheticBetaMarkets } from './poly-beta-synthetic-markets';
 import { readMarketNegativeCache, writeMarketNegativeCache } from './poly-beta-request-guards';
 import {
   fetchClobTopOfBookQuotes,
@@ -61,6 +63,15 @@ export async function readBetaMarketHealthStatus(
   supportedMarketCount: number;
   disabledReason: string | null;
 }> {
+  if (isSyntheticOnlyMode(env)) {
+    const synthetic = buildSyntheticBetaMarkets(nowMs);
+    return {
+      marketDataEnabled: false,
+      feedHealthy: true,
+      supportedMarketCount: synthetic.length,
+      disabledReason: 'SYNTHETIC_ONLY',
+    };
+  }
   if (!isMarketDataEnabled(env)) {
     return {
       marketDataEnabled: false,
@@ -107,6 +118,14 @@ export async function fetchSupportedBetaMarkets(
   marketDataEnabled: boolean;
 }> {
   // Default-deny guard: execute BEFORE any KV cache read or outbound fetch().
+  if (isSyntheticOnlyMode(env)) {
+    return {
+      markets: buildSyntheticBetaMarkets(options.nowMs ?? Date.now()),
+      feedHealthy: true,
+      staleReason: null,
+      marketDataEnabled: false,
+    };
+  }
   if (!isMarketDataEnabled(env)) {
     return {
       markets: [],
