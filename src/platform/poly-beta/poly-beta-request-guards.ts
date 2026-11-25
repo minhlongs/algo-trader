@@ -33,18 +33,27 @@ export async function resolveVerifiedClientIpKey(
   const secret = env.POLY_BETA_PROXY_SECRET?.trim();
   if (secret) {
     const forwardedIp = request.headers.get('X-Poly-Beta-Client-IP')?.trim();
-    const tsRaw = request.headers.get('X-Poly-Beta-Proxy-Ts')?.trim();
+    const forwardedCountry = request.headers.get('X-Poly-Beta-Client-Country')?.trim() ?? '';
+    const forwardedRegion = request.headers.get('X-Poly-Beta-Client-Region')?.trim() ?? '';
+    const tsRaw = request.headers.get('X-Poly-Beta-Proxy-Ts')?.trim() ?? '';
     const sig = request.headers.get('X-Poly-Beta-Proxy-Sig')?.trim();
-    const ts = tsRaw ? Number.parseInt(tsRaw, 10) : Number.NaN;
+    const ts = /^\d+$/.test(tsRaw) ? Number.parseInt(tsRaw, 10) : Number.NaN;
     if (
       forwardedIp &&
-      tsRaw &&
       sig &&
       Number.isFinite(ts) &&
       Math.abs(nowMs - ts) <= PROXY_SIG_MAX_SKEW_MS
     ) {
-      const expected = await hmacSha256Hex(secret, `${forwardedIp}:${tsRaw}`);
-      if (timingSafeHexEqual(sig, expected)) {
+      const canonical = `${forwardedIp}|${forwardedCountry}|${forwardedRegion}|${tsRaw}`;
+      const legacy = `${forwardedIp}:${tsRaw}`;
+      const [expectedCanonical, expectedLegacy] = await Promise.all([
+        hmacSha256Hex(secret, canonical),
+        hmacSha256Hex(secret, legacy),
+      ]);
+      if (
+        timingSafeHexEqual(sig, expectedCanonical) ||
+        (!forwardedCountry && !forwardedRegion && timingSafeHexEqual(sig, expectedLegacy))
+      ) {
         return forwardedIp;
       }
     }

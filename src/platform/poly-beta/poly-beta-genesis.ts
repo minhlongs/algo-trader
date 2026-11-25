@@ -16,6 +16,7 @@ export async function provisionTenantGenesisLedger(
     sessionHash: string;
     csrfToken: string;
     inviteTokenHash: string;
+    verifiedJurisdiction?: string | null;
     expiresAtMs: number;
     nowMs: number;
   },
@@ -29,9 +30,13 @@ export async function provisionTenantGenesisLedger(
     sessionHash,
     csrfToken,
     inviteTokenHash,
+    verifiedJurisdiction,
     expiresAtMs,
     nowMs,
   } = params;
+  const genesisLogDetail = verifiedJurisdiction
+    ? `Paper portfolio initialized with $100.00 simulated USD balance (jurisdiction=${verifiedJurisdiction}, non-VPN attested)`
+    : 'Paper portfolio initialized with $100.00 simulated balance';
 
   await runAtomicBatch(db, [
     db
@@ -74,9 +79,9 @@ export async function provisionTenantGenesisLedger(
     db
       .prepare(
         `INSERT INTO beta_execution_logs (log_id, tenant_id, level, event_code, detail, created_at_ms)
-         VALUES (?, ?, 'INFO', 'ACCOUNT_CREATED', 'Paper portfolio initialized with $100.00 simulated balance', ?)`,
+         VALUES (?, ?, 'INFO', 'ACCOUNT_CREATED', ?, ?)`,
       )
-      .bind(`log_${crypto.randomUUID()}`, tenantId, nowMs),
+      .bind(`log_${crypto.randomUUID()}`, tenantId, genesisLogDetail, nowMs),
     db
       .prepare(
         `INSERT INTO beta_sessions (session_hash, user_id, tenant_id, csrf_token, expires_at_ms, created_at_ms)

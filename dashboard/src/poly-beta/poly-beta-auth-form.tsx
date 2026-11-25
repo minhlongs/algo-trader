@@ -16,6 +16,7 @@ export function PolyBetaAuthForm({ lang, mode, onBusyChange, onAuthenticated }: 
   const t = POLY_BETA_COPY[lang];
   const [email, setEmail] = useState('');
   const [inviteToken, setInviteToken] = useState('');
+  const [countryCode, setCountryCode] = useState('');
   const [password, setPassword] = useState('');
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,7 +42,14 @@ export function PolyBetaAuthForm({ lang, mode, onBusyChange, onAuthenticated }: 
         method: 'POST',
         body:
           mode === 'signup'
-            ? { email, password, inviteToken: inviteToken.trim(), acknowledgeSimulationAndRisk: ack }
+            ? {
+                email,
+                password,
+                inviteToken: inviteToken.trim(),
+                ...(countryCode.trim() ? { countryCode: countryCode.trim().toUpperCase() } : {}),
+                acknowledgeSimulationAndRisk: ack,
+                acknowledgeJurisdictionAndNonVpn: ack,
+              }
             : { email, password },
       });
       if ((res.status === 200 || res.status === 201) && res.data.user && res.data.csrfToken) {
@@ -84,6 +92,16 @@ export function PolyBetaAuthForm({ lang, mode, onBusyChange, onAuthenticated }: 
             aria-describedby="beta-invite-hint" value={inviteToken}
             onChange={(e) => setInviteToken(e.target.value)} className={inputClass} />
           <p id="beta-invite-hint" className="text-xs text-slate-400">{t.inviteTokenHint}</p>
+        </div>
+      )}
+      {mode === 'signup' && (
+        <div className="space-y-1">
+          <label htmlFor="beta-country-code" className="block text-xs text-slate-300">{t.countryCodeLabel}</label>
+          <input id="beta-country-code" name="countryCode" type="text" autoComplete="country"
+            minLength={2} maxLength={2} pattern="[A-Za-z]{2}" disabled={busy}
+            data-testid="auth-country-input" aria-describedby="beta-country-hint" value={countryCode}
+            onChange={(e) => setCountryCode(e.target.value.toUpperCase())} className={inputClass} />
+          <p id="beta-country-hint" className="text-xs text-slate-400">{t.countryCodeHint}</p>
         </div>
       )}
       <div className="space-y-1">

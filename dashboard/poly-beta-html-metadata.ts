@@ -11,8 +11,8 @@ export const POLY_BETA_INDEX_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Poly Bot vNext — Private Paper Beta ($100 Virtual Balance, No Real Money)</title>
-  <meta name="description" content="Private Paper-Only Polymarket simulation pilot with a $100 virtual starting balance. No real-money deposits, no real orders, no custody, no promised profit, and no live-trading feature enabled." />
+  <title>Poly Bot vNext — International Quantitative Paper Beta ($100 USD Virtual Balance, No Real Money)</title>
+  <meta name="description" content="English-first international quantitative research Paper Beta with a $100 USD virtual starting balance. No customer deposits, no custody, no trade execution on behalf of users, no guaranteed returns, jurisdiction-aware onboarding, explicit data provenance, and LIVE_TRADING_ENABLED=false." />
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 

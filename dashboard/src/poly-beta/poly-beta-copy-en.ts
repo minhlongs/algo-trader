@@ -1,5 +1,5 @@
 /**
- * POLY-G5 Public Beta — English Copy (optional toggle).
+ * POLY-G5 / POLY-G10.5 International Paper Beta — English Copy (default language).
  */
 
 import type { PolyBetaCopyKey } from './poly-beta-copy-vi';
@@ -7,12 +7,12 @@ import type { PolyBetaCopyKey } from './poly-beta-copy-vi';
 export const POLY_BETA_COPY_EN: Record<PolyBetaCopyKey, string> = {
   badge: 'PAPER SIMULATION ONLY — $0 REAL FUNDS (LIVE_TRADING_ENABLED=false)',
   brand: 'Poly Bot vNext — Private Paper Beta',
-  heroTitle: 'Evaluate Paper Execution with a $100 Virtual Starting Balance ($0 Real Funds)',
-  heroSub: 'Isolated Cloudflare Paper-Only pilot. $100 virtual starting balance, no real-money deposits, no real orders, no custody, no promised profit, and no live-trading feature enabled (LIVE_TRADING_ENABLED=false).',
+  heroTitle: 'International Quantitative Paper Beta — $100 USD Virtual Balance ($0 Real Funds)',
+  heroSub: 'English-first international research simulation on isolated Cloudflare infrastructure. $100.00 USD virtual balance only — no customer deposits, no custody, no trade execution on behalf of users, no guaranteed investment returns, jurisdiction-aware onboarding, explicit data provenance, and LIVE_TRADING_ENABLED=false.',
   ctaStart: 'Register Enrolled Pilot Account ($100 Virtual)',
   ctaLogin: 'Sign In',
-  simLimitationsTitle: 'Simulation Limitations, Non-Custody & Financial Risk Disclosure',
-  simLimitationsBody: '1) $100.00 virtual starting balance only ($0 real monetary value). 2) No real-money deposits, no real orders, no custody of funds, no promised profit, and no live-trading feature enabled. 3) Paper fills do not capture live adverse selection or Polygon settlement latency and never prove live alpha. 4) Signup is restricted to explicitly enrolled private-pilot accounts.',
+  simLimitationsTitle: 'Simulation Limitations, Non-Custody, Jurisdiction & Provenance Disclosure',
+  simLimitationsBody: '1) $100.00 USD virtual starting balance only ($0 real monetary value). 2) No customer deposits, no real orders, no custody of funds, no trade execution on behalf of users, no guaranteed investment returns, and LIVE_TRADING_ENABLED=false. 3) Paper fills do not capture live adverse selection or Polygon settlement latency and never prove live alpha. 4) Onboarding is restricted to enrolled international research accounts in eligible jurisdictions (VPN/proxy circumvention strictly prohibited; Vietnam and Polymarket-restricted jurisdictions excluded).',
   authSignupTitle: 'Create Paper Beta Account ($100 Virtual Capital)',
   authLoginTitle: 'Sign In to Paper Beta',
   emailLabel: 'Account Email',
@@ -24,7 +24,9 @@ export const POLY_BETA_COPY_EN: Record<PolyBetaCopyKey, string> = {
   showPassword: 'Show',
   hidePassword: 'Hide',
   noPasswordResetNotice: 'Note: Public Beta does not offer email password reset. Store your password in a password manager; if lost, create a new paper account.',
-  ackCheckbox: 'I understand this is a $0 Paper-Only simulation, simulated results never guarantee live profits, and this service never requests seed phrases or private keys.',
+  countryCodeLabel: 'Operating Country (ISO 2-letter code, eligible international jurisdictions only)',
+  countryCodeHint: 'Enter your true ISO 3166-1 alpha-2 country code (e.g., CH, SE, ES, MX). Restricted jurisdictions, Vietnam customer accounts, and VPN/proxy routing are rejected.',
+  ackCheckbox: 'I confirm this is a $0 USD virtual-only research simulation (no deposits, custody, user trade execution, or guaranteed returns), I am in an eligible jurisdiction without VPN/proxy circumvention, and this service never requests private keys.',
   submitSignup: 'Provision $100 Virtual Portfolio',
   submitLogin: 'Sign In to Dashboard',
   submitting: 'Processing...',

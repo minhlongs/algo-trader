@@ -1,6 +1,6 @@
 /**
  * Detailed setup guide content — step-by-step from zero to running bot.
- * Covers VPN, crypto accounts, bot installation, LLM setup, dashboard connection.
+ * Covers jurisdiction eligibility verification, crypto accounts, bot installation, LLM setup, dashboard connection.
  * Based on SETUP.md, rendered as interactive UI.
  */
 import { SetupVpnCrypto } from './setup-section-vpn-crypto';
@@ -13,10 +13,10 @@ export function SetupGuideContent() {
     <div className="space-y-16" style={{ color: _COLORS.onSurfaceVariant }}>
 
       {/* Banner */}
-      <InfoBanner color="green" label="Full Setup Guide — From Zero to Live Trading">
+      <InfoBanner color="green" label="Full Setup Guide — Jurisdiction-Compliant Setup">
         <p>
-          This guide walks you through everything: VPN, crypto wallet, USDC,
-          Polymarket account, bot installation, AI models, and connecting to dashboard.
+          This guide walks you through everything: venue &amp; jurisdiction eligibility verification,
+          crypto wallet, USDC, Polymarket account, bot installation, AI models, and connecting to dashboard.
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div className="rounded p-2" style={{ backgroundColor: _COLORS.surface }}>
@@ -48,7 +48,7 @@ export function SetupGuideContent() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {[
-            { href: '#vpn-setup', label: 'A1. VPN Setup (1.1.1.1 / ProtonVPN)' },
+            { href: '#vpn-setup', label: 'A1. Jurisdiction & Venue Eligibility Check' },
             { href: '#metamask-setup', label: 'A2. MetaMask Wallet' },
             { href: '#buy-usdc', label: 'A3. Buy USDC' },
             { href: '#transfer-usdc', label: 'A4. Transfer to MetaMask' },

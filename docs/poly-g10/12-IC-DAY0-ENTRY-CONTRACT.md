@@ -1,5 +1,7 @@
 # POLY-G10.3 — IC Day 0 Entry Contract
 
+> **HISTORICAL AUDIT RECORD — STRATEGICALLY REBASELINED BY `#POLY-G10.5` (`2026-11-24`):** Preserved intact without erasure. `IC_DAY_0 = null`, `W_SKILL = 0`, `LIVE_TRADING_ENABLED = false`, `REAL_MONEY_TRADING = DISABLED`, and all 30d L2 / 500-fill / 150-OOS scientific floors remain 100% locked; Prerequisite #4 (`Written Vietnamese Legal Opinion`) is superseded by jurisdiction-aware `OPERATOR_JURISDICTION_ELIGIBILITY` + `RESEARCH_DATA_RIGHTS` in [`docs/poly-g10/13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md`](./13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md).
+
 **Date:** 2026-11-24  
 **Baseline:** `main` @ `68469cfeff09c82416778b1c09816d7005673c6c` (`G10_ENGINEERING_BASELINE = FROZEN`)  
 **Builds On:** [`docs/poly-g10/05-90-DAY-IC-EXECUTION-PLAN.md`](./05-90-DAY-IC-EXECUTION-PLAN.md) & [`docs/poly-g8-6/06-IC-DAY0-ACTIVATION-CHECKLIST.md`](../poly-g8-6/06-IC-DAY0-ACTIVATION-CHECKLIST.md)  

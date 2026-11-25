@@ -1,5 +1,5 @@
 /**
- * POLY-G5 Public Beta — Signup & Login Handlers.
+ * POLY-G5 / POLY-G10.5 International Paper Beta — Signup & Login Handlers.
  */
 
 import { SESSION_TTL_MS, type PolyBetaEnv } from './poly-beta-types';
@@ -23,6 +23,7 @@ import {
   detectForbiddenCallerAuthorityOverride,
 } from './poly-beta-schemas';
 import { provisionTenantGenesisLedger } from './poly-beta-genesis';
+import { authorizeSignupJurisdiction } from './poly-beta-jurisdiction-gate';
 import { runAtomicBatch } from './poly-beta-ledger';
 import { authorizeSignupEnrollmentAndInvite } from './poly-beta-signup-invite';
 
@@ -72,15 +73,23 @@ export async function handleBetaSignup(
     );
   }
 
-  const { email, password, inviteToken } = parsed.data;
+  const { email, password, inviteToken, countryCode, regionCode, acknowledgeJurisdictionAndNonVpn } = parsed.data;
+  const jurisdictionGate = await authorizeSignupJurisdiction(
+    request,
+    { countryCode, regionCode, acknowledgeJurisdictionAndNonVpn },
+    env,
+    nowMs,
+  );
+  if (!jurisdictionGate.ok) {
+    return betaJsonResponse(request, env, { error: jurisdictionGate.error, code: jurisdictionGate.code }, jurisdictionGate.status);
+  }
+
   const gate = await authorizeSignupEnrollmentAndInvite(email, inviteToken, env, nowMs);
   if (!gate.ok) {
     return betaJsonResponse(request, env, { error: gate.error, code: gate.code }, gate.status);
   }
 
-  const existing = await env.POLY_BETA_DB.prepare(`SELECT id FROM beta_users WHERE email = ?`)
-    .bind(email)
-    .first<{ id: string }>();
+  const existing = await env.POLY_BETA_DB.prepare(`SELECT id FROM beta_users WHERE email = ?`).bind(email).first<{ id: string }>();
   if (existing) {
     return betaJsonResponse(request, env, { error: 'Email already registered', code: 'EMAIL_EXISTS' }, 409);
   }
@@ -102,18 +111,14 @@ export async function handleBetaSignup(
       sessionHash,
       csrfToken,
       inviteTokenHash: gate.tokenHash,
+      verifiedJurisdiction: jurisdictionGate.verifiedRegion ?? jurisdictionGate.verifiedCountry,
       expiresAtMs: nowMs + SESSION_TTL_MS,
       nowMs,
     });
   } catch (err) {
     if (err instanceof Error && /unique|constraint/i.test(err.message)) {
       if (/beta_invite_redemptions|token_hash/i.test(err.message)) {
-        return betaJsonResponse(
-          request,
-          env,
-          { error: 'This single-use invite token has already been redeemed.', code: 'INVITE_TOKEN_REDEEMED' },
-          403,
-        );
+        return betaJsonResponse(request, env, { error: 'This single-use invite token has already been redeemed.', code: 'INVITE_TOKEN_REDEEMED' }, 403);
       }
       return betaJsonResponse(request, env, { error: 'Email already registered', code: 'EMAIL_EXISTS' }, 409);
     }
@@ -146,18 +151,14 @@ export async function handleBetaLogin(
 
   const bodyResult = await parseBoundedJsonBody(request, env);
   if (bodyResult instanceof Response) return bodyResult;
-  const rawBody = bodyResult.body;
-
-  const parsed = betaLoginSchema.safeParse(rawBody);
+  const parsed = betaLoginSchema.safeParse(bodyResult.body);
   if (!parsed.success) {
     return betaJsonResponse(request, env, { error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' }, 401);
   }
 
   const user = await env.POLY_BETA_DB.prepare(
     `SELECT id, tenant_id, email, password_hash, password_salt FROM beta_users WHERE email = ?`,
-  )
-    .bind(parsed.data.email)
-    .first<DbUserRow>();
+  ).bind(parsed.data.email).first<DbUserRow>();
 
   if (!user) {
     await verifyUserPassword(parsed.data.password, DUMMY_PASSWORD_HASH_HEX, DUMMY_PASSWORD_SALT_HEX);
@@ -171,19 +172,12 @@ export async function handleBetaLogin(
   const sessionHash = await sha256Hex(rawSession);
   const csrfToken = randomHexToken(24);
   await runAtomicBatch(env.POLY_BETA_DB, [
+    env.POLY_BETA_DB.prepare(`DELETE FROM beta_sessions WHERE tenant_id = ? AND expires_at_ms <= ?`).bind(user.tenant_id, nowMs),
     env.POLY_BETA_DB.prepare(
-      `DELETE FROM beta_sessions WHERE tenant_id = ? AND expires_at_ms <= ?`,
-    ).bind(user.tenant_id, nowMs),
-    env.POLY_BETA_DB.prepare(
-      `DELETE FROM beta_sessions
-       WHERE tenant_id = ?
-         AND session_hash NOT IN (
-           SELECT session_hash FROM beta_sessions WHERE tenant_id = ? ORDER BY created_at_ms DESC LIMIT 9
-         )`,
+      `DELETE FROM beta_sessions WHERE tenant_id = ? AND session_hash NOT IN (SELECT session_hash FROM beta_sessions WHERE tenant_id = ? ORDER BY created_at_ms DESC LIMIT 9)`,
     ).bind(user.tenant_id, user.tenant_id),
     env.POLY_BETA_DB.prepare(
-      `INSERT INTO beta_sessions (session_hash, user_id, tenant_id, csrf_token, expires_at_ms, created_at_ms)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO beta_sessions (session_hash, user_id, tenant_id, csrf_token, expires_at_ms, created_at_ms) VALUES (?, ?, ?, ?, ?, ?)`,
     ).bind(sessionHash, user.id, user.tenant_id, csrfToken, nowMs + SESSION_TTL_MS, nowMs),
   ]);
 

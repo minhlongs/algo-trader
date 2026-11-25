@@ -1,5 +1,7 @@
 # POLY-G10.3B — Polymarket Data Rights & Licensing Decision Pack
 
+> **HISTORICAL AUDIT RECORD — STRATEGICALLY REBASELINED BY `#POLY-G10.5` (`2026-11-24`):** Preserved intact without erasure as historical evidence. Vietnam customer targeting (`TARGET_VIETNAM_CUSTOMERS=false`) and universal Vietnam-assumed operator defaults are superseded by the global-first, jurisdiction-aware framework in [`docs/poly-g10/13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md`](./13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md) and [`docs/poly-g10/14-JURISDICTION-AND-RESEARCH-RIGHTS-MATRIX.md`](./14-JURISDICTION-AND-RESEARCH-RIGHTS-MATRIX.md). `DATA_LICENSE = HOLD` remains strictly enforced for all unresolved permissions.
+
 **Date:** 2026-11-24  
 **Baseline:** `main` @ `68469cfeff09c82416778b1c09816d7005673c6c` (`G10_ENGINEERING_BASELINE = FROZEN`)  
 **Builds On:** [`docs/poly-g8-6/01-DATA-LICENSE-INQUIRY.md`](../poly-g8-6/01-DATA-LICENSE-INQUIRY.md) & [`docs/poly-g10/07-LICENSE-UPSTREAM-AND-PROVENANCE.md`](./07-LICENSE-UPSTREAM-AND-PROVENANCE.md)  

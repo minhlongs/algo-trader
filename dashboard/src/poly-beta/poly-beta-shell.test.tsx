@@ -30,8 +30,8 @@ describe('PolyBetaShell session and screen states', () => {
     }));
     render(<PolyBetaShell />);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/thời gian/i);
-    expect(screen.getByRole('button', { name: /thử lại/i })).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/did not respond in time/i);
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
   it('sends an expired notice back to login on an authenticated 401', async () => {
@@ -59,7 +59,7 @@ describe('PolyBetaShell session and screen states', () => {
     await screen.findByTestId('system-health-panel');
 
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /hủy lệnh/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
     });
 
     await waitFor(() => expect(screen.getByTestId('session-expired-notice')).toBeInTheDocument());
@@ -89,7 +89,7 @@ describe('PolyBetaShell session and screen states', () => {
 
     render(<PolyBetaShell />);
     // A failed initial check keeps the landing page usable.
-    fireEvent.click(await screen.findByRole('button', { name: /thử lại/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /retry/i }));
     fireEvent.click(screen.getByTestId('nav-login-btn'));
     fireEvent.change(screen.getByTestId('auth-email-input'), { target: { value: 'user@example.com' } });
     fireEvent.change(screen.getByTestId('auth-password-input'), { target: { value: 'correct horse battery' } });
@@ -154,7 +154,7 @@ describe('PolyBetaShell dashboard content', () => {
     });
 
     render(<PolyBetaShell />);
-    expect(await screen.findByText(/Nguồn dữ liệu thị trường đang trống/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Market feed is empty or unhealthy/i)).toBeInTheDocument();
     expect(screen.getByTestId('buy-yes-btn')).toBeDisabled();
     expect(screen.getByTestId('strategy-start-btn')).toBeDisabled();
     expect(screen.getByTestId('market-select')).toBeDisabled();

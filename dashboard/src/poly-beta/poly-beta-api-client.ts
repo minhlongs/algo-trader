@@ -78,11 +78,7 @@ export interface BetaPortfolioView {
     currentDrawdownPct: number;
     maxDrawdownPct: number;
   };
-  limits: {
-    maxPortfolioExposureUsd: number;
-    maxSingleOrderUsd: number;
-    maxDrawdownPct: number;
-  };
+  limits: { maxPortfolioExposureUsd: number; maxSingleOrderUsd: number; maxDrawdownPct: number };
   engine: {
     state: 'STOPPED' | 'RUNNING' | 'PAUSED' | 'HALTED';
     haltReason: string | null;
@@ -100,6 +96,8 @@ export interface BetaPortfolioView {
       gammaApi: string;
       clobApi: string;
       stalenessLimitMs: number;
+      accountingCurrency?: string;
+      dataRightsStatus?: string;
       mode: string;
     };
   };

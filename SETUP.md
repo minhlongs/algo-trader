@@ -22,18 +22,21 @@ cp .env.example .env  # Then edit with your credentials
 
 ---
 
-## Phase A: Accounts & Crypto (skip if already have USDC + Polymarket account)
+## Phase A: Venue Eligibility & Optional Future Execution Wallet
 
-### A1. VPN (required for restricted regions)
+> **Paper Beta Notice:** Paper Beta (`LIVE_TRADING_ENABLED=false`, `MARKET_DATA_ENABLED=false`) runs entirely offline/paper. Paper Beta users do **not** need to create a wallet, buy USDC, deposit real money, or execute live trades. Steps A2–A7 below apply **only** to future authorized live execution after independent quant and legal gates pass.
+
+### A1. Direct Venue Eligibility Verification (No VPN / Proxy Circumvention)
 
 ```bash
-# Option 1: Cloudflare WARP (free)
-# Download from https://1.1.1.1 → enable WARP
+# Verify direct venue eligibility from your actual operating network (no VPN/proxy):
+curl -sS https://polymarket.com/api/geoblock
 
-# Option 2: ProtonVPN (free)
-# Download from https://protonvpn.com → select US server
-
-# Verify: visit https://polymarket.com — should load without error
+# Expected for eligible jurisdictions: {"blocked":false,...}
+# Polymarket Terms of Use (§1, §4.1, §4.2) strictly prohibit VPN, proxy, or
+# location-masking circumvention. Never route through a VPN or restricted
+# jurisdiction (including the United States).
+# Keep LIVE_TRADING_ENABLED=false (fail-closed) unless explicitly eligible and authorized.
 ```
 
 ### A2. MetaMask Wallet
@@ -85,7 +88,7 @@ npm run wallet:generate
 ```bash
 # 1. Open MetaMask -> Account Dropdown -> "Add account or hardware wallet" -> "Import account"
 # 2. Paste the generated Private Key from Step A5.
-# 3. Enable VPN → visit https://polymarket.com
+# 3. From an eligible jurisdiction (without VPN/proxy), visit https://polymarket.com
 # 4. Log In → Connect Wallet → MetaMask (Select the imported account)
 # 
 # *NOTE: If MetaMask shows a QR code popup and the browser doesn't automatically redirect/connect, press F5 (Refresh) and try connecting again.*

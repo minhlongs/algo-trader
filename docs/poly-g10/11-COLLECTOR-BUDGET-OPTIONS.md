@@ -1,5 +1,7 @@
 # POLY-G10.3 — Collector Unit Economics & Budget Options
 
+> **HISTORICAL AUDIT RECORD — STRATEGICALLY REBASELINED BY `#POLY-G10.5` (`2026-11-24`):** Preserved intact without erasure. USD accounting (`ACCOUNTING_CURRENCY=USD`) and Scenario A (`$0/mo` offline default, `INFRA_BUDGET=HOLD`) remain active; blanket `LEGAL_G12` references in the table below are re-scoped to `RESEARCH_DATA_RIGHTS` + `OPERATOR_JURISDICTION_ELIGIBILITY` per [`docs/poly-g10/13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md`](./13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md).
+
 **Date:** 2026-11-24  
 **Baseline:** `main` @ `68469cfeff09c82416778b1c09816d7005673c6c` (`G10_ENGINEERING_BASELINE = FROZEN`)  
 **Canonical Repo Cost Model:** [`src/desk/polymarket/l2/l2-collector-cost-assumptions.ts`](../../src/desk/polymarket/l2/l2-collector-cost-assumptions.ts)  

@@ -1,5 +1,7 @@
 # POLY-G10.3B — Vietnamese Legal Counsel Engagement Brief (G12)
 
+> **HISTORICAL AUDIT RECORD — STRATEGICALLY REBASELINED BY `#POLY-G10.5` (`2026-11-24`):** Preserved intact without erasure as historical evidence. Under `#POLY-G10.5` (`TARGET_MARKET=INTERNATIONAL`, `TARGET_VIETNAM_CUSTOMERS=false`, `LEGAL_FRAMEWORK=JURISDICTION_AWARE`), a Vietnam-specific counsel engagement is **not** a universal prerequisite for offline clean-room engineering or non-Vietnam jurisdictions; it applies if and only if the actual operator, entity, or physical operating location is subject to Vietnamese jurisdiction. See [`docs/poly-g10/13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md`](./13-GLOBAL-FIRST-STRATEGIC-REBASELINE.md) for the 5 activity-scoped gates.
+
 **Date:** 2026-11-24  
 **Baseline:** `main` @ `68469cfeff09c82416778b1c09816d7005673c6c` (`G10_ENGINEERING_BASELINE = FROZEN`)  
 **Builds On:** [`docs/poly-g8-6/03-VIETNAM-LEGAL-COUNSEL-REQUEST.md`](../poly-g8-6/03-VIETNAM-LEGAL-COUNSEL-REQUEST.md)  
