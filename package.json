@@ -20,6 +20,8 @@
     "prepare": "npm run build",
     "sop:run": "node src/agi-sops/index.js",
     "sop:dev": "node --watch src/agi-sops/index.js",
+    "poly:demo": "node scripts/poly-local-demo.mjs",
+    "poly:demo:stop": "node scripts/poly-local-demo.mjs --stop",
     "disk:check": "node --import tsx scripts/disk-monitor.ts",
     "disk:check:sh": "sh scripts/pre-build-check.sh",
     "prebuild": "npm run disk:check:sh",

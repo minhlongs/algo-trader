@@ -32,7 +32,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api':
+        process.env.VITE_POLY_BETA_API_URL ||
+        (process.env.VITE_APP_MODE === 'poly-beta' ? 'http://127.0.0.1:8787' : 'http://localhost:3000'),
       '/ws': { target: 'ws://localhost:3001', ws: true },
     },
   },

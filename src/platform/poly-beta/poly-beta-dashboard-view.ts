@@ -75,7 +75,9 @@ export async function buildAuthoritativeDashboardView(
     },
     health: {
       marketDataEnabled,
-      marketFeedHealthy: marketDataEnabled && feedHealthy,
+      marketFeedHealthy:
+        feedHealthy &&
+        (marketDataEnabled || (markets.length > 0 && markets.every((m) => m.source === 'deterministic-fixture'))),
       staleReason,
       ghostGuardMode: 'OFFLINE_DRILL_VERIFIED_NO_LIVE_CHAIN',
       cryptoFiveMinuteGuard: 'ENFORCED_BLOCKED',
@@ -88,7 +90,9 @@ export async function buildAuthoritativeDashboardView(
         dataRightsStatus: 'HOLD' as const,
         mode: marketDataEnabled
           ? ('READ_ONLY_PUBLIC_PAPER_FEED' as const)
-          : ('DISABLED_DEFAULT_DENY' as const),
+          : markets.length > 0 && markets.every((m) => m.source === 'deterministic-fixture')
+            ? ('SYNTHETIC_ONLY' as const)
+            : ('DISABLED_DEFAULT_DENY' as const),
       },
     },
     strategies: APPROVED_PAPER_STRATEGIES,

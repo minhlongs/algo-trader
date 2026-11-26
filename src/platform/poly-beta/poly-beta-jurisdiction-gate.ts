@@ -11,7 +11,7 @@ import {
   normalizeSubdivisionCode,
 } from '../../shared/polymarket/venue-eligibility-jurisdictions';
 import { hmacSha256Hex, timingSafeHexEqual } from './poly-beta-security';
-import type { PolyBetaEnv } from './poly-beta-types';
+import { isSyntheticOnlyMode, type PolyBetaEnv } from './poly-beta-types';
 
 const PROXY_SIG_MAX_SKEW_MS = 60_000;
 const DIGITS_ONLY_RE = /^\d+$/;
@@ -125,6 +125,9 @@ export async function authorizeSignupJurisdiction(
   nowMs: number,
 ): Promise<SignupJurisdictionGateResult> {
   const isProdBeta = env.ENVIRONMENT === 'public-beta';
+  if (!isProdBeta && isSyntheticOnlyMode(env)) {
+    return { ok: true, verifiedCountry: 'LOCAL', verifiedRegion: null, edgeCountry: null };
+  }
   const allowVietnam =
     typeof env.TARGET_VIETNAM_CUSTOMERS === 'string' && env.TARGET_VIETNAM_CUSTOMERS.trim().toLowerCase() === 'true';
 
