@@ -40,9 +40,20 @@ export function isMaintenanceModeEnabled(env: Pick<PolyBetaEnv, 'MAINTENANCE_MOD
   return typeof env.MAINTENANCE_MODE === 'string' && env.MAINTENANCE_MODE.trim().toLowerCase() === 'true';
 }
 
-export function isSyntheticOnlyMode(
-  env: Pick<PolyBetaEnv, 'SYNTHETIC_ONLY_MODE' | 'LIVE_TRADING_ENABLED' | 'MARKET_DATA_ENABLED'>,
+const LOCAL_SYNTHETIC_ENVIRONMENTS = new Set(['dev', 'local-dev', 'test']);
+
+export function hasConflictingSyntheticFlags(
+  env: Pick<PolyBetaEnv, 'SYNTHETIC_ONLY_MODE' | 'MARKET_DATA_ENABLED'>,
 ): boolean {
+  const syn = typeof env.SYNTHETIC_ONLY_MODE === 'string' && env.SYNTHETIC_ONLY_MODE.trim().toLowerCase() === 'true';
+  return syn && isMarketDataEnabled(env);
+}
+
+export function isSyntheticOnlyMode(
+  env: Pick<PolyBetaEnv, 'ENVIRONMENT' | 'SYNTHETIC_ONLY_MODE' | 'LIVE_TRADING_ENABLED' | 'MARKET_DATA_ENABLED'>,
+): boolean {
+  const envName = typeof env.ENVIRONMENT === 'string' ? env.ENVIRONMENT.trim().toLowerCase() : '';
+  if (!LOCAL_SYNTHETIC_ENVIRONMENTS.has(envName)) return false;
   const syn = typeof env.SYNTHETIC_ONLY_MODE === 'string' && env.SYNTHETIC_ONLY_MODE.trim().toLowerCase() === 'true';
   const live = typeof env.LIVE_TRADING_ENABLED === 'string' && env.LIVE_TRADING_ENABLED.trim().toLowerCase() === 'true';
   return syn && !live && !isMarketDataEnabled(env);

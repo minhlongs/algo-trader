@@ -9,6 +9,7 @@
  */
 
 import {
+  hasConflictingSyntheticFlags,
   isMarketDataEnabled,
   isSyntheticOnlyMode,
   MARKET_DATA_DISABLED_REASON,
@@ -63,6 +64,14 @@ export async function readBetaMarketHealthStatus(
   supportedMarketCount: number;
   disabledReason: string | null;
 }> {
+  if (hasConflictingSyntheticFlags(env)) {
+    return {
+      marketDataEnabled: false,
+      feedHealthy: false,
+      supportedMarketCount: 0,
+      disabledReason: 'CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS',
+    };
+  }
   if (isSyntheticOnlyMode(env)) {
     const synthetic = buildSyntheticBetaMarkets(nowMs);
     return {
@@ -118,6 +127,14 @@ export async function fetchSupportedBetaMarkets(
   marketDataEnabled: boolean;
 }> {
   // Default-deny guard: execute BEFORE any KV cache read or outbound fetch().
+  if (hasConflictingSyntheticFlags(env)) {
+    return {
+      markets: [],
+      feedHealthy: false,
+      staleReason: 'CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS',
+      marketDataEnabled: false,
+    };
+  }
   if (isSyntheticOnlyMode(env)) {
     return {
       markets: buildSyntheticBetaMarkets(options.nowMs ?? Date.now()),

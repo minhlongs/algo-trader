@@ -131,4 +131,27 @@ describe('SYNTHETIC_ONLY_MODE — Zero-Egress Local Paper Trading Cycle', () => 
     expect(dash.summary.feesPaidUsd).toBeGreaterThan(0);
     expect(dash.fills.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('fails closed in public-beta and when SYNTHETIC_ONLY_MODE conflicts with MARKET_DATA_ENABLED', async () => {
+    const { env } = await createPolyBetaTestHarness({ marketDataEnabled: 'false', maintenanceMode: 'false' });
+    // 1. Accidental production ENVIRONMENT=public-beta cannot activate SYNTHETIC_ONLY_MODE
+    env.ENVIRONMENT = 'public-beta';
+    env.SYNTHETIC_ONLY_MODE = 'true';
+    const prodRes = await worker.fetch(new Request('http://127.0.0.1:8787/api/beta/markets'), env);
+    expect(prodRes.status).toBe(200);
+    const prodJson = (await prodRes.json()) as { feedHealthy: boolean; markets: unknown[]; staleReason: string };
+    expect(prodJson.feedHealthy).toBe(false);
+    expect(prodJson.markets).toHaveLength(0);
+    expect(prodJson.staleReason).toBe('MARKET_DATA_DISABLED');
+
+    // 2. Conflicting SYNTHETIC_ONLY_MODE=true + MARKET_DATA_ENABLED=true fails closed (never switches to external data)
+    env.ENVIRONMENT = 'dev';
+    env.MARKET_DATA_ENABLED = 'true';
+    const conflictRes = await worker.fetch(new Request('http://127.0.0.1:8787/api/beta/markets'), env);
+    expect(conflictRes.status).toBe(200);
+    const conflictJson = (await conflictRes.json()) as { feedHealthy: boolean; marketDataEnabled: boolean; staleReason: string };
+    expect(conflictJson.feedHealthy).toBe(false);
+    expect(conflictJson.marketDataEnabled).toBe(false);
+    expect(conflictJson.staleReason).toBe('CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS');
+  });
 });
