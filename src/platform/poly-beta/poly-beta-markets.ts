@@ -9,15 +9,16 @@
  */
 
 import {
-  hasConflictingSyntheticFlags,
   isMarketDataEnabled,
-  isSyntheticOnlyMode,
   MARKET_DATA_DISABLED_REASON,
   MARKET_STALENESS_LIMIT_MS,
   type PolyBetaEnv,
   type PolyBetaMarketSnapshot,
 } from './poly-beta-types';
-import { buildSyntheticBetaMarkets } from './poly-beta-synthetic-markets';
+import {
+  resolveSyntheticMarketHealthOverride,
+  resolveSyntheticMarketsOverride,
+} from './poly-beta-synthetic-markets';
 import { readMarketNegativeCache, writeMarketNegativeCache } from './poly-beta-request-guards';
 import {
   fetchClobTopOfBookQuotes,
@@ -64,23 +65,8 @@ export async function readBetaMarketHealthStatus(
   supportedMarketCount: number;
   disabledReason: string | null;
 }> {
-  if (hasConflictingSyntheticFlags(env)) {
-    return {
-      marketDataEnabled: false,
-      feedHealthy: false,
-      supportedMarketCount: 0,
-      disabledReason: 'CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS',
-    };
-  }
-  if (isSyntheticOnlyMode(env)) {
-    const synthetic = buildSyntheticBetaMarkets(nowMs);
-    return {
-      marketDataEnabled: false,
-      feedHealthy: true,
-      supportedMarketCount: synthetic.length,
-      disabledReason: 'SYNTHETIC_ONLY',
-    };
-  }
+  const syntheticHealth = resolveSyntheticMarketHealthOverride(env, nowMs);
+  if (syntheticHealth) return syntheticHealth;
   if (!isMarketDataEnabled(env)) {
     return {
       marketDataEnabled: false,
@@ -127,22 +113,8 @@ export async function fetchSupportedBetaMarkets(
   marketDataEnabled: boolean;
 }> {
   // Default-deny guard: execute BEFORE any KV cache read or outbound fetch().
-  if (hasConflictingSyntheticFlags(env)) {
-    return {
-      markets: [],
-      feedHealthy: false,
-      staleReason: 'CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS',
-      marketDataEnabled: false,
-    };
-  }
-  if (isSyntheticOnlyMode(env)) {
-    return {
-      markets: buildSyntheticBetaMarkets(options.nowMs ?? Date.now()),
-      feedHealthy: true,
-      staleReason: null,
-      marketDataEnabled: false,
-    };
-  }
+  const syntheticMarkets = resolveSyntheticMarketsOverride(env, options.nowMs ?? Date.now());
+  if (syntheticMarkets) return syntheticMarkets;
   if (!isMarketDataEnabled(env)) {
     return {
       markets: [],

@@ -6,7 +6,38 @@
  * empirical IC evidence counters.
  */
 
-import type { PolyBetaMarketSnapshot } from './poly-beta-types';
+import {
+  hasConflictingSyntheticFlags,
+  isSyntheticOnlyMode,
+  type PolyBetaEnv,
+  type PolyBetaMarketSnapshot,
+} from './poly-beta-types';
+
+export function resolveSyntheticMarketHealthOverride(
+  env: PolyBetaEnv,
+  nowMs: number,
+): { marketDataEnabled: boolean; feedHealthy: boolean; supportedMarketCount: number; disabledReason: string | null } | null {
+  if (hasConflictingSyntheticFlags(env)) {
+    return { marketDataEnabled: false, feedHealthy: false, supportedMarketCount: 0, disabledReason: 'CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS' };
+  }
+  if (isSyntheticOnlyMode(env)) {
+    return { marketDataEnabled: false, feedHealthy: true, supportedMarketCount: buildSyntheticBetaMarkets(nowMs).length, disabledReason: 'SYNTHETIC_ONLY' };
+  }
+  return null;
+}
+
+export function resolveSyntheticMarketsOverride(
+  env: PolyBetaEnv,
+  nowMs: number,
+): { markets: PolyBetaMarketSnapshot[]; feedHealthy: boolean; staleReason: string | null; marketDataEnabled: boolean } | null {
+  if (hasConflictingSyntheticFlags(env)) {
+    return { markets: [], feedHealthy: false, staleReason: 'CONFLICTING_SYNTHETIC_AND_MARKET_DATA_FLAGS', marketDataEnabled: false };
+  }
+  if (isSyntheticOnlyMode(env)) {
+    return { markets: buildSyntheticBetaMarkets(nowMs), feedHealthy: true, staleReason: null, marketDataEnabled: false };
+  }
+  return null;
+}
 
 export function buildSyntheticBetaMarkets(nowMs = Date.now()): PolyBetaMarketSnapshot[] {
   const phase = Math.floor(nowMs / 10_000) % 4;
